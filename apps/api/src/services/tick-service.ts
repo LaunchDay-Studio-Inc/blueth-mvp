@@ -495,7 +495,14 @@ export async function processTick(tick: TickRow, metrics: Metrics): Promise<void
     switch (tick.tick_type) {
       case 'hourly': {
         const result = await processHourlyTick(tickTimestamp, metrics);
-        detail = result;
+        // Also process completed production jobs
+        const { processCompletedProductionJobs } = await import('./business-service');
+        const prodResult = await processCompletedProductionJobs();
+        metrics.increment('production_jobs_completed', prodResult.jobsCompleted);
+        if (prodResult.errors > 0) {
+          metrics.increment('production_job_errors', prodResult.errors);
+        }
+        detail = { ...result, production: prodResult };
         break;
       }
       case 'six_hour': {
@@ -505,7 +512,15 @@ export async function processTick(tick: TickRow, metrics: Metrics): Promise<void
       }
       case 'daily': {
         const result = await processDailyTick(tickTimestamp, metrics);
-        detail = result;
+        // Also process business daily operations (wages, satisfaction, rent)
+        const { processBusinessDailyTick } = await import('./business-service');
+        const bizResult = await processBusinessDailyTick();
+        metrics.increment('business_daily_processed', bizResult.businessesProcessed);
+        metrics.increment('business_wages_paid', bizResult.wagesPaid);
+        if (bizResult.errors > 0) {
+          metrics.increment('business_daily_errors', bizResult.errors);
+        }
+        detail = { ...result, business: bizResult };
         break;
       }
       default:

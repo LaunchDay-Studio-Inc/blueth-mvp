@@ -545,6 +545,11 @@ export const LEDGER_ENTRY_TYPES = {
   INITIAL_GRANT: 'initial_grant',
   MARKET_TRADE: 'market_trade',
   NPC_SUBSIDY: 'npc_subsidy',
+  BUSINESS_REGISTRATION: 'business_registration',
+  BUSINESS_RENT: 'business_rent',
+  BUSINESS_CAPEX: 'business_capex',
+  WORKER_WAGE: 'worker_wage',
+  WASTE_DISPOSAL: 'waste_disposal',
 } as const;
 
 export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[keyof typeof LEDGER_ENTRY_TYPES];

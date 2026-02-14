@@ -7,6 +7,10 @@ import { workShiftHandler } from './work-shift.handler';
 import { marketPlaceOrderHandler } from './market-place-order.handler';
 import { marketCancelOrderHandler } from './market-cancel-order.handler';
 import { marketDayTradeHandler } from './market-day-trade.handler';
+import { businessRegisterHandler } from './business-register.handler';
+import { businessBuyMachineryHandler } from './business-buy-machinery.handler';
+import { businessHireSessionHandler } from './business-hire-session.handler';
+import { businessStartProductionHandler } from './business-start-production.handler';
 
 let registered = false;
 
@@ -22,4 +26,8 @@ export function registerAllHandlers(): void {
   registerHandler(marketPlaceOrderHandler);
   registerHandler(marketCancelOrderHandler);
   registerHandler(marketDayTradeHandler);
+  registerHandler(businessRegisterHandler);
+  registerHandler(businessBuyMachineryHandler);
+  registerHandler(businessHireSessionHandler);
+  registerHandler(businessStartProductionHandler);
 }
