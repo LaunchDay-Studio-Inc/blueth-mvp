@@ -6,6 +6,8 @@ import { pool } from '@blueth/db';
  */
 export async function cleanDatabase(): Promise<void> {
   await pool.query(`
+    DELETE FROM daily_summaries;
+    DELETE FROM ticks;
     DELETE FROM actions;
     DELETE FROM sessions;
     DELETE FROM ledger_entries WHERE from_account > 6 OR to_account > 6;
