@@ -13,6 +13,7 @@ import { businessRoutes } from './routes/business';
 import { authPlugin } from './plugins/auth';
 import { errorHandlerPlugin } from './plugins/error-handler';
 import { registerAllHandlers } from './handlers/register-all';
+import { validateConfig } from './config';
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ export async function buildServer() {
 
 async function start() {
   try {
+    validateConfig();
     const server = await buildServer();
 
     await server.listen({ port: PORT, host: HOST });

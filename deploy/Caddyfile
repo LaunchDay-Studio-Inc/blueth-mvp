@@ -1,0 +1,30 @@
+# Caddyfile — Reverse proxy for Blueth City API
+#
+# Caddy automatically provisions and renews TLS certificates via Let's Encrypt.
+#
+# Option 1 (real domain):
+#   API_DOMAIN=api.yourdomain.com
+#   Requires DNS A record pointing to VM external IP.
+#
+# Option 2 (quick start, no domain needed):
+#   API_DOMAIN=api.34.42.121.95.sslip.io
+#   sslip.io provides free wildcard DNS that resolves to the embedded IP.
+#   Caddy will get a real Let's Encrypt cert for it automatically.
+
+{$API_DOMAIN} {
+	reverse_proxy api:3001
+
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Request logging
+	log {
+		output stdout
+		format console
+	}
+}

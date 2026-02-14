@@ -8,6 +8,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
+import { validateConfig } from '../config';
 import { createLogger, createMetrics } from '../services/observability';
 import { runSchedulerIteration } from '../services/scheduler-service';
 import { registerAllHandlers } from '../handlers/register-all';
@@ -23,6 +24,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  validateConfig();
   registerAllHandlers();
   logger.info('Scheduler worker started', { pollIntervalMs: POLL_INTERVAL_MS });
 

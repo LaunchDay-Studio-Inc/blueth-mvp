@@ -1,0 +1,145 @@
+# deploy/docker-compose.cloud.yml
+#
+# Production deployment: GCP VM + Cloud SQL via Auth Proxy + Caddy HTTPS
+#
+# Usage:
+#   cd /opt/blueth
+#   cp deploy/.env.example deploy/.env
+#   # Edit deploy/.env with real values
+#   docker compose -f deploy/docker-compose.cloud.yml up -d
+#
+# Prerequisites:
+#   - VM service account has Cloud SQL Client role
+#   - Cloud SQL database + user created
+#   - deploy/.env populated
+#   - Ports 80 + 443 open in firewall
+
+services:
+  # -- Cloud SQL Auth Proxy --
+  # Connects to Cloud SQL using the VM's service account.
+  # NEVER expose port 5432 to the host. Internal-only.
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-auth-proxy:2
+    restart: unless-stopped
+    command:
+      - ${CLOUDSQL_INSTANCE_CONNECTION_NAME:?Set CLOUDSQL_INSTANCE_CONNECTION_NAME}
+      - --address=0.0.0.0
+      - --port=5432
+      - --health-check
+      - --http-address=0.0.0.0
+      - --http-port=9090
+    # NO ports: section — proxy is only reachable inside the docker network
+    networks:
+      - blueth-net
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9090/readiness']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -- Migrations (one-shot) --
+  migrate:
+    build:
+      context: ..
+      dockerfile: ./apps/api/Dockerfile
+    command: ['node', 'packages/db/dist/migrate.js']
+    environment:
+      DATABASE_URL: postgres://${DB_USER:?Set DB_USER}:${DB_PASSWORD:?Set DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
+    depends_on:
+      cloudsql-proxy:
+        condition: service_healthy
+    networks:
+      - blueth-net
+    restart: 'no'
+
+  # -- API Server --
+  api:
+    build:
+      context: ..
+      dockerfile: ./apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
+      PORT: ${PORT:-3001}
+      HOST: 0.0.0.0
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - blueth-net
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:${PORT:-3001}/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # -- Scheduler Worker --
+  scheduler:
+    build:
+      context: ..
+      dockerfile: ./apps/api/Dockerfile
+    command: ['node', 'apps/api/dist/workers/scheduler.js']
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
+      SCHEDULER_POLL_MS: ${SCHEDULER_POLL_MS:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - blueth-net
+
+  # -- Tick Worker (SINGLE INSTANCE ONLY) --
+  tick:
+    build:
+      context: ..
+      dockerfile: ./apps/api/Dockerfile
+    command: ['node', 'apps/api/dist/workers/tick.js']
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
+      TICK_POLL_MS: ${TICK_POLL_MS:-10000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - blueth-net
+    deploy:
+      replicas: 1
+
+  # -- Caddy Reverse Proxy (HTTPS) --
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN (e.g. api.yourdomain.com or api.34.42.121.95.sslip.io)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - blueth-net
+
+networks:
+  blueth-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
