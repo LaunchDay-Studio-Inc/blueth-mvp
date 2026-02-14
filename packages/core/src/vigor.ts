@@ -48,10 +48,13 @@ const CIRCADIAN_MULTIPLIERS: Record<CircadianPeriod, Partial<Record<VigorKey, nu
   night:     { pv: 0.5, mv: 0.5, sv: 0.5, cv: 0.5, spv: 0.5 }, // 00-06 (awake)
 };
 
-/** When sleeping at night, PV gets x2.0 and MV gets x1.2 instead of x0.5. */
+/**
+ * When sleeping at night, PV gets x2.0 instead of x0.5 (Bible §3.3).
+ * MV x1.2 is a general sleep effect handled by getSleepMultiplier (Bible §3.7),
+ * NOT a night-specific override — otherwise it would double-count.
+ */
 const NIGHT_SLEEP_OVERRIDES: Partial<Record<VigorKey, number>> = {
   pv: 2.0,
-  mv: 1.2,
 };
 
 // ── Cascade matrix ───────────────────────────────────────────
@@ -61,19 +64,19 @@ const NIGHT_SLEEP_OVERRIDES: Partial<Record<VigorKey, number>> = {
 // Total drain to target = sum of (coefficient * CRITICAL_DRAIN_RATE)
 // for each critical source, capped at CROSS_DRAIN_CAP_PER_DIM.
 //
-// Design rationale:
-// - Physical exhaustion hurts Mental and Creative most
-// - Mental fatigue drains Creative and Social
-// - Social depletion hurts Mental and Spiritual
-// - Creative burnout drains Mental and Spiritual
-// - Spiritual drain affects Social and Creative
+// Design rationale (Bible V2 §3.6):
+// - Physical exhaustion (PV<20) primarily drains Mental
+// - Mental fatigue (MV<20) broadly impacts Social, Spiritual, Physical, and Civic
+// - Social depletion (SV<20) primarily drains Mental and Spiritual
+// - Civic burnout (CV<20) primarily drains Mental
+// - Spiritual drain (SpV<20) primarily drains Mental and Social
 
 const CASCADE_MATRIX: Record<VigorKey, Partial<Record<VigorKey, number>>> = {
-  pv:  { mv: 0.5, cv: 0.4, sv: 0.2, spv: 0.1 },
-  mv:  { cv: 0.5, sv: 0.3, pv: 0.2, spv: 0.1 },
-  sv:  { mv: 0.4, spv: 0.4, cv: 0.1, pv: 0.1 },
-  cv:  { mv: 0.4, spv: 0.3, sv: 0.2, pv: 0.1 },
-  spv: { sv: 0.4, cv: 0.3, mv: 0.2, pv: 0.1 },
+  pv:  { mv: 0.3, sv: 0.1, spv: 0.1 },           // CV: 0 (no cross-drain)
+  mv:  { pv: 0.3, sv: 0.4, cv: 0.3, spv: 0.4 },
+  sv:  { pv: 0.1, mv: 0.4, cv: 0.2, spv: 0.3 },
+  cv:  { mv: 0.3, sv: 0.2, spv: 0.2 },            // PV: 0 (no cross-drain)
+  spv: { pv: 0.1, mv: 0.4, sv: 0.3, cv: 0.2 },
 };
 
 // ── Meal types ───────────────────────────────────────────────

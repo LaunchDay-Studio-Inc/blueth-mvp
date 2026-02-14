@@ -401,14 +401,17 @@ describe('Vigor Bible V2', () => {
       expect(deltaBreakdown.circadianMultiplier.pv).toBe(2.0);
     });
 
-    it('sleeping at night: MV gets x1.2 (night sleep override)', () => {
+    it('sleeping at night: MV circadian stays 0.5 (x1.2 is separate sleep effect)', () => {
       const state = makeState({ sleepState: 'sleeping' });
       const { deltaBreakdown } = applyHourlyVigorTick(
         state,
         '2024-03-14T23:00:00.000Z', // 03:00 Dubai
         'Asia/Dubai'
       );
-      expect(deltaBreakdown.circadianMultiplier.mv).toBe(1.2);
+      // Bible §3.3: only PV gets a night override (2.0). MV stays at 0.5.
+      // Bible §3.7: MV x1.2 is a general sleep effect (sleepAdjustment, not circadian).
+      expect(deltaBreakdown.circadianMultiplier.mv).toBe(0.5);
+      expect(deltaBreakdown.sleepAdjustment.mv).toBe(1.2);
     });
 
     it('sleeping at night: SV/CV/SpV still x0.5 (no override)', () => {
@@ -452,8 +455,8 @@ describe('Vigor Bible V2', () => {
       expect(deltaBreakdown.netDelta.pv).toBeCloseTo(4.0, 10);
     });
 
-    it('sleeping at night: actual MV regen value uses both overrides', () => {
-      // MV: base 1.5 * circadian(night_sleep) 1.2 * sleep 1.2 * penalty 1.0 = 2.16
+    it('sleeping at night: MV regen = base × night(0.5) × sleep(1.2)', () => {
+      // MV: base 1.5 * circadian(night) 0.5 * sleep 1.2 * penalty 1.0 = 0.9
       const state = makeState({
         sleepState: 'sleeping',
         vigor: { ...half }, // above cascade threshold
@@ -463,7 +466,7 @@ describe('Vigor Bible V2', () => {
         '2024-03-14T23:00:00.000Z',
         'Asia/Dubai'
       );
-      expect(deltaBreakdown.netDelta.mv).toBeCloseTo(2.16, 10);
+      expect(deltaBreakdown.netDelta.mv).toBeCloseTo(0.9, 10);
     });
   });
 
@@ -648,11 +651,11 @@ describe('Vigor Bible V2', () => {
         '2024-03-15T06:00:00.000Z',
         'Asia/Dubai'
       );
-      // From CASCADE_MATRIX.pv: mv 0.5, cv 0.4, sv 0.2, spv 0.1
+      // From Bible §3.6 CASCADE_MATRIX.pv: mv 0.3, sv 0.1, cv 0 (absent), spv 0.1
       // Drain = coefficient * CRITICAL_DRAIN_RATE(1.5)
-      expect(deltaBreakdown.cascadeDrain.mv).toBeCloseTo(0.5 * 1.5, 10);
-      expect(deltaBreakdown.cascadeDrain.cv).toBeCloseTo(0.4 * 1.5, 10);
-      expect(deltaBreakdown.cascadeDrain.sv).toBeCloseTo(0.2 * 1.5, 10);
+      expect(deltaBreakdown.cascadeDrain.mv).toBeCloseTo(0.3 * 1.5, 10);
+      expect(deltaBreakdown.cascadeDrain.cv).toBeCloseTo(0, 10);
+      expect(deltaBreakdown.cascadeDrain.sv).toBeCloseTo(0.1 * 1.5, 10);
       expect(deltaBreakdown.cascadeDrain.spv).toBeCloseTo(0.1 * 1.5, 10);
       expect(deltaBreakdown.cascadeDrain.pv).toBe(0); // source is not drained by itself
     });
