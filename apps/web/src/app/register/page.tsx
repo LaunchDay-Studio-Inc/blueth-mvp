@@ -27,14 +27,18 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      setError('Password must contain uppercase, lowercase, and a number');
       return;
     }
     setLoading(true);
     try {
       await register(username, password);
-      router.push('/city');
+      router.replace('/city');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
