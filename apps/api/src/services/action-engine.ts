@@ -1,4 +1,4 @@
-import { withTransaction, queryOne, query } from '@blueth/db';
+import { withTransaction, queryOne, query, pool } from '@blueth/db';
 import {
   QueueLimitError,
   IdempotencyConflictError,
@@ -218,6 +218,72 @@ async function resolveActionInTx(
   );
 
   return result;
+}
+
+export async function resolveScheduledActionById(actionId: string): Promise<'completed' | 'skipped'> {
+  return withTransaction(async (tx) => {
+    const locked = await txQueryOne<ActionRow>(
+      tx,
+      `SELECT * FROM actions
+       WHERE action_id = $1
+       FOR UPDATE`,
+      [actionId]
+    );
+    if (!locked || (locked.status !== 'scheduled' && locked.status !== 'running')) {
+      return 'skipped';
+    }
+
+    const lockedState = await getPlayerStateRow(tx, locked.player_id);
+    if (!lockedState) {
+      await tx.query(
+        `UPDATE actions
+         SET status = 'failed',
+             finished_at = NOW(),
+             failure_reason = 'Player state not found during resolution'
+         WHERE action_id = $1`,
+        [locked.action_id]
+      );
+      return 'skipped';
+    }
+
+    await resolveActionInTx(tx, locked, lockedState);
+    return 'completed';
+  });
+}
+
+export async function claimDueScheduledActions(limit = 50): Promise<ActionRow[]> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows } = await client.query<ActionRow>(
+      `SELECT *
+       FROM actions
+       WHERE status = 'scheduled'
+         AND (scheduled_for + (duration_seconds || ' seconds')::interval) <= NOW()
+       ORDER BY scheduled_for ASC
+       LIMIT $1
+       FOR UPDATE SKIP LOCKED`,
+      [limit]
+    );
+
+    if (rows.length > 0) {
+      await client.query(
+        `UPDATE actions
+         SET status = 'running', started_at = NOW()
+         WHERE action_id = ANY($1::uuid[])`,
+        [rows.map((row) => row.action_id)]
+      );
+    }
+
+    await client.query('COMMIT');
+    return rows;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // ── Lazy resolution: resolve all due actions for a player ────
