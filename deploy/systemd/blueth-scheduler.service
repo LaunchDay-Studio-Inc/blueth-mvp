@@ -1,0 +1,17 @@
+[Unit]
+Description=Blueth City Scheduler Worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=blueth
+WorkingDirectory=/opt/blueth
+EnvironmentFile=/opt/blueth/.env
+ExecStart=/usr/bin/node apps/api/dist/workers/scheduler.js
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,109 @@
+services:
+  # ── Database ─────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-blueth}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-blueth_city}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-blueth}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Migrations (one-shot) ────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    command: ['node', 'packages/db/dist/migrate.js']
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  # ── API Server ───────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      PORT: ${PORT:-3001}
+      HOST: 0.0.0.0
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '${PORT:-3001}:${PORT:-3001}'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:${PORT:-3001}/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Scheduler Worker ─────────────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    command: ['node', 'apps/api/dist/workers/scheduler.js']
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      SCHEDULER_POLL_MS: ${SCHEDULER_POLL_MS:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Tick Worker ──────────────────────────────────────────────
+  # WARNING: Run exactly ONE tick worker instance.
+  # The tick table provides idempotency via UNIQUE(tick_type, tick_timestamp),
+  # but multiple instances cause unnecessary contention.
+  tick:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    command: ['node', 'apps/api/dist/workers/tick.js']
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      TICK_POLL_MS: ${TICK_POLL_MS:-10000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      replicas: 1
+
+  # ── Web (Next.js) ────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

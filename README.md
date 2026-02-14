@@ -247,6 +247,173 @@ blueth-mvp/
 6. Create interactive city map
 7. Add market UI with dynamic pricing display
 
+## Deployment
+
+### Prerequisites
+
+- **Docker 24+** and **Docker Compose v2** (for containerized deployment)
+- OR **Node.js 20+**, **pnpm 8+**, **PM2 5+** (for VM deployment)
+- **PostgreSQL 16** (self-hosted or Cloud SQL)
+
+### Environment Setup
+
+Copy the root `.env.example` and fill in production values:
+
+```bash
+cp .env.example .env
+# Edit .env — at minimum set POSTGRES_PASSWORD and ALLOWED_ORIGINS
+```
+
+**IMPORTANT:** Generate a strong `POSTGRES_PASSWORD`. Never use the dev defaults in production.
+
+### Docker Deployment
+
+#### Build and Start
+
+```bash
+# Build all images
+docker compose -f docker-compose.prod.yml build
+
+# Run migrations then start all services
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Migrations run automatically before the API starts (via the `migrate` service). The API, scheduler, and tick services wait for migrations to complete.
+
+#### Run Migrations Manually
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm migrate
+```
+
+#### View Logs
+
+```bash
+# All services
+docker compose -f docker-compose.prod.yml logs -f
+
+# Specific service
+docker compose -f docker-compose.prod.yml logs -f api
+```
+
+### VM Deployment (PM2)
+
+#### Initial Setup
+
+```bash
+# Clone and install
+git clone <repo> /opt/blueth
+cd /opt/blueth
+pnpm install --frozen-lockfile
+pnpm build
+
+# Run migrations
+DATABASE_URL=postgres://... node packages/db/dist/migrate.js
+
+# Start all processes
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup  # generates systemd service for PM2 itself
+```
+
+#### Update Deployment
+
+```bash
+cd /opt/blueth
+git pull
+pnpm install --frozen-lockfile
+pnpm build
+DATABASE_URL=postgres://... node packages/db/dist/migrate.js
+pm2 reload ecosystem.config.cjs
+```
+
+#### Alternative: systemd
+
+Copy the unit files from `deploy/systemd/` to `/etc/systemd/system/`:
+
+```bash
+sudo cp deploy/systemd/blueth-*.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable blueth-api blueth-scheduler blueth-tick
+sudo systemctl start blueth-api blueth-scheduler blueth-tick
+```
+
+### Cloud SQL (Google Cloud)
+
+#### DATABASE_URL Format
+
+Via Cloud SQL Auth Proxy (recommended):
+
+```
+postgres://USERNAME:PASSWORD@127.0.0.1:5432/blueth_city
+```
+
+Run the proxy as a sidecar:
+
+```bash
+cloud-sql-proxy PROJECT_ID:REGION:INSTANCE_NAME --port 5432
+```
+
+Via Unix socket (no proxy):
+
+```
+postgres://USERNAME:PASSWORD@/blueth_city?host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME
+```
+
+#### Backups
+
+Enable automated backups with Point-in-Time Recovery (PITR):
+
+1. Cloud SQL console → Edit instance → Backups → Enable automated backups
+2. Enable point-in-time recovery (enables WAL archiving)
+3. Set retention to 7+ days
+4. Test restore to a clone periodically
+
+For self-hosted PostgreSQL:
+
+```bash
+# Daily backup via cron
+0 3 * * * pg_dump $DATABASE_URL | gzip > /backups/blueth_$(date +\%Y\%m\%d).sql.gz
+```
+
+### Scaling Guidance
+
+#### Stateless API (Horizontal Scaling)
+
+The API server is stateless — sessions are stored in PostgreSQL. Run multiple API instances behind a load balancer:
+
+- **Docker:** increase `deploy.replicas` for the `api` service
+- **PM2:** set `instances: 'max'` in `ecosystem.config.cjs`
+- Ensure `ALLOWED_ORIGINS` includes all frontend domains
+
+#### Scheduler Worker
+
+Safe to scale horizontally. Each iteration claims actions with `FOR UPDATE SKIP LOCKED`, so multiple instances compete for claims without duplication.
+
+#### Tick Worker: Single Instance Only
+
+**WARNING:** Run exactly ONE tick worker instance.
+
+The tick worker creates tick rows with `UNIQUE(tick_type, tick_timestamp)` and `INSERT ... ON CONFLICT DO NOTHING` provides idempotency. However, multiple instances cause unnecessary contention:
+
+- Multiple workers race to INSERT the same tick — only one wins
+- The winning worker processes all handlers sequentially
+- For redundancy, use a standby (not active-active): a second instance that only activates if the primary fails
+
+### Logging
+
+All services output structured JSON to stdout. Example:
+
+```json
+{"ts":"2026-02-14T12:00:00.000Z","level":"info","worker":"tick","msg":"Tick iteration complete","tickType":"hourly","durationMs":42}
+```
+
+Set `LOG_LEVEL` to control verbosity: `debug`, `info` (default), `warn`, `error`.
+
+- **Docker:** logs captured by default (`docker compose logs`)
+- **PM2/systemd:** stdout goes to journald (`journalctl -u blueth-api`)
+- **Cloud:** pipe to Cloud Logging, Datadog, or any collector that reads stdout
+
 ## Troubleshooting
 
 ### Database Connection Errors

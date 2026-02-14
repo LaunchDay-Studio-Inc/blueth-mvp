@@ -1,0 +1,17 @@
+[Unit]
+Description=Blueth City API Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=blueth
+WorkingDirectory=/opt/blueth
+EnvironmentFile=/opt/blueth/.env
+ExecStart=/usr/bin/node apps/api/dist/index.js
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

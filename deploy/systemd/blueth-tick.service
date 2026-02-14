@@ -1,0 +1,21 @@
+# CRITICAL: Run exactly ONE instance of the tick worker.
+# Do NOT enable this on multiple machines simultaneously.
+# See README Deployment section for details.
+
+[Unit]
+Description=Blueth City Tick Worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=blueth
+WorkingDirectory=/opt/blueth
+EnvironmentFile=/opt/blueth/.env
+ExecStart=/usr/bin/node apps/api/dist/workers/tick.js
+Restart=on-failure
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

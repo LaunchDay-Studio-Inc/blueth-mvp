@@ -23,7 +23,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 export async function buildServer() {
   const server = Fastify({
     logger: {
-      level: NODE_ENV === 'production' ? 'info' : 'debug',
+      level: process.env.LOG_LEVEL || (NODE_ENV === 'production' ? 'info' : 'debug'),
     },
     bodyLimit: 1_048_576, // 1 MiB
   });

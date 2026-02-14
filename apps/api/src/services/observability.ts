@@ -3,9 +3,22 @@
  *
  * Kept lightweight: JSON lines to stdout, Map-based counters.
  * No external dependencies.
+ *
+ * Set LOG_LEVEL env var to control verbosity: debug | info | warn | error
  */
 
 // ── Structured Logger ────────────────────────────────────────
+
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
+type LogLevel = keyof typeof LOG_LEVELS;
+
+function resolveLogLevel(): LogLevel {
+  const env = process.env.LOG_LEVEL as string | undefined;
+  if (env && env in LOG_LEVELS) return env as LogLevel;
+  return 'info';
+}
+
+const currentLevel: LogLevel = resolveLogLevel();
 
 export interface LogContext {
   worker?: string;
@@ -19,13 +32,15 @@ export interface LogContext {
 }
 
 export interface Logger {
+  debug(msg: string, ctx?: LogContext): void;
   info(msg: string, ctx?: LogContext): void;
   warn(msg: string, ctx?: LogContext): void;
   error(msg: string, ctx?: LogContext): void;
 }
 
 export function createLogger(workerName: string): Logger {
-  function log(level: string, msg: string, ctx?: LogContext): void {
+  function log(level: LogLevel, msg: string, ctx?: LogContext): void {
+    if (LOG_LEVELS[level] < LOG_LEVELS[currentLevel]) return;
     const entry = {
       ts: new Date().toISOString(),
       level,
@@ -33,10 +48,16 @@ export function createLogger(workerName: string): Logger {
       msg,
       ...ctx,
     };
-    console.log(JSON.stringify(entry));
+    const line = JSON.stringify(entry) + '\n';
+    if (level === 'error' || level === 'warn') {
+      process.stderr.write(line);
+    } else {
+      process.stdout.write(line);
+    }
   }
 
   return {
+    debug: (msg, ctx) => log('debug', msg, ctx),
     info: (msg, ctx) => log('info', msg, ctx),
     warn: (msg, ctx) => log('warn', msg, ctx),
     error: (msg, ctx) => log('error', msg, ctx),
