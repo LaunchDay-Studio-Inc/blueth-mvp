@@ -37,10 +37,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const res = await fetch(url, opts);
 
   if (res.status === 401) {
-    // Don't redirect in itch mode — auth-context handles guest auto-login
-    if (typeof window !== 'undefined' && !API_BASE) {
-      window.location.href = '/login';
-    }
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
   }
 
