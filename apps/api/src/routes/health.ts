@@ -2,7 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { pool } from '@blueth/db';
 
 export const healthRoutes: FastifyPluginAsync = async (server) => {
-  server.get('/', async (request, reply) => {
+  server.get('/', async (_request, _reply) => {
     const health = {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -13,7 +13,7 @@ export const healthRoutes: FastifyPluginAsync = async (server) => {
     return health;
   });
 
-  server.get('/db', async (request, reply) => {
+  server.get('/db', async (_request, reply) => {
     try {
       const result = await pool.query('SELECT NOW() as time');
 
@@ -32,7 +32,7 @@ export const healthRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  server.get('/ready', async (request, reply) => {
+  server.get('/ready', async (_request, reply) => {
     try {
       // Check database connection
       await pool.query('SELECT 1');

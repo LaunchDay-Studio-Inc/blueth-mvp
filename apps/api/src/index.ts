@@ -3,7 +3,14 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import * as dotenv from 'dotenv';
+import { closePool } from '@blueth/db';
 import { healthRoutes } from './routes/health';
+import { authRoutes } from './routes/auth';
+import { playerRoutes } from './routes/player';
+import { actionRoutes } from './routes/actions';
+import { authPlugin } from './plugins/auth';
+import { errorHandlerPlugin } from './plugins/error-handler';
+import { registerAllHandlers } from './handlers/register-all';
 
 dotenv.config();
 
@@ -18,7 +25,7 @@ export async function buildServer() {
     },
   });
 
-  // Security plugins
+  // 1. Security plugins
   await server.register(helmet, {
     contentSecurityPolicy: NODE_ENV === 'production',
   });
@@ -30,27 +37,25 @@ export async function buildServer() {
     credentials: true,
   });
 
-  // Rate limiting
   await server.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
   });
 
-  // Routes
+  // 2. Auth plugin (cookie parsing + session middleware)
+  await server.register(authPlugin);
+
+  // 3. Error handler (DomainError-aware)
+  await server.register(errorHandlerPlugin);
+
+  // 4. Routes
   await server.register(healthRoutes, { prefix: '/health' });
+  await server.register(authRoutes, { prefix: '/auth' });
+  await server.register(playerRoutes, { prefix: '/me' });
+  await server.register(actionRoutes, { prefix: '/actions' });
 
-  // Error handler
-  server.setErrorHandler((error, request, reply) => {
-    server.log.error(error);
-
-    const statusCode = error.statusCode || 500;
-    const message = statusCode >= 500 ? 'Internal Server Error' : error.message;
-
-    reply.status(statusCode).send({
-      error: message,
-      statusCode,
-    });
-  });
+  // 5. Register all action handlers
+  registerAllHandlers();
 
   return server;
 }
@@ -61,24 +66,24 @@ async function start() {
 
     await server.listen({ port: PORT, host: HOST });
 
-    server.log.info(`🚀 Blueth City API running at http://${HOST}:${PORT}`);
+    server.log.info(`Blueth City API running at http://${HOST}:${PORT}`);
     server.log.info(`Environment: ${NODE_ENV}`);
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      server.log.info('Shutting down gracefully...');
+      await server.close();
+      await closePool();
+      process.exit(0);
+    };
+
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
   } catch (err) {
     console.error('Failed to start server:', err);
     process.exit(1);
   }
 }
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
 
 if (require.main === module) {
   start();
