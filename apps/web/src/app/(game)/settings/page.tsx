@@ -14,7 +14,7 @@ export default function SettingsPage() {
   const { user, isGuest, resetToken } = useAuth();
   const [tokenResetMsg, setTokenResetMsg] = useState('');
 
-  const { data: apiHealth, isError: apiDown } = useQuery({
+  const { isError: apiDown } = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
       const url = API_BASE ? `${API_BASE}/health` : '/api/health';

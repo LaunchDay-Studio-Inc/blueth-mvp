@@ -157,7 +157,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-around py-1">
           {NAV_ITEMS.slice(0, 5).map((item) => (
             <Link

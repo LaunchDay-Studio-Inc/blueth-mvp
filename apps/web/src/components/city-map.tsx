@@ -12,7 +12,7 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
 
   return (
-    <div className="w-full aspect-[4/3] relative">
+    <div className="w-full aspect-[4/3] relative" style={{ touchAction: 'pan-y' }}>
       <svg
         viewBox="20 60 620 420"
         className="w-full h-full"

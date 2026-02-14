@@ -28,10 +28,15 @@
 }
 
 @layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
