@@ -1,14 +1,20 @@
 /**
- * @blueth/core - Core domain logic for Blueth City MVP
+ * @blueth/core — Pure TypeScript domain logic for Blueth City MVP.
  *
- * This package contains pure TypeScript domain logic for:
- * - Vigor system (5 dimensions + regeneration/depletion + cascade)
- * - Economy system (jobs, goods, market, production, bills, sinks)
- * - Market formulas and calculations
- *
- * All functions are pure and testable, with no external dependencies.
+ * Modules:
+ *   errors        — DomainError taxonomy (throw-based)
+ *   money         — Integer-cent arithmetic, formatting, parsing
+ *   time          — Timezone-aware date helpers (Luxon)
+ *   vigor         — 5-dimension vigor with clamp, audit, cascade
+ *   economy       — Market price formulas, job payout
+ *   action-types  — Canonical action type enum
+ *   types         — Zod schemas, shared type definitions
  */
 
+export * from './errors';
+export * from './money';
+export * from './time';
 export * from './vigor';
 export * from './economy';
+export * from './action-types';
 export * from './types';

@@ -1,5 +1,6 @@
-import type { VigorDimension, VigorCaps } from './types';
+import type { VigorDimension, VigorCaps, VigorKey } from './types';
 import { VIGOR_KEYS } from './types';
+import { InsufficientVigorError } from './errors';
 
 /**
  * Vigor system — 5 dimensions with regeneration, depletion, and cascade.
@@ -11,19 +12,92 @@ import { VIGOR_KEYS } from './types';
  *   CV (Creative)  — inspiration, artistic energy, innovation
  *   SpV (Spiritual) — purpose, meaning, inner peace
  *
- * Regen is hourly and respects per-dimension caps.
- * Cascade: dimensions below threshold reduce overall efficiency.
- * Floor: efficiency never drops below 0.5 (no hard lockout).
+ * All operations return an audit entry describing what changed,
+ * so callers can log the mutation.
  */
 
-const HOURLY_REGEN_RATE = 5; // points per game-hour
+export const HOURLY_REGEN_RATE = 5;
 const MIN_VIGOR = 0;
 const DEFAULT_CAP = 100;
 const CASCADE_THRESHOLD = 20;
 
-export interface VigorRegenResult {
+// ── Types ─────────────────────────────────────────────────────
+
+export interface VigorAuditEntry {
+  dimension: VigorKey;
+  before: number;
+  after: number;
+  delta: number;
+}
+
+export interface VigorMutationResult {
   vigor: VigorDimension;
-  regenApplied: VigorDimension;
+  audit: VigorAuditEntry[];
+}
+
+// ── Core helpers ──────────────────────────────────────────────
+
+function getCap(key: VigorKey, caps?: VigorCaps): number {
+  if (!caps) return DEFAULT_CAP;
+  return caps[`${key}_cap` as keyof VigorCaps];
+}
+
+function clampDim(value: number, cap: number): number {
+  return Math.max(MIN_VIGOR, Math.min(value, cap));
+}
+
+// ── Public API ────────────────────────────────────────────────
+
+/**
+ * Add vigor to each dimension (e.g. regen, food buff).
+ * Clamps each dimension to [0, cap].
+ * Returns new state + audit trail.
+ */
+export function addVigor(
+  current: VigorDimension,
+  delta: Partial<VigorDimension>,
+  caps?: VigorCaps
+): VigorMutationResult {
+  const result: Record<string, number> = {};
+  const audit: VigorAuditEntry[] = [];
+
+  for (const key of VIGOR_KEYS) {
+    const cap = getCap(key, caps);
+    const before = current[key];
+    const after = clampDim(before + (delta[key] ?? 0), cap);
+    result[key] = after;
+    if (after !== before) {
+      audit.push({ dimension: key, before, after, delta: after - before });
+    }
+  }
+
+  return { vigor: result as unknown as VigorDimension, audit };
+}
+
+/**
+ * Subtract vigor from each dimension (e.g. action cost).
+ * Clamps each dimension to [0, cap].
+ * Returns new state + audit trail.
+ */
+export function subVigor(
+  current: VigorDimension,
+  cost: Partial<VigorDimension>,
+  caps?: VigorCaps
+): VigorMutationResult {
+  const result: Record<string, number> = {};
+  const audit: VigorAuditEntry[] = [];
+
+  for (const key of VIGOR_KEYS) {
+    const cap = getCap(key, caps);
+    const before = current[key];
+    const after = clampDim(before - (cost[key] ?? 0), cap);
+    result[key] = after;
+    if (after !== before) {
+      audit.push({ dimension: key, before, after, delta: after - before });
+    }
+  }
+
+  return { vigor: result as unknown as VigorDimension, audit };
 }
 
 /**
@@ -33,36 +107,25 @@ export function applyVigorRegen(
   current: VigorDimension,
   hours: number,
   caps?: VigorCaps
-): VigorRegenResult {
-  const regenAmount = HOURLY_REGEN_RATE * hours;
-  const result: Record<string, number> = {};
-  const applied: Record<string, number> = {};
-
+): VigorMutationResult {
+  const regenDelta: Partial<VigorDimension> = {};
+  const amount = HOURLY_REGEN_RATE * hours;
   for (const key of VIGOR_KEYS) {
-    const cap = caps ? caps[`${key}_cap` as keyof VigorCaps] : DEFAULT_CAP;
-    const newVal = Math.min(current[key] + regenAmount, cap);
-    result[key] = newVal;
-    applied[key] = newVal - current[key];
+    regenDelta[key] = amount;
   }
-
-  return {
-    vigor: result as unknown as VigorDimension,
-    regenApplied: applied as unknown as VigorDimension,
-  };
+  return addVigor(current, regenDelta, caps);
 }
 
 /**
- * Deplete vigor for an action. Clamps to MIN_VIGOR (0), never negative.
+ * Deplete vigor for an action. Clamps to 0, never negative.
+ * Alias for subVigor — kept for semantic clarity.
  */
 export function depleteVigor(
   current: VigorDimension,
-  cost: Partial<VigorDimension>
-): VigorDimension {
-  const result: Record<string, number> = {};
-  for (const key of VIGOR_KEYS) {
-    result[key] = Math.max(current[key] - (cost[key] ?? 0), MIN_VIGOR);
-  }
-  return result as unknown as VigorDimension;
+  cost: Partial<VigorDimension>,
+  caps?: VigorCaps
+): VigorMutationResult {
+  return subVigor(current, cost, caps);
 }
 
 /**
@@ -84,4 +147,20 @@ export function canAffordVigorCost(
   cost: Partial<VigorDimension>
 ): boolean {
   return VIGOR_KEYS.every((k) => current[k] >= (cost[k] ?? 0));
+}
+
+/**
+ * Assert that the player can afford the vigor cost.
+ * Throws InsufficientVigorError for the first dimension that's short.
+ */
+export function assertVigorCost(
+  current: VigorDimension,
+  cost: Partial<VigorDimension>
+): void {
+  for (const key of VIGOR_KEYS) {
+    const required = cost[key] ?? 0;
+    if (current[key] < required) {
+      throw new InsufficientVigorError(key, required, current[key]);
+    }
+  }
 }
