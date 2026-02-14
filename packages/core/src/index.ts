@@ -18,3 +18,4 @@ export * from './vigor';
 export * from './economy';
 export * from './action-types';
 export * from './types';
+export * from './market';

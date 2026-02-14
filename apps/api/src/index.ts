@@ -8,6 +8,7 @@ import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { playerRoutes } from './routes/player';
 import { actionRoutes } from './routes/actions';
+import { marketRoutes } from './routes/market';
 import { authPlugin } from './plugins/auth';
 import { errorHandlerPlugin } from './plugins/error-handler';
 import { registerAllHandlers } from './handlers/register-all';
@@ -53,6 +54,7 @@ export async function buildServer() {
   await server.register(authRoutes, { prefix: '/auth' });
   await server.register(playerRoutes, { prefix: '/me' });
   await server.register(actionRoutes, { prefix: '/actions' });
+  await server.register(marketRoutes, { prefix: '/market' });
 
   // 5. Register all action handlers
   registerAllHandlers();

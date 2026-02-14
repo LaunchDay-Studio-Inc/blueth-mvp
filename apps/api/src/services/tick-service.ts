@@ -232,16 +232,33 @@ async function processHourlyTickForPlayer(
 // ── Six-Hourly Tick ──────────────────────────────────────────
 
 /**
- * Placeholder for NPC market price refresh.
+ * NPC market refresh: update demand/supply, ref prices, and NPC maker orders.
  */
 export async function processSixHourTick(
   tickTimestamp: Date,
   metrics: Metrics
 ): Promise<void> {
-  logger.info('Six-hour tick: NPC market refresh (placeholder)', {
+  const { refreshNpcMarketOrders } = await import('./market-service');
+
+  logger.info('Six-hour tick: NPC market refresh starting', {
     tickType: 'six_hour',
+    tickTimestamp: tickTimestamp.toISOString(),
   });
+
+  const result = await refreshNpcMarketOrders();
+
+  logger.info('Six-hour tick: NPC market refresh complete', {
+    tickType: 'six_hour',
+    goodsRefreshed: result.goodsRefreshed,
+    ordersCreated: result.ordersCreated,
+    circuitBreakers: result.circuitBreakers,
+  });
+
   metrics.increment('six_hour_ticks_processed');
+  metrics.increment('npc_orders_created', result.ordersCreated);
+  if (result.circuitBreakers > 0) {
+    metrics.increment('circuit_breakers_triggered', result.circuitBreakers);
+  }
 }
 
 // ── Daily Tick ───────────────────────────────────────────────
