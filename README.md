@@ -144,13 +144,34 @@ This creates a timestamped SQL file in `packages/db/migrations/`.
 
 ### Database Schema
 
-The initial schema (`001_initial_schema.sql`) includes:
+Migrations are in `packages/db/migrations/` and run in filename-sort order.
 
-- **users** - Player accounts (username, email, password hash)
-- **player_state** - Vigor dimensions, balance, timestamps
-- **action_log** - Idempotency tracking for exactly-once execution
-- **market_prices** - Dynamic pricing for goods (food, housing, entertainment, tools, luxury)
-- **tick_log** - Scheduler idempotency for hourly/daily ticks
+| Migration | Tables |
+|---|---|
+| `001_core.sql` | `players`, `player_state`, `actions`, `ticks` |
+| `002_ledger.sql` | `ledger_accounts`, `player_wallets`, `ledger_entries` |
+| `003_economy.sql` | `goods`, `inventories` |
+| `004_market.sql` | `npc_market_state`, `market_orders`, `market_trades` |
+| `005_businesses.sql` | `businesses`, `business_workers`, `recipes`, `recipe_inputs`, `recipe_outputs`, `production_jobs` |
+| `006_world.sql` | `districts`, `locations` |
+| `007_seed_data.sql` | Seed goods (9), recipes (2), districts (12), system ledger accounts (6), NPC market prices |
+| `008_indexes.sql` | All performance indexes |
+
+### Schema Invariants
+
+**Money is integer cents.** 1 BCE = 100 cents. All money columns are `INT` or `BIGINT`. No `NUMERIC`, no `FLOAT`, no `REAL`. This eliminates floating-point rounding errors, makes equality comparisons safe, and matches how real payment systems work. Formatting to "₿12.34" is a display concern only.
+
+**Double-entry ledger.** Every money movement creates a row in `ledger_entries` with `from_account` and `to_account`. The `amount_cents` column is always positive; direction is encoded by from/to. A CHECK constraint prevents self-transfers. System accounts (owner_type='system') act as sources (payroll) and sinks (taxes, bills). The global invariant `SUM(all credits) = SUM(all debits)` holds by construction.
+
+**Player wallets.** Each player has exactly one `player_wallets` row mapping `player_id` to a `ledger_accounts.id`. Balance is derived: `SUM(credits to account) - SUM(debits from account)`. There is no denormalized balance column — the ledger is the source of truth.
+
+**Exactly-once actions.** The `actions` table has `UNIQUE(player_id, idempotency_key)`. The API generates the idempotency key client-side (or deterministically from action parameters). Insert-or-return-existing in a single transaction guarantees exactly-once execution.
+
+**Tick idempotency.** The `ticks` table has `UNIQUE(tick_type, tick_timestamp)`. The scheduler attempts an INSERT; conflict means the tick was already claimed. Status transitions (`pending` -> `running` -> `completed`/`failed`) prevent double-processing.
+
+**Inventory quantities use NUMERIC(18,6).** Unlike money, physical goods can be fractional (recipes output 5.0 units, decay removes 0.1 units). This is explicitly *not* money — it's a physical quantity.
+
+**All timestamps are TIMESTAMPTZ.** The `players.timezone` column (default `'Asia/Dubai'`) is used by application code to compute local midnight for daily ticks. The database stores everything in UTC.
 
 ## Project Structure
 

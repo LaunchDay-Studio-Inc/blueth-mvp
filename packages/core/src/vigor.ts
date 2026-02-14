@@ -1,23 +1,25 @@
-import type { VigorDimension } from './types';
+import type { VigorDimension, VigorCaps } from './types';
+import { VIGOR_KEYS } from './types';
 
 /**
- * Vigor system - manages 5 dimensions of vigor with regeneration and depletion
+ * Vigor system — 5 dimensions with regeneration, depletion, and cascade.
  *
- * Vigor dimensions:
- * - Physical: stamina, health, energy for physical tasks
- * - Mental: focus, concentration, cognitive capacity
- * - Social: charisma, emotional energy, social battery
- * - Creative: inspiration, artistic energy, innovation capacity
- * - Spiritual: purpose, meaning, inner peace
+ * Dimensions:
+ *   PV (Physical)  — stamina, health, energy for physical tasks
+ *   MV (Mental)    — focus, concentration, cognitive capacity
+ *   SV (Social)    — charisma, emotional energy, social battery
+ *   CV (Creative)  — inspiration, artistic energy, innovation
+ *   SpV (Spiritual) — purpose, meaning, inner peace
  *
- * Each dimension regenerates hourly and depletes with actions.
- * Cascade effect: very low vigor in one dimension affects others.
+ * Regen is hourly and respects per-dimension caps.
+ * Cascade: dimensions below threshold reduce overall efficiency.
+ * Floor: efficiency never drops below 0.5 (no hard lockout).
  */
 
-const HOURLY_REGEN_RATE = 5; // points per hour
+const HOURLY_REGEN_RATE = 5; // points per game-hour
 const MIN_VIGOR = 0;
-const MAX_VIGOR = 100;
-const CASCADE_THRESHOLD = 20; // below this, cascade effect applies
+const DEFAULT_CAP = 100;
+const CASCADE_THRESHOLD = 20;
 
 export interface VigorRegenResult {
   vigor: VigorDimension;
@@ -25,76 +27,61 @@ export interface VigorRegenResult {
 }
 
 /**
- * Apply hourly vigor regeneration
+ * Apply hourly vigor regeneration, clamped to per-dimension caps.
  */
-export function applyVigorRegen(current: VigorDimension, hours: number): VigorRegenResult {
+export function applyVigorRegen(
+  current: VigorDimension,
+  hours: number,
+  caps?: VigorCaps
+): VigorRegenResult {
   const regenAmount = HOURLY_REGEN_RATE * hours;
+  const result: Record<string, number> = {};
+  const applied: Record<string, number> = {};
 
-  const regenApplied: VigorDimension = {
-    physical: Math.min(current.physical + regenAmount, MAX_VIGOR) - current.physical,
-    mental: Math.min(current.mental + regenAmount, MAX_VIGOR) - current.mental,
-    social: Math.min(current.social + regenAmount, MAX_VIGOR) - current.social,
-    creative: Math.min(current.creative + regenAmount, MAX_VIGOR) - current.creative,
-    spiritual: Math.min(current.spiritual + regenAmount, MAX_VIGOR) - current.spiritual,
-  };
+  for (const key of VIGOR_KEYS) {
+    const cap = caps ? caps[`${key}_cap` as keyof VigorCaps] : DEFAULT_CAP;
+    const newVal = Math.min(current[key] + regenAmount, cap);
+    result[key] = newVal;
+    applied[key] = newVal - current[key];
+  }
 
   return {
-    vigor: {
-      physical: Math.min(current.physical + regenAmount, MAX_VIGOR),
-      mental: Math.min(current.mental + regenAmount, MAX_VIGOR),
-      social: Math.min(current.social + regenAmount, MAX_VIGOR),
-      creative: Math.min(current.creative + regenAmount, MAX_VIGOR),
-      spiritual: Math.min(current.spiritual + regenAmount, MAX_VIGOR),
-    },
-    regenApplied,
+    vigor: result as unknown as VigorDimension,
+    regenApplied: applied as unknown as VigorDimension,
   };
 }
 
 /**
- * Deplete vigor for an action
- * Returns new vigor state after depletion
+ * Deplete vigor for an action. Clamps to MIN_VIGOR (0), never negative.
  */
 export function depleteVigor(
   current: VigorDimension,
   cost: Partial<VigorDimension>
 ): VigorDimension {
-  return {
-    physical: Math.max(current.physical - (cost.physical ?? 0), MIN_VIGOR),
-    mental: Math.max(current.mental - (cost.mental ?? 0), MIN_VIGOR),
-    social: Math.max(current.social - (cost.social ?? 0), MIN_VIGOR),
-    creative: Math.max(current.creative - (cost.creative ?? 0), MIN_VIGOR),
-    spiritual: Math.max(current.spiritual - (cost.spiritual ?? 0), MIN_VIGOR),
-  };
+  const result: Record<string, number> = {};
+  for (const key of VIGOR_KEYS) {
+    result[key] = Math.max(current[key] - (cost[key] ?? 0), MIN_VIGOR);
+  }
+  return result as unknown as VigorDimension;
 }
 
 /**
- * Apply cascade effect: very low vigor in one dimension reduces effectiveness
- * Returns efficiency multiplier (0.0 to 1.0)
+ * Calculate efficiency multiplier from cascade effect.
+ * Each dimension below CASCADE_THRESHOLD incurs a 0.1 penalty.
+ * Floor at 0.5 — player always retains some effectiveness.
  */
 export function calculateEfficiency(vigor: VigorDimension): number {
-  const dimensions = [vigor.physical, vigor.mental, vigor.social, vigor.creative, vigor.spiritual];
-  const belowThreshold = dimensions.filter(v => v < CASCADE_THRESHOLD);
-
-  if (belowThreshold.length === 0) return 1.0;
-
-  // For each dimension below threshold, reduce efficiency
-  // Formula: 0.5 minimum efficiency even if all dimensions are at 0
-  const penalty = belowThreshold.length * 0.1;
-  return Math.max(0.5, 1.0 - penalty);
+  const belowCount = VIGOR_KEYS.filter((k) => vigor[k] < CASCADE_THRESHOLD).length;
+  if (belowCount === 0) return 1.0;
+  return Math.max(0.5, 1.0 - belowCount * 0.1);
 }
 
 /**
- * Check if player can afford vigor cost for an action
+ * Check whether the player has enough vigor to pay an action cost.
  */
 export function canAffordVigorCost(
   current: VigorDimension,
   cost: Partial<VigorDimension>
 ): boolean {
-  return (
-    current.physical >= (cost.physical ?? 0) &&
-    current.mental >= (cost.mental ?? 0) &&
-    current.social >= (cost.social ?? 0) &&
-    current.creative >= (cost.creative ?? 0) &&
-    current.spiritual >= (cost.spiritual ?? 0)
-  );
+  return VIGOR_KEYS.every((k) => current[k] >= (cost[k] ?? 0));
 }
