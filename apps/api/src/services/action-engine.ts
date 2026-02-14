@@ -1,4 +1,4 @@
-import { withTransaction, queryOne, query } from '@blueth/db';
+import { withTransaction, queryOne, query, isTransientError } from '@blueth/db';
 import {
   QueueLimitError,
   IdempotencyConflictError,
@@ -53,6 +53,7 @@ export interface ActionRow {
   finished_at: string | null;
   failure_reason: string | null;
   result: unknown;
+  retry_count: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -279,8 +280,21 @@ export async function resolveActionInTx(
 
     return result;
   } catch (err) {
-    // Mark failed with reason; never leave actions in 'running' state
     const reason = err instanceof Error ? err.message : String(err);
+    const MAX_ACTION_RETRIES = 3;
+
+    // Dead letter: transient errors with retry budget get re-scheduled
+    if (isTransientError(err) && actionRow.retry_count < MAX_ACTION_RETRIES) {
+      await tx.query(
+        `UPDATE actions SET status = 'scheduled', started_at = NULL,
+         retry_count = retry_count + 1, failure_reason = $2
+         WHERE action_id = $1`,
+        [actionRow.action_id, `Transient retry ${actionRow.retry_count + 1}: ${reason}`]
+      );
+      throw err;
+    }
+
+    // Permanent failure: mark as failed with reason
     await tx.query(
       `UPDATE actions SET status = 'failed', finished_at = NOW(),
        failure_reason = $2, result = $3

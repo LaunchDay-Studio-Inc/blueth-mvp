@@ -675,3 +675,48 @@ describe('GET /market/:goodCode/history', () => {
     expect(body.trades[0].qty).toBe(5);
   });
 });
+
+// ── Fee verification ────────────────────────────────────────────
+
+describe('Market fee ledger verification', () => {
+  it('trade creates a fee entry to TAX_SINK equal to floor(1% of trade value)', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+
+    // Create NPC sell order: 10 units at 200 cents each
+    await createNpcSellOrder('RAW_FOOD', 200, 10);
+
+    // Place a market buy order for 5 units
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'market',
+      qty: 5,
+      idempotencyKey: `fee-test-${Date.now()}`,
+    });
+    expect(res.statusCode).toBe(200);
+
+    // Trade value: 200 * 5 = 1000 cents
+    // Expected fee: floor(1000 * 0.01) = 10 cents
+    const expectedFee = Math.floor(200 * 5 * 0.01);
+
+    // Look for fee entry in ledger (to TAX_SINK = account 3)
+    const walletRow = await pool.query(
+      'SELECT account_id FROM player_wallets WHERE player_id = $1',
+      [playerId]
+    );
+    const accountId = walletRow.rows[0].account_id;
+
+    const feeEntries = await pool.query(
+      `SELECT * FROM ledger_entries
+       WHERE from_account = $1 AND to_account = 3 AND entry_type = 'fee'`,
+      [accountId]
+    );
+
+    expect(feeEntries.rows.length).toBeGreaterThanOrEqual(1);
+    const totalFee = feeEntries.rows.reduce(
+      (sum: number, r: { amount_cents: string }) => sum + parseInt(r.amount_cents, 10),
+      0
+    );
+    expect(totalFee).toBe(expectedFee);
+  });
+});

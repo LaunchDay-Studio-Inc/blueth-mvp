@@ -25,11 +25,15 @@ export async function buildServer() {
     logger: {
       level: NODE_ENV === 'production' ? 'info' : 'debug',
     },
+    bodyLimit: 1_048_576, // 1 MiB
   });
 
   // 1. Security plugins
   await server.register(helmet, {
     contentSecurityPolicy: NODE_ENV === 'production',
+    strictTransportSecurity: NODE_ENV === 'production'
+      ? { maxAge: 31536000, includeSubDomains: true }
+      : false,
   });
 
   await server.register(cors, {

@@ -6,10 +6,90 @@ import {
   calculateBuyerTotalCost,
   calculateNpcPrices,
   computeNpcDemandSupply,
+  clampDS,
+  clampAlpha,
+  clampRefPriceMovement,
   MARKET_FEE_RATE,
   CIRCUIT_BREAKER_THRESHOLD,
   MARKET_ALPHA,
+  DS_FLOOR,
+  DS_CEILING,
+  ALPHA_MIN,
+  ALPHA_MAX,
+  REF_PRICE_MAX_MOVE_PCT,
 } from './market';
+
+// ── clampDS ──────────────────────────────────────────────────
+
+describe('clampDS', () => {
+  it('returns DS_FLOOR for 0', () => {
+    expect(clampDS(0)).toBe(DS_FLOOR);
+  });
+
+  it('returns DS_FLOOR for negative values', () => {
+    expect(clampDS(-100)).toBe(DS_FLOOR);
+  });
+
+  it('returns DS_CEILING for values above ceiling', () => {
+    expect(clampDS(999999)).toBe(DS_CEILING);
+  });
+
+  it('returns value unchanged when within range', () => {
+    expect(clampDS(500)).toBe(500);
+    expect(clampDS(1)).toBe(1);
+    expect(clampDS(100000)).toBe(100000);
+  });
+});
+
+// ── clampAlpha ───────────────────────────────────────────────
+
+describe('clampAlpha', () => {
+  it('returns ALPHA_MIN for 0', () => {
+    expect(clampAlpha(0)).toBe(ALPHA_MIN);
+  });
+
+  it('returns ALPHA_MIN for negative values', () => {
+    expect(clampAlpha(-0.5)).toBe(ALPHA_MIN);
+  });
+
+  it('returns ALPHA_MAX for values above max', () => {
+    expect(clampAlpha(0.50)).toBe(ALPHA_MAX);
+  });
+
+  it('returns value unchanged for in-range alpha', () => {
+    expect(clampAlpha(0.05)).toBe(0.05);
+    expect(clampAlpha(0.12)).toBe(0.12);
+  });
+});
+
+// ── clampRefPriceMovement ────────────────────────────────────
+
+describe('clampRefPriceMovement', () => {
+  it('returns new price unchanged when within 5% of prev', () => {
+    // 5% of 1000 = 50, so 1040 is within range
+    expect(clampRefPriceMovement(1000, 1040)).toBe(1040);
+  });
+
+  it('clamps upward movement to prev + 5%', () => {
+    // 5% of 1000 = 50, so max is 1050
+    expect(clampRefPriceMovement(1000, 1200)).toBe(1050);
+  });
+
+  it('clamps downward movement to prev - 5%', () => {
+    // 5% of 1000 = 50, so min is 950
+    expect(clampRefPriceMovement(1000, 800)).toBe(950);
+  });
+
+  it('ensures minimum movement of 1 cent for small prices', () => {
+    // 5% of 10 = 0.5, rounded to max(1, 1) = 1
+    const result = clampRefPriceMovement(10, 20);
+    expect(result).toBe(11); // 10 + 1
+  });
+
+  it('never returns below 1', () => {
+    expect(clampRefPriceMovement(1, 0)).toBeGreaterThanOrEqual(1);
+  });
+});
 
 // ── calculateRefPrice ────────────────────────────────────────
 

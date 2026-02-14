@@ -419,3 +419,39 @@ describe('Atomicity', () => {
     expect(countAfter).toBe(countBefore);
   });
 });
+
+// ── Concurrent idempotency ──────────────────────────────────────
+
+describe('Concurrent idempotency', () => {
+  it('5 identical concurrent submissions produce exactly 1 action', async () => {
+    const { cookie } = await registerTestPlayer(server);
+    const idempotencyKey = `concurrent-idem-${Date.now()}`;
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        submitAction(cookie, {
+          type: 'SOCIAL_CALL',
+          payload: {},
+          idempotencyKey,
+        })
+      )
+    );
+
+    // All should succeed (either 200 or 202)
+    for (const res of responses) {
+      expect([200, 201, 202]).toContain(res.statusCode);
+    }
+
+    // All should return the same actionId
+    const actionIds = responses.map((r) => JSON.parse(r.body).actionId);
+    const uniqueIds = new Set(actionIds);
+    expect(uniqueIds.size).toBe(1);
+
+    // Verify only 1 action exists in DB
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) as cnt FROM actions WHERE idempotency_key = $1`,
+      [idempotencyKey]
+    );
+    expect(parseInt(rows[0].cnt, 10)).toBe(1);
+  });
+});

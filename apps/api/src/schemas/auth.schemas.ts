@@ -9,7 +9,11 @@ export const RegisterSchema = z.object({
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be at most 128 characters'),
+    .max(128, 'Password must be at most 128 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least 1 lowercase, 1 uppercase, and 1 digit'
+    ),
 });
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;

@@ -11,7 +11,7 @@ dotenv.config();
 import { createLogger, createMetrics } from '../services/observability';
 import { runSchedulerIteration } from '../services/scheduler-service';
 import { registerAllHandlers } from '../handlers/register-all';
-import { closePool } from '@blueth/db';
+import { closePool, withRetry } from '@blueth/db';
 
 const POLL_INTERVAL_MS = parseInt(process.env.SCHEDULER_POLL_MS || '5000', 10);
 const logger = createLogger('scheduler');
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
 
   while (running) {
     try {
-      const result = await runSchedulerIteration(metrics);
+      const result = await withRetry(() => runSchedulerIteration(metrics));
       if (result.claimed > 0) {
         logger.info('Scheduler iteration complete', {
           claimed: result.claimed,

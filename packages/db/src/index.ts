@@ -136,3 +136,6 @@ export async function transferCents(
 export async function closePool(): Promise<void> {
   await pool.end();
 }
+
+export { withRetry, isTransientError } from './retry';
+export type { RetryOptions } from './retry';

@@ -34,6 +34,7 @@ export async function claimDueScheduledActions(limit = 50): Promise<ActionRow[]>
      WHERE action_id IN (
        SELECT action_id FROM actions
        WHERE status = 'scheduled'
+         AND retry_count < 3
          AND (scheduled_for + (duration_seconds || ' seconds')::interval) <= NOW()
        ORDER BY scheduled_for ASC
        LIMIT $1

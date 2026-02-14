@@ -26,7 +26,7 @@ export async function registerTestPlayer(
     url: '/auth/register',
     payload: {
       username: name,
-      password: 'test_password_123',
+      password: 'Test_password_123',
     },
   });
 

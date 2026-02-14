@@ -14,6 +14,7 @@ import {
   createLeisureBuff,
   createSocialCallInstantDelta,
   validateNoHardLockouts,
+  projectActionOutcome,
   CASCADE_THRESHOLD,
   CRITICAL_DRAIN_RATE,
   CROSS_DRAIN_CAP_PER_DIM,
@@ -1117,6 +1118,183 @@ describe('Vigor Bible V2', () => {
           expect(typeof (deltaBreakdown as Record<string, Record<string, number>>)[field][dim]).toBe('number');
         }
       }
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // projectActionOutcome
+  // ══════════════════════════════════════════════════════════════
+
+  describe('projectActionOutcome', () => {
+    const baseOpts = {
+      currentVigor: { pv: 100, mv: 100, sv: 100, cv: 100, spv: 100 } as VigorDimension,
+      caps: { pv_cap: 100, mv_cap: 100, sv_cap: 100, cv_cap: 100, spv_cap: 100 } as VigorCaps,
+      vigorCost: {} as Partial<VigorDimension>,
+      vigorGain: {} as Partial<VigorDimension>,
+      moneyCostCents: 0,
+      moneyGainCents: 0,
+      durationSeconds: 300,
+      currentBalanceCents: 50000,
+      queueEndTime: new Date('2024-03-15T10:00:00Z'),
+    };
+
+    it('calculates vigorAfter correctly (cost subtracted, gain added)', () => {
+      const result = projectActionOutcome({
+        ...baseOpts,
+        vigorCost: { pv: 20, mv: 10 },
+        vigorGain: { sv: 5 },
+      });
+      expect(result.vigorAfter.pv).toBe(80);
+      expect(result.vigorAfter.mv).toBe(90);
+      expect(result.vigorAfter.sv).toBe(100);
+    });
+
+    it('clamps vigorAfter to [0, cap]', () => {
+      const result = projectActionOutcome({
+        ...baseOpts,
+        currentVigor: { pv: 5, mv: 100, sv: 100, cv: 100, spv: 100 },
+        vigorCost: { pv: 50 },
+      });
+      expect(result.vigorAfter.pv).toBe(0);
+    });
+
+    it('populates vigorDelta only for non-zero changes', () => {
+      const result = projectActionOutcome({
+        ...baseOpts,
+        vigorCost: { pv: 10 },
+      });
+      expect(result.vigorDelta.pv).toBe(-10);
+      expect(result.vigorDelta.mv).toBeUndefined();
+    });
+
+    it('generates cascade warning when dimension drops below CASCADE_THRESHOLD', () => {
+      const result = projectActionOutcome({
+        ...baseOpts,
+        currentVigor: { pv: 25, mv: 100, sv: 100, cv: 100, spv: 100 },
+        vigorCost: { pv: 10 },
+      });
+      expect(result.warnings.some(w => w.includes('PV') && w.includes('cascade'))).toBe(true);
+    });
+
+    it('generates exhaustion warning when dimension hits 0', () => {
+      const result = projectActionOutcome({
+        ...baseOpts,
+        currentVigor: { pv: 5, mv: 100, sv: 100, cv: 100, spv: 100 },
+        vigorCost: { pv: 10 },
+      });
+      expect(result.warnings.some(w => w.includes('PV') && w.includes('0'))).toBe(true);
+    });
+
+    it('generates insufficient funds warning', () => {
+      const result = projectActionOutcome({
+        ...baseOpts,
+        moneyCostCents: 10000,
+        currentBalanceCents: 5000,
+      });
+      expect(result.warnings.some(w => w.includes('Insufficient funds'))).toBe(true);
+    });
+
+    it('returns empty warnings when all is fine', () => {
+      const result = projectActionOutcome(baseOpts);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('calculates completionTime from queueEndTime + durationSeconds', () => {
+      // Use a future date so Date.now() doesn't override queueEndTime
+      const futureBase = new Date(Date.now() + 3600_000); // 1 hour from now
+      const result = projectActionOutcome({
+        ...baseOpts,
+        durationSeconds: 600,
+        queueEndTime: futureBase,
+      });
+      const expected = new Date(futureBase.getTime() + 600_000).toISOString();
+      expect(result.completionTime).toBe(expected);
+    });
+
+    it('preserves money fields in output', () => {
+      const result = projectActionOutcome({
+        ...baseOpts,
+        moneyCostCents: 500,
+        moneyGainCents: 1200,
+      });
+      expect(result.moneyCostCents).toBe(500);
+      expect(result.moneyGainCents).toBe(1200);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // Boundary Invariants
+  // ══════════════════════════════════════════════════════════════
+
+  describe('Boundary Invariants', () => {
+    describe('Meal buff cap', () => {
+      it('total buff bonus per dim per hour does not exceed BUFF_CAP_PER_DIM_PER_HOUR', () => {
+        const now = '2024-03-15T10:00:00.000Z';
+        const buffs1 = createMealBuff('NUTRIENT_OPTIMAL', now);
+        const buffs2 = createMealBuff('FINE_DINING', now);
+        const allBuffs = [...buffs1, ...buffs2];
+
+        const state = makeState({
+          vigor: { pv: 50, mv: 50, sv: 50, cv: 50, spv: 50 },
+          activeBuffs: allBuffs,
+        });
+
+        const { deltaBreakdown } = applyHourlyVigorTick(state, now, 'Asia/Dubai');
+
+        expect(deltaBreakdown.buffBonus.pv).toBeLessThanOrEqual(BUFF_CAP_PER_DIM_PER_HOUR);
+        expect(deltaBreakdown.buffBonus.mv).toBeLessThanOrEqual(BUFF_CAP_PER_DIM_PER_HOUR);
+      });
+    });
+
+    describe('Cascade cross-drain cap', () => {
+      it('cross-drain per target dim does not exceed CROSS_DRAIN_CAP_PER_DIM', () => {
+        const critical: VigorDimension = { pv: 5, mv: 5, sv: 5, cv: 5, spv: 50 };
+        const state = makeState({ vigor: critical });
+
+        const { deltaBreakdown } = applyHourlyVigorTick(
+          state,
+          '2024-03-15T10:00:00.000Z',
+          'Asia/Dubai'
+        );
+
+        for (const key of ['pv', 'mv', 'sv', 'cv', 'spv'] as const) {
+          expect(deltaBreakdown.cascadeDrain[key]).toBeLessThanOrEqual(CROSS_DRAIN_CAP_PER_DIM);
+        }
+      });
+    });
+
+    describe('Daily penalty level clamp', () => {
+      it('penalty level never exceeds MAX_PENALTY_LEVEL after many missed meals', () => {
+        let state = makeState({ mealPenaltyLevel: 0, mealsEatenToday: 0 });
+
+        for (let day = 0; day < 10; day++) {
+          const date = `2024-03-${String(15 + day).padStart(2, '0')}`;
+          const { newState } = applyDailyReset(state, `${date}T00:00:00.000Z`);
+          state = { ...newState, mealsEatenToday: 0 };
+          expect(state.mealPenaltyLevel).toBeLessThanOrEqual(MAX_PENALTY_LEVEL);
+        }
+
+        expect(state.mealPenaltyLevel).toBe(MAX_PENALTY_LEVEL);
+      });
+    });
+
+    describe('Determinism', () => {
+      it('applyHourlyVigorTick produces identical output for identical input 100 times', () => {
+        const state = makeState({
+          vigor: { pv: 75, mv: 30, sv: 45, cv: 60, spv: 20 },
+          sleepState: 'awake',
+          mealPenaltyLevel: 1,
+        });
+        const now = '2024-03-15T14:00:00.000Z';
+
+        const firstResult = applyHourlyVigorTick(state, now, 'Asia/Dubai');
+
+        for (let i = 0; i < 100; i++) {
+          const result = applyHourlyVigorTick(state, now, 'Asia/Dubai');
+          expect(result.newState.vigor).toEqual(firstResult.newState.vigor);
+          expect(result.deltaBreakdown).toEqual(firstResult.deltaBreakdown);
+        }
+      });
     });
   });
 });

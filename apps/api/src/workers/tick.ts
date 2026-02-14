@@ -11,7 +11,7 @@ dotenv.config();
 import { createLogger, createMetrics } from '../services/observability';
 import { runTickIteration } from '../services/tick-service';
 import { registerAllHandlers } from '../handlers/register-all';
-import { closePool } from '@blueth/db';
+import { closePool, withRetry } from '@blueth/db';
 
 const POLL_INTERVAL_MS = parseInt(process.env.TICK_POLL_MS || '10000', 10);
 const logger = createLogger('tick');
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
 
   while (running) {
     try {
-      const ticksProcessed = await runTickIteration(metrics);
+      const ticksProcessed = await withRetry(() => runTickIteration(metrics));
       if (ticksProcessed > 0) {
         logger.info('Tick iteration complete', { ticksProcessed });
       }
