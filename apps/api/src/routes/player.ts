@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { getFullPlayerState } from '../services/player.service';
 import { resolveAllDue } from '../services/action-engine';
+import { resetToken } from '../services/guest-token.service';
 
 export const playerRoutes: FastifyPluginAsync = async (server) => {
   /**
@@ -15,5 +16,14 @@ export const playerRoutes: FastifyPluginAsync = async (server) => {
     await resolveAllDue(playerId);
 
     return getFullPlayerState(playerId);
+  });
+
+  /**
+   * POST /me/token-reset
+   * Rotate the guest Bearer token. Old token is invalidated immediately.
+   */
+  server.post('/token-reset', async (request) => {
+    const playerId = request.player!.id;
+    return resetToken(playerId);
   });
 };

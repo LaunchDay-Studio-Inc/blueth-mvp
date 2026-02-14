@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Map, Heart, Wallet, Receipt, Briefcase, UtensilsCrossed,
-  Smile, TrendingUp, Building2, LayoutDashboard, LogOut, Menu, X,
+  Smile, TrendingUp, Building2, LayoutDashboard, LogOut, Menu, X, Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { href: '/market', label: 'Market', icon: TrendingUp },
   { href: '/business', label: 'Business', icon: Building2 },
   { href: '/summary', label: 'Summary', icon: LayoutDashboard },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function GameShell({ children }: { children: React.ReactNode }) {
@@ -53,7 +54,10 @@ export function GameShell({ children }: { children: React.ReactNode }) {
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center px-4 gap-4">
-          <button className="lg:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
+          <button
+            className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
@@ -91,7 +95,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
             <DailyResetTimer />
           </div>
 
-          <Button variant="ghost" size="icon" onClick={logout} title="Logout">
+          <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="min-h-[44px] min-w-[44px]">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -106,7 +110,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                  'flex items-center gap-3 rounded-md px-3 py-2 min-h-[44px] text-sm transition-colors',
                   pathname === item.href
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -131,7 +135,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                      'flex items-center gap-3 rounded-md px-3 py-2 min-h-[44px] text-sm transition-colors',
                       pathname === item.href
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -147,7 +151,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Main content */}
-        <main className="flex-1 p-4 lg:p-6 max-w-5xl">
+        <main className="flex-1 p-4 lg:p-6 max-w-5xl pb-20 lg:pb-6">
           {children}
         </main>
       </div>
@@ -160,7 +164,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center gap-0.5 px-2 py-1.5 text-xs',
+                'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-2 text-xs',
                 pathname === item.href ? 'text-primary' : 'text-muted-foreground',
               )}
             >

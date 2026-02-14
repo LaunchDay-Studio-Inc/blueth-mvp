@@ -1,9 +1,11 @@
 'use client';
 
-import { createContext, useContext, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { queryKeys } from './queries';
+
+const ITCH_MODE = !!process.env.NEXT_PUBLIC_API_URL;
 
 export interface PlayerStateData {
   playerId: string;
@@ -43,15 +45,19 @@ interface AuthContextValue {
   user: PlayerStateData | null;
   isLoading: boolean;
   isError: boolean;
+  isGuest: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, timezone?: string) => Promise<void>;
   logout: () => Promise<void>;
+  guestLogin: () => Promise<void>;
+  resetToken: () => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const guestLoginAttempted = useRef(false);
 
   const { data: user, isLoading, isError } = useQuery({
     queryKey: queryKeys.player.state(),
@@ -60,6 +66,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
+
+  const isGuest = !!(user?.username?.startsWith('guest_'));
+
+  const guestLogin = useCallback(async () => {
+    const res = await api.post<{ token: string; playerId: string; username: string }>('/auth/guest');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('guest_token', res.token);
+    }
+    await queryClient.invalidateQueries({ queryKey: queryKeys.player.all });
+  }, [queryClient]);
+
+  // In itch mode, auto-create guest account if no token exists
+  useEffect(() => {
+    if (!ITCH_MODE) return;
+    if (guestLoginAttempted.current) return;
+    if (typeof window === 'undefined') return;
+
+    const existingToken = localStorage.getItem('guest_token');
+    if (existingToken) return; // Already have a token, query will use it
+
+    guestLoginAttempted.current = true;
+    guestLogin().catch(() => {
+      // Reset so user can retry
+      guestLoginAttempted.current = false;
+    });
+  }, [guestLogin]);
 
   const login = useCallback(async (username: string, password: string) => {
     await api.post('/auth/login', { username, password });
@@ -77,14 +109,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await api.post('/auth/logout');
-    queryClient.clear();
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('guest_token');
+    }
+    queryClient.clear();
+    if (typeof window !== 'undefined' && !ITCH_MODE) {
       window.location.href = '/login';
     }
   }, [queryClient]);
 
+  const resetToken = useCallback(async () => {
+    const res = await api.post<{ token: string }>('/me/token-reset');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('guest_token', res.token);
+    }
+    return res.token;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user: user ?? null, isLoading, isError, login, register, logout }}>
+    <AuthContext.Provider value={{
+      user: user ?? null,
+      isLoading,
+      isError,
+      isGuest,
+      login,
+      register,
+      logout,
+      guestLogin,
+      resetToken,
+    }}>
       {children}
     </AuthContext.Provider>
   );

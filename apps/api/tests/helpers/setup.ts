@@ -6,6 +6,7 @@ import { pool } from '@blueth/db';
  */
 export async function cleanDatabase(): Promise<void> {
   await pool.query(`
+    DELETE FROM guest_tokens;
     DELETE FROM production_jobs;
     DELETE FROM business_workers;
     DELETE FROM market_trades;

@@ -1,13 +1,21 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { withTransaction, queryOne, transferCents } from '@blueth/db';
 import { SYSTEM_ACCOUNTS, ValidationError, DomainError } from '@blueth/core';
 import type { PoolClient } from 'pg';
 
 const BCRYPT_ROUNDS = 12;
 const SESSION_DURATION_DAYS = 7;
+const GUEST_TOKEN_DURATION_DAYS = 30;
 
 export interface AuthResult {
   sessionId: string;
+  playerId: string;
+  username: string;
+}
+
+export interface GuestAuthResult {
+  token: string;
   playerId: string;
   username: string;
 }
@@ -20,19 +28,61 @@ async function txQueryOne<T>(tx: PoolClient, text: string, params: unknown[]): P
   return (rows[0] as T) ?? null;
 }
 
+function hashToken(raw: string): string {
+  return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
 /**
- * Register a new player with full bootstrap:
- * 1. Create player row (username + bcrypt hash)
- * 2. Create player_state (vigor 100, housing_tier 1, default skills)
- * 3. Create ledger account + wallet
- * 4. Initial grant ₿500 (50000 cents) from INITIAL_GRANT system account
- * 5. Create session
+ * Shared player bootstrap: create player, state, ledger, wallet, initial grant.
+ * Returns player id.
+ */
+async function bootstrapPlayer(tx: PoolClient, username: string, passwordHash: string): Promise<string> {
+  const player = await txQueryOne<{ id: string }>(
+    tx,
+    'INSERT INTO players (username, password_hash) VALUES ($1, $2) RETURNING id',
+    [username, passwordHash]
+  );
+  if (!player) throw new Error('Failed to create player');
+
+  await tx.query(
+    'INSERT INTO player_state (player_id, housing_tier) VALUES ($1, 1)',
+    [player.id]
+  );
+
+  const account = await txQueryOne<{ id: string }>(
+    tx,
+    `INSERT INTO ledger_accounts (owner_type, owner_id, currency)
+     VALUES ('player', $1, 'BCE') RETURNING id`,
+    [player.id]
+  );
+  if (!account) throw new Error('Failed to create ledger account');
+  const accountId = parseInt(account.id, 10);
+
+  await tx.query(
+    'INSERT INTO player_wallets (player_id, account_id) VALUES ($1, $2)',
+    [player.id, accountId]
+  );
+
+  await transferCents(
+    tx,
+    SYSTEM_ACCOUNTS.INITIAL_GRANT,
+    accountId,
+    50000,
+    'initial_grant',
+    null,
+    'New player starting grant: ₿500.00'
+  );
+
+  return player.id;
+}
+
+/**
+ * Register a new player with full bootstrap + cookie session.
  */
 export async function register(username: string, password: string): Promise<AuthResult> {
   const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
   return withTransaction(async (tx) => {
-    // Check if username already exists
     const existingPlayer = await txQueryOne<{ id: string }>(
       tx,
       'SELECT id FROM players WHERE username = $1',
@@ -42,59 +92,48 @@ export async function register(username: string, password: string): Promise<Auth
       throw new ValidationError(`Username "${username}" is already taken`);
     }
 
-    // 1. Create player
-    const player = await txQueryOne<{ id: string }>(
-      tx,
-      'INSERT INTO players (username, password_hash) VALUES ($1, $2) RETURNING id',
-      [username, hash]
-    );
-    if (!player) throw new Error('Failed to create player');
+    const playerId = await bootstrapPlayer(tx, username, hash);
 
-    // 2. Create player_state with housing_tier=1 (Cheap Room for enjoyable day-1 loop)
-    await tx.query(
-      'INSERT INTO player_state (player_id, housing_tier) VALUES ($1, 1)',
-      [player.id]
-    );
-
-    // 3. Create ledger account + wallet
-    const account = await txQueryOne<{ id: string }>(
-      tx,
-      `INSERT INTO ledger_accounts (owner_type, owner_id, currency)
-       VALUES ('player', $1, 'BCE') RETURNING id`,
-      [player.id]
-    );
-    if (!account) throw new Error('Failed to create ledger account');
-    const accountId = parseInt(account.id, 10);
-
-    await tx.query(
-      'INSERT INTO player_wallets (player_id, account_id) VALUES ($1, $2)',
-      [player.id, accountId]
-    );
-
-    // 4. Initial grant: ₿500 (50000 cents)
-    await transferCents(
-      tx,
-      SYSTEM_ACCOUNTS.INITIAL_GRANT, // 6
-      accountId,
-      50000,
-      'initial_grant',
-      null,
-      'New player starting grant: ₿500.00'
-    );
-
-    // 5. Create session
     const session = await txQueryOne<{ id: string }>(
       tx,
       `INSERT INTO sessions (player_id, expires_at)
        VALUES ($1, NOW() + INTERVAL '${SESSION_DURATION_DAYS} days')
        RETURNING id`,
-      [player.id]
+      [playerId]
     );
     if (!session) throw new Error('Failed to create session');
 
     return {
       sessionId: session.id,
-      playerId: player.id,
+      playerId,
+      username,
+    };
+  });
+}
+
+/**
+ * Register a guest player with a Bearer token (no password required).
+ * Used for itch.io / cross-origin play.
+ */
+export async function guestRegister(): Promise<GuestAuthResult> {
+  const randomHex = crypto.randomBytes(4).toString('hex');
+  const username = `guest_${randomHex}`;
+  const placeholderHash = await bcrypt.hash(crypto.randomUUID(), BCRYPT_ROUNDS);
+  const rawToken = crypto.randomUUID();
+  const tokenHash = hashToken(rawToken);
+
+  return withTransaction(async (tx) => {
+    const playerId = await bootstrapPlayer(tx, username, placeholderHash);
+
+    await tx.query(
+      `INSERT INTO guest_tokens (player_id, token_hash, expires_at)
+       VALUES ($1, $2, NOW() + INTERVAL '${GUEST_TOKEN_DURATION_DAYS} days')`,
+      [playerId, tokenHash]
+    );
+
+    return {
+      token: rawToken,
+      playerId,
       username,
     };
   });

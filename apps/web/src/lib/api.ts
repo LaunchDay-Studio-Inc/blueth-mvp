@@ -9,10 +9,23 @@ export class ApiError extends Error {
   }
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('guest_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  return headers;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const opts: RequestInit = {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     credentials: 'include',
   };
 
@@ -20,10 +33,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     opts.body = JSON.stringify(body);
   }
 
-  const res = await fetch(`/api${path}`, opts);
+  const url = API_BASE ? `${API_BASE}${path}` : `/api${path}`;
+  const res = await fetch(url, opts);
 
   if (res.status === 401) {
-    if (typeof window !== 'undefined') {
+    // Don't redirect in itch mode — auth-context handles guest auto-login
+    if (typeof window !== 'undefined' && !API_BASE) {
       window.location.href = '/login';
     }
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');

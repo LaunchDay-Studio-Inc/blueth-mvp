@@ -3,7 +3,13 @@ import type { NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/register'];
 
+// In itch / cross-origin mode, skip middleware auth checks entirely.
+// The client-side auth-context handles guest token auth.
+const ITCH_MODE = !!process.env.NEXT_PUBLIC_API_URL;
+
 export function middleware(request: NextRequest) {
+  if (ITCH_MODE) return NextResponse.next();
+
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {

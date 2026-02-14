@@ -15,6 +15,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "pnpm run --recursive typecheck",
     "db:migrate": "pnpm --filter @blueth/db migrate",
+    "build:itch": "bash scripts/build-itch.sh",
     "clean": "pnpm run --recursive clean && rm -rf node_modules"
   },
   "engines": {

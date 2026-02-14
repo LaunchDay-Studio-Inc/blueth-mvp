@@ -57,6 +57,19 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
   });
 
   /**
+   * POST /auth/guest
+   * Create a guest account with Bearer token auth (for itch.io / cross-origin).
+   */
+  server.post('/guest', async (_request, reply) => {
+    const result = await authService.guestRegister();
+    reply.status(201).send({
+      token: result.token,
+      playerId: result.playerId,
+      username: result.username,
+    });
+  });
+
+  /**
    * POST /auth/logout
    * Clear the session.
    */

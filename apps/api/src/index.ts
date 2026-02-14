@@ -36,11 +36,24 @@ export async function buildServer() {
       : false,
   });
 
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean) || [];
+  const corsOrigin = NODE_ENV === 'production'
+    ? (origin: string | undefined, cb: (err: Error | null, origin: string | boolean) => void) => {
+        if (!origin) return cb(null, true);
+        const allowed = allowedOrigins.some((pattern) => {
+          if (pattern.startsWith('*.')) {
+            const suffix = pattern.slice(1); // e.g. ".itch.io"
+            return origin.endsWith(suffix) || origin === `https://${pattern.slice(2)}`;
+          }
+          return origin === pattern;
+        });
+        cb(null, allowed ? origin : false);
+      }
+    : true as const;
   await server.register(cors, {
-    origin: NODE_ENV === 'production'
-      ? process.env.ALLOWED_ORIGINS?.split(',') || []
-      : true,
+    origin: corsOrigin as any,
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   await server.register(rateLimit, {
