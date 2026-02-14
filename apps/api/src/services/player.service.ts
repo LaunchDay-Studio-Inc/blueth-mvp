@@ -1,7 +1,8 @@
 import { queryOne, getPlayerBalance } from '@blueth/db';
-import { formatBlueth, NotFoundError } from '@blueth/core';
+import { formatBlueth, NotFoundError, computeSoftGates } from '@blueth/core';
 import type { VigorDimension, VigorCaps, SleepState, Buff } from '@blueth/core';
 import type { SkillSet } from '@blueth/core';
+import { DateTime } from 'luxon';
 
 export interface FullPlayerState {
   playerId: string;
@@ -19,6 +20,20 @@ export interface FullPlayerState {
   mealPenaltyLevel: number;
   pendingActions: number;
   updatedAt: string;
+  /** ISO timestamp of next daily reset (midnight in player timezone). */
+  nextDailyReset: string;
+  /** Current local time in player timezone (ISO string). */
+  localTime: string;
+  /** Seconds until daily reset. */
+  secondsUntilDailyReset: number;
+  /** Soft-gate info for current vigor levels. */
+  softGates: {
+    mvSlippage: number;
+    svServiceMult: number;
+    cvFeeMult: number;
+    cvSpeedMult: number;
+    spvRegenMult: number;
+  };
 }
 
 interface PlayerStateRow {
@@ -75,17 +90,27 @@ export async function getFullPlayerState(playerId: string): Promise<FullPlayerSt
 
   const balanceCents = await getPlayerBalance(playerId);
 
+  // Compute local time / daily reset timer
+  const tz = row.timezone || 'Asia/Dubai';
+  const now = DateTime.now().setZone(tz);
+  const nextMidnight = now.plus({ days: 1 }).startOf('day');
+  const secondsUntilDailyReset = Math.max(0, Math.round(nextMidnight.diff(now, 'seconds').seconds));
+
+  const vigor: VigorDimension = {
+    pv: row.pv,
+    mv: row.mv,
+    sv: row.sv,
+    cv: row.cv,
+    spv: row.spv,
+  };
+
+  const softGates = computeSoftGates(vigor);
+
   return {
     playerId: row.player_id,
     username: row.username,
     timezone: row.timezone,
-    vigor: {
-      pv: row.pv,
-      mv: row.mv,
-      sv: row.sv,
-      cv: row.cv,
-      spv: row.spv,
-    },
+    vigor,
     caps: {
       pv_cap: row.pv_cap,
       mv_cap: row.mv_cap,
@@ -103,5 +128,9 @@ export async function getFullPlayerState(playerId: string): Promise<FullPlayerSt
     mealPenaltyLevel: row.meal_penalty_level,
     pendingActions: parseInt(row.pending_count, 10),
     updatedAt: row.updated_at,
+    nextDailyReset: nextMidnight.toISO()!,
+    localTime: now.toISO()!,
+    secondsUntilDailyReset,
+    softGates,
   };
 }

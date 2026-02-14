@@ -27,6 +27,16 @@ export interface PlayerStateData {
   mealPenaltyLevel: number;
   pendingActions: number;
   updatedAt: string;
+  nextDailyReset: string;
+  localTime: string;
+  secondsUntilDailyReset: number;
+  softGates: {
+    mvSlippage: number;
+    svServiceMult: number;
+    cvFeeMult: number;
+    cvSpeedMult: number;
+    spvRegenMult: number;
+  };
 }
 
 interface AuthContextValue {

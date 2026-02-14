@@ -1,4 +1,4 @@
-import type { VigorDimension, GoodCode } from './types';
+import type { VigorDimension, GoodCode, MealQuality } from './types';
 import { ValidationError } from './errors';
 
 /**
@@ -674,6 +674,23 @@ export function createPurchaseEntry(
     memo: `Purchase ${goodCode}: ${amountCents} cents`,
   };
 }
+
+// ════════════════════════════════════════════════════════════════
+// F) MEAL PRICES — cost in integer cents per meal
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Meal prices in integer cents.
+ * Player must have sufficient balance to eat (except STREET_FOOD
+ * which acts as the always-available fallback at lowest cost).
+ */
+export const MEAL_PRICES_CENTS: Record<MealQuality, number> = {
+  STREET_FOOD: 300,        // ₿3.00
+  HOME_COOKED: 500,        // ₿5.00
+  RESTAURANT: 1200,        // ₿12.00
+  FINE_DINING: 3000,       // ₿30.00
+  NUTRIENT_OPTIMAL: 2000,  // ₿20.00
+};
 
 // ── Economy Hooks (integration interface) ─────────────────────
 

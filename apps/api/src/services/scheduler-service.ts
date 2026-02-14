@@ -13,7 +13,6 @@ import {
   getPlayerStateRow,
 } from './action-engine';
 import type { ActionRow } from './action-engine';
-import type { PlayerStateRow } from '../handlers/registry';
 import type { Metrics } from './observability';
 import { createLogger } from './observability';
 

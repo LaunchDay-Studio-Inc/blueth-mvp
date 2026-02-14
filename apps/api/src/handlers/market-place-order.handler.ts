@@ -6,6 +6,7 @@
  * Vigor cost: MV-4 per session (5-minute batching window)
  *
  * Places a market or limit order on the BCE market.
+ * Includes rate limiting (max N orders/minute) and spam detection.
  */
 
 import {
@@ -13,11 +14,13 @@ import {
   ValidationError,
   subVigor,
   MARKET_ORDER_MV_COST,
+  ORDER_RATE_LIMIT_PER_MIN,
   GoodCodeSchema,
   OrderSideSchema,
   OrderTypeSchema,
 } from '@blueth/core';
 import { z } from 'zod';
+import { queryOne } from '@blueth/db';
 import type { ActionHandler } from './registry';
 import { extractVigor, extractCaps } from './registry';
 import {
@@ -25,6 +28,7 @@ import {
   getOrCreateMarketSession,
   markSessionVigorCharged,
 } from '../services/market-service';
+import { detectOrderSpam } from '../services/anomaly-service';
 
 const PlaceOrderPayloadSchema = z.object({
   goodCode: GoodCodeSchema,
@@ -56,7 +60,6 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
   },
 
   checkPreconditions(_payload, state) {
-    // Ensure player has at least MV-4 for vigor cost (may be skipped if session already charged)
     if (state.mv < MARKET_ORDER_MV_COST) {
       throw new ValidationError(
         `Insufficient mental vigor: need MV ${MARKET_ORDER_MV_COST}, have ${state.mv}`
@@ -68,6 +71,20 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
     const { tx, playerId, payload, playerState } = ctx;
     const vigor = extractVigor(playerState);
     const caps = extractCaps(playerState);
+
+    // C) API rate limit: check orders in last minute
+    const rateRow = await queryOne<{ cnt: string }>(
+      `SELECT COUNT(*) AS cnt FROM market_orders
+       WHERE actor_type = 'player' AND actor_id = $1
+       AND created_at > NOW() - interval '1 minute'`,
+      [playerId],
+    );
+    const recentOrderCount = parseInt(rateRow?.cnt ?? '0', 10);
+    if (recentOrderCount >= ORDER_RATE_LIMIT_PER_MIN) {
+      throw new ValidationError(
+        `Rate limit: max ${ORDER_RATE_LIMIT_PER_MIN} orders per minute (placed ${recentOrderCount})`
+      );
+    }
 
     // Handle market session: charge MV-4 once per 5 minutes
     const session = await getOrCreateMarketSession(tx, playerId);
@@ -94,6 +111,9 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
       qty: payload.qty,
       idempotencyKey: payload.idempotencyKey,
     });
+
+    // E) Non-blocking spam detection
+    detectOrderSpam(playerId).catch(() => {});
 
     return result;
   },

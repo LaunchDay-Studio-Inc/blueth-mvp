@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { VIGOR_KEYS } from '@blueth/core';
 import { VigorBar } from './vigor-bar';
 import { MoneyDisplay } from './money-display';
+import { DailyResetTimer } from './daily-reset-timer';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -82,6 +83,13 @@ export function GameShell({ children }: { children: React.ReactNode }) {
           <Separator orientation="vertical" className="h-6 hidden md:block" />
 
           <MoneyDisplay cents={user.balanceCents} size="sm" />
+
+          <Separator orientation="vertical" className="h-6 hidden md:block" />
+
+          {/* Daily reset timer — desktop */}
+          <div className="hidden md:block">
+            <DailyResetTimer />
+          </div>
 
           <Button variant="ghost" size="icon" onClick={logout} title="Logout">
             <LogOut className="h-4 w-4" />

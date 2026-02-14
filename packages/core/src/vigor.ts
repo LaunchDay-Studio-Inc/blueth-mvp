@@ -2,6 +2,7 @@ import type { VigorDimension, VigorCaps, VigorKey, VigorState, Buff, MealQuality
 import { VIGOR_KEYS } from './types';
 import { InsufficientVigorError } from './errors';
 import { getLocalDate } from './time';
+import { calculateSpvRegenMultiplier } from './soft-gates';
 import { DateTime } from 'luxon';
 
 /**
@@ -457,6 +458,9 @@ export function applyHourlyVigorTick(
   const netDelta = makeZeroRecord();
   const newVigorRaw: Record<string, number> = {};
 
+  // SpV global regen penalty: max −10 %
+  const spvRegenMult = calculateSpvRegenMultiplier(state.vigor.spv);
+
   for (const key of VIGOR_KEYS) {
     const base = baseRegen[key];
     const circadian = circadianMult[key];
@@ -465,8 +469,8 @@ export function applyHourlyVigorTick(
     const buff = buffBonus[key];
     const drain = cascadeDrain[key];
 
-    // Regen = base * circadian * sleep * penalty + buff - drain
-    const regen = base * circadian * sleep * penalty;
+    // Regen = base * circadian * sleep * penalty * spvGlobal + buff - drain
+    const regen = base * circadian * sleep * penalty * spvRegenMult;
     const total = regen + buff - drain;
     netDelta[key] = total;
 
@@ -762,3 +766,80 @@ export {
 
 /** @deprecated Use BASE_REGEN_RATES instead. Kept for backward compat with existing tests. */
 export const HOURLY_REGEN_RATE = 5;
+
+// ════════════════════════════════════════════════════════════════
+// ACTION OUTCOME PROJECTIONS (for UX preview)
+// ════════════════════════════════════════════════════════════════
+
+export interface ActionProjection {
+  vigorDelta: Partial<VigorDimension>;
+  vigorAfter: VigorDimension;
+  moneyCostCents: number;
+  moneyGainCents: number;
+  durationSeconds: number;
+  completionTime: string; // ISO timestamp
+  warnings: string[];
+}
+
+/**
+ * Project the outcome of an action before the player commits.
+ * Pure function — no DB access. Uses current vigor + known action costs.
+ */
+export function projectActionOutcome(opts: {
+  currentVigor: VigorDimension;
+  caps: VigorCaps;
+  vigorCost: Partial<VigorDimension>;
+  vigorGain: Partial<VigorDimension>;
+  moneyCostCents: number;
+  moneyGainCents: number;
+  durationSeconds: number;
+  currentBalanceCents: number;
+  queueEndTime: Date;
+}): ActionProjection {
+  const warnings: string[] = [];
+
+  // Calculate vigor after cost + gain
+  const delta: Partial<VigorDimension> = {};
+  const after: Record<string, number> = {};
+
+  for (const key of VIGOR_KEYS) {
+    const cost = opts.vigorCost[key] ?? 0;
+    const gain = opts.vigorGain[key] ?? 0;
+    const net = gain - cost;
+    if (net !== 0) delta[key as VigorKey] = net;
+
+    const cap = getCap(key, opts.caps);
+    after[key] = clampDim(opts.currentVigor[key] + net, cap);
+
+    // Warn if dimension will drop below cascade threshold
+    if (after[key] < CASCADE_THRESHOLD && opts.currentVigor[key] >= CASCADE_THRESHOLD) {
+      warnings.push(`${key.toUpperCase()} will drop below ${CASCADE_THRESHOLD} — cascade drain risk`);
+    }
+    // Warn if dimension will hit zero
+    if (after[key] <= 0 && opts.currentVigor[key] > 0) {
+      warnings.push(`${key.toUpperCase()} will reach 0 — exhaustion risk`);
+    }
+  }
+
+  // Warn if insufficient funds
+  if (opts.moneyCostCents > 0 && opts.currentBalanceCents < opts.moneyCostCents) {
+    warnings.push(
+      `Insufficient funds: need ₿${(opts.moneyCostCents / 100).toFixed(2)}, ` +
+      `have ₿${(opts.currentBalanceCents / 100).toFixed(2)}`
+    );
+  }
+
+  // Calculate completion time
+  const startTime = new Date(Math.max(opts.queueEndTime.getTime(), Date.now()));
+  const completionTime = new Date(startTime.getTime() + opts.durationSeconds * 1000);
+
+  return {
+    vigorDelta: delta,
+    vigorAfter: after as unknown as VigorDimension,
+    moneyCostCents: opts.moneyCostCents,
+    moneyGainCents: opts.moneyGainCents,
+    durationSeconds: opts.durationSeconds,
+    completionTime: completionTime.toISOString(),
+    warnings,
+  };
+}

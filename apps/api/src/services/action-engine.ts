@@ -3,10 +3,17 @@ import {
   QueueLimitError,
   IdempotencyConflictError,
   ValidationError,
+  InsufficientFundsError,
+  InsufficientVigorError,
+  DomainError,
 } from '@blueth/core';
 import { getHandler } from '../handlers/registry';
 import type { PlayerStateRow } from '../handlers/registry';
 import type { PoolClient } from 'pg';
+import { detectRepeatedFailures } from './anomaly-service';
+import { createLogger } from './observability';
+
+const logger = createLogger('action-engine');
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -28,6 +35,8 @@ export interface SubmitActionResult {
   scheduledFor: string;
   durationSeconds: number;
   result?: unknown;
+  /** Populated on graceful failure with helpful recovery suggestions. */
+  suggestions?: string[];
 }
 
 export interface ActionRow {
@@ -59,6 +68,44 @@ export function getPlayerStateRow(tx: PoolClient, playerId: string): Promise<Pla
     'SELECT * FROM player_state WHERE player_id = $1 FOR UPDATE',
     [playerId]
   );
+}
+
+// ── Graceful Failure Suggestions (D) ─────────────────────────
+
+/**
+ * Generate helpful recovery suggestions when an action fails.
+ * The player is never left without options.
+ */
+function buildFailureSuggestions(error: unknown, actionType: string): string[] {
+  const suggestions: string[] = [];
+
+  if (error instanceof InsufficientFundsError) {
+    suggestions.push('Take a work shift to earn money.');
+    suggestions.push('Downgrade housing to reduce daily costs.');
+    if (actionType === 'EAT_MEAL') {
+      suggestions.push('Try a cheaper meal (Street Food costs only ₿3).');
+    }
+    suggestions.push('Check the market for selling goods you own.');
+  } else if (error instanceof InsufficientVigorError) {
+    suggestions.push('Sleep to regenerate vigor.');
+    suggestions.push('Eat a meal for vigor buffs.');
+    if (error.dimension === 'mv') {
+      suggestions.push('Leisure activity restores MV +4 instantly.');
+    }
+    if (error.dimension === 'sv') {
+      suggestions.push('Social call restores SV +3 instantly.');
+    }
+  } else if (error instanceof QueueLimitError) {
+    suggestions.push('Wait for current actions to complete.');
+    suggestions.push('Cancel unnecessary queued actions.');
+  }
+
+  // Always remind: sleep and basic meals are always available
+  if (suggestions.length === 0) {
+    suggestions.push('You can always sleep or eat a basic meal.');
+  }
+
+  return suggestions;
 }
 
 // ── Submit Action ────────────────────────────────────────────
@@ -100,81 +147,93 @@ export async function submitAction(input: SubmitActionInput): Promise<SubmitActi
   }
 
   // 5. Transaction: lock, validate, insert, optionally resolve
-  return withTransaction(async (tx) => {
-    // a. Lock player state
-    const lockedState = await getPlayerStateRow(tx, playerId);
-    if (!lockedState) {
-      throw new ValidationError('Player state not found');
-    }
+  try {
+    return await withTransaction(async (tx) => {
+      // a. Lock player state
+      const lockedState = await getPlayerStateRow(tx, playerId);
+      if (!lockedState) {
+        throw new ValidationError('Player state not found');
+      }
 
-    // b. Check queue limit
-    const queueCountRow = await txQueryOne<{ count: string }>(
-      tx,
-      `SELECT COUNT(*) as count FROM actions
-       WHERE player_id = $1 AND status IN ('pending', 'scheduled', 'running')`,
-      [playerId]
-    );
-    const queueCount = parseInt(queueCountRow?.count ?? '0', 10);
-    if (queueCount >= QUEUE_MAX) {
-      throw new QueueLimitError(QUEUE_MAX);
-    }
+      // b. Check queue limit
+      const queueCountRow = await txQueryOne<{ count: string }>(
+        tx,
+        `SELECT COUNT(*) as count FROM actions
+         WHERE player_id = $1 AND status IN ('pending', 'scheduled', 'running')`,
+        [playerId]
+      );
+      const queueCount = parseInt(queueCountRow?.count ?? '0', 10);
+      if (queueCount >= QUEUE_MAX) {
+        throw new QueueLimitError(QUEUE_MAX);
+      }
 
-    // c. Re-validate preconditions with locked state
-    handler.checkPreconditions(payload, lockedState);
+      // c. Re-validate preconditions with locked state
+      handler.checkPreconditions(payload, lockedState);
 
-    // d. Calculate scheduled_for
-    const scheduledForRow = await txQueryOne<{ scheduled_for: string }>(
-      tx,
-      `SELECT GREATEST(
-         NOW(),
-         COALESCE(
-           (SELECT MAX(scheduled_for + (duration_seconds || ' seconds')::interval)
-            FROM actions
-            WHERE player_id = $1
-            AND status IN ('pending', 'scheduled', 'running')),
-           NOW()
-         )
-       ) AS scheduled_for`,
-      [playerId]
-    );
-    const scheduledFor = scheduledForRow!.scheduled_for;
+      // d. Calculate scheduled_for
+      const scheduledForRow = await txQueryOne<{ scheduled_for: string }>(
+        tx,
+        `SELECT GREATEST(
+           NOW(),
+           COALESCE(
+             (SELECT MAX(scheduled_for + (duration_seconds || ' seconds')::interval)
+              FROM actions
+              WHERE player_id = $1
+              AND status IN ('pending', 'scheduled', 'running')),
+             NOW()
+           )
+         ) AS scheduled_for`,
+        [playerId]
+      );
+      const scheduledFor = scheduledForRow!.scheduled_for;
 
-    // e. Insert action
-    const status = durationSeconds === 0 ? 'pending' : 'scheduled';
-    const actionRow = await txQueryOne<ActionRow>(
-      tx,
-      `INSERT INTO actions (player_id, type, payload, status, scheduled_for, duration_seconds, idempotency_key)
-       VALUES ($1, $2, $3, $4, $5::timestamptz, $6, $7)
-       RETURNING *`,
-      [playerId, type, JSON.stringify(payload), status, scheduledFor, durationSeconds, idempotencyKey]
-    );
-    if (!actionRow) throw new Error('Failed to insert action');
+      // e. Insert action
+      const status = durationSeconds === 0 ? 'pending' : 'scheduled';
+      const actionRow = await txQueryOne<ActionRow>(
+        tx,
+        `INSERT INTO actions (player_id, type, payload, status, scheduled_for, duration_seconds, idempotency_key)
+         VALUES ($1, $2, $3, $4, $5::timestamptz, $6, $7)
+         RETURNING *`,
+        [playerId, type, JSON.stringify(payload), status, scheduledFor, durationSeconds, idempotencyKey]
+      );
+      if (!actionRow) throw new Error('Failed to insert action');
 
-    // f. On-submit hook (e.g., SLEEP sets sleep_state='sleeping')
-    if (handler.onSubmit) {
-      await handler.onSubmit({ tx, playerId, payload, playerState: lockedState });
-    }
+      // f. On-submit hook (e.g., SLEEP sets sleep_state='sleeping')
+      if (handler.onSubmit) {
+        await handler.onSubmit({ tx, playerId, payload, playerState: lockedState });
+      }
 
-    // g. Instant resolution (duration === 0)
-    if (durationSeconds === 0) {
-      const result = await resolveActionInTx(tx, actionRow, lockedState);
+      // g. Instant resolution (duration === 0)
+      if (durationSeconds === 0) {
+        const result = await resolveActionInTx(tx, actionRow, lockedState);
+        return {
+          actionId: actionRow.action_id,
+          status: 'completed',
+          scheduledFor: actionRow.scheduled_for,
+          durationSeconds: 0,
+          result,
+        };
+      }
+
+      // h. Return scheduled
       return {
         actionId: actionRow.action_id,
-        status: 'completed',
+        status: 'scheduled',
         scheduledFor: actionRow.scheduled_for,
-        durationSeconds: 0,
-        result,
+        durationSeconds,
       };
+    });
+  } catch (err) {
+    // D) Graceful failure: augment domain errors with recovery suggestions
+    if (err instanceof DomainError) {
+      const suggestions = buildFailureSuggestions(err, type);
+      // Rethrow augmented with suggestions context in the message
+      const augmented = err as DomainError & { suggestions?: string[] };
+      augmented.suggestions = suggestions;
+      throw augmented;
     }
-
-    // h. Return scheduled
-    return {
-      actionId: actionRow.action_id,
-      status: 'scheduled',
-      scheduledFor: actionRow.scheduled_for,
-      durationSeconds,
-    };
-  });
+    throw err;
+  }
 }
 
 // ── Resolve a single action within a transaction ─────────────
@@ -201,23 +260,48 @@ export async function resolveActionInTx(
   );
   const playerAccountId = wallet ? parseInt(wallet.account_id, 10) : 0;
 
-  // Execute handler
-  const result = await handler.resolve({
-    tx,
-    actionId: actionRow.action_id,
-    playerId: actionRow.player_id,
-    payload,
-    playerState: lockedState,
-    playerAccountId,
-  });
+  try {
+    // Execute handler
+    const result = await handler.resolve({
+      tx,
+      actionId: actionRow.action_id,
+      playerId: actionRow.player_id,
+      payload,
+      playerState: lockedState,
+      playerAccountId,
+    });
 
-  // Mark completed
-  await tx.query(
-    `UPDATE actions SET status = 'completed', finished_at = NOW(), result = $2 WHERE action_id = $1`,
-    [actionRow.action_id, JSON.stringify(result)]
-  );
+    // Mark completed
+    await tx.query(
+      `UPDATE actions SET status = 'completed', finished_at = NOW(), result = $2 WHERE action_id = $1`,
+      [actionRow.action_id, JSON.stringify(result)]
+    );
 
-  return result;
+    return result;
+  } catch (err) {
+    // Mark failed with reason; never leave actions in 'running' state
+    const reason = err instanceof Error ? err.message : String(err);
+    await tx.query(
+      `UPDATE actions SET status = 'failed', finished_at = NOW(),
+       failure_reason = $2, result = $3
+       WHERE action_id = $1`,
+      [
+        actionRow.action_id,
+        reason,
+        JSON.stringify({
+          error: reason,
+          suggestions: err instanceof DomainError
+            ? buildFailureSuggestions(err, actionRow.type)
+            : ['You can always sleep or eat a basic meal.'],
+        }),
+      ]
+    );
+
+    // E) Non-blocking anomaly detection on failure
+    detectRepeatedFailures(actionRow.player_id).catch(() => {});
+
+    throw err;
+  }
 }
 
 // ── Lazy resolution: resolve all due actions for a player ────
@@ -235,21 +319,30 @@ export async function resolveAllDue(playerId: string): Promise<void> {
 
   for (const actionRow of dueActions) {
     // Each action resolves in its own transaction
-    await withTransaction(async (tx) => {
-      // Re-lock action under transaction (another request may have resolved it)
-      const locked = await txQueryOne<ActionRow>(
-        tx,
-        'SELECT * FROM actions WHERE action_id = $1 FOR UPDATE',
-        [actionRow.action_id]
-      );
-      if (!locked || locked.status !== 'scheduled') return;
+    try {
+      await withTransaction(async (tx) => {
+        // Re-lock action under transaction (another request may have resolved it)
+        const locked = await txQueryOne<ActionRow>(
+          tx,
+          'SELECT * FROM actions WHERE action_id = $1 FOR UPDATE',
+          [actionRow.action_id]
+        );
+        if (!locked || locked.status !== 'scheduled') return;
 
-      // Lock player state
-      const lockedState = await getPlayerStateRow(tx, playerId);
-      if (!lockedState) return;
+        // Lock player state
+        const lockedState = await getPlayerStateRow(tx, playerId);
+        if (!lockedState) return;
 
-      await resolveActionInTx(tx, locked, lockedState);
-    });
+        await resolveActionInTx(tx, locked, lockedState);
+      });
+    } catch (err) {
+      // Log but continue processing other actions
+      logger.error('Action resolution failed', {
+        actionId: actionRow.action_id,
+        playerId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 }
 
@@ -270,4 +363,25 @@ export async function getActionQueue(playerId: string): Promise<ActionRow[]> {
      ORDER BY scheduled_for ASC`,
     [playerId]
   );
+}
+
+/**
+ * Get the queue end time (when the last queued action completes).
+ * Used for projection calculations.
+ */
+export async function getQueueEndTime(playerId: string): Promise<Date> {
+  const row = await queryOne<{ end_time: string }>(
+    `SELECT GREATEST(
+       NOW(),
+       COALESCE(
+         (SELECT MAX(scheduled_for + (duration_seconds || ' seconds')::interval)
+          FROM actions
+          WHERE player_id = $1
+          AND status IN ('pending', 'scheduled', 'running')),
+         NOW()
+       )
+     ) AS end_time`,
+    [playerId]
+  );
+  return new Date(row?.end_time ?? Date.now());
 }

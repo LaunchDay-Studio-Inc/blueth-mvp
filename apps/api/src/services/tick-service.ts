@@ -24,6 +24,7 @@ import type { VigorState } from '@blueth/core';
 import { extractVigor, extractCaps } from '../handlers/registry';
 import type { PlayerStateRow } from '../handlers/registry';
 import { txQueryOne } from './action-engine';
+import { runAnomalyDetection } from './anomaly-service';
 import { createLogger } from './observability';
 import type { Metrics } from './observability';
 import type { PoolClient } from 'pg';
@@ -458,7 +459,23 @@ async function processDailyTickForPlayer(
         [resetResult.summary, rentResult.summary].filter(Boolean).join(' '),
       ]
     );
+
+    // E) Run anomaly detection for this player (non-blocking within tx)
+    // Note: runs outside the transaction since it only reads and inserts to anomalies
   });
+
+  // E) Anomaly detection (outside transaction, non-blocking)
+  try {
+    const wallet = await queryOne<{ account_id: number }>(
+      'SELECT account_id FROM player_wallets WHERE player_id = $1',
+      [row.player_id]
+    );
+    if (wallet) {
+      await runAnomalyDetection(row.player_id, wallet.account_id);
+    }
+  } catch {
+    // Non-blocking — never let anomaly detection crash the daily tick
+  }
 
   return { processed: true };
 }

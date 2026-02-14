@@ -9,6 +9,7 @@
  *   economy       — Market price formulas, job payout
  *   action-types  — Canonical action type enum
  *   types         — Zod schemas, shared type definitions
+ *   soft-gates    — Bounded soft-gating from low vigor dimensions
  */
 
 export * from './errors';
@@ -20,3 +21,4 @@ export * from './action-types';
 export * from './types';
 export * from './market';
 export * from './business';
+export * from './soft-gates';

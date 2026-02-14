@@ -20,6 +20,11 @@
  *     WASTE:                 α = 0.11  (disposal market, niche)
  *     INDUSTRIAL_MACHINERY:  α = 0.12  (most volatile, high-value)
  *
+ * Anti-exploit clamps (C):
+ *   - D/S clamped to [1, 100_000] to prevent numeric overflow
+ *   - Alpha clamped to [0.01, 0.20] to prevent extreme sensitivity
+ *   - Ref price movement limited to ±5 % per tick to prevent infinite loops
+ *
  * Circuit breaker:
  *   If |P_ref - last_6h_ref_price| / last_6h_ref_price > 25% => halt 1 hour.
  *   During halt: no market orders, no matching. Limit orders can be placed but queued.
@@ -86,6 +91,22 @@ export const NPC_ESSENTIAL_ORDER_QTY = 100;
 /** NPC maker order quantity (units) for non-essentials */
 export const NPC_NON_ESSENTIAL_ORDER_QTY = 50;
 
+// ── Anti-exploit clamps (C) ─────────────────────────────────
+
+/** Demand/Supply floor and ceiling to prevent numeric runaway. */
+export const DS_FLOOR = 1;
+export const DS_CEILING = 100_000;
+
+/** Alpha clamp range — prevents extreme price sensitivity. */
+export const ALPHA_MIN = 0.01;
+export const ALPHA_MAX = 0.20;
+
+/** Max ref-price movement per tick: ±5 %. Prevents infinite price loops. */
+export const REF_PRICE_MAX_MOVE_PCT = 0.05;
+
+/** Max orders per player per minute (rate limit). */
+export const ORDER_RATE_LIMIT_PER_MIN = 10;
+
 // ── Alpha values per good ─────────────────────────────────────
 
 export const MARKET_ALPHA: Record<GoodCode, number> = {
@@ -114,15 +135,41 @@ export const MARKET_SPREAD_BPS: Record<GoodCode, number> = {
   WASTE: 250,              // 2.5%
 };
 
+// ── Clamping helpers ─────────────────────────────────────────
+
+/** Clamp demand/supply to safe range. */
+export function clampDS(value: number): number {
+  return Math.max(DS_FLOOR, Math.min(DS_CEILING, value));
+}
+
+/** Clamp alpha to safe range. */
+export function clampAlpha(alpha: number): number {
+  return Math.max(ALPHA_MIN, Math.min(ALPHA_MAX, alpha));
+}
+
+/**
+ * Clamp ref-price movement to ±REF_PRICE_MAX_MOVE_PCT per tick.
+ * @param prevCents - previous ref price
+ * @param newCents - proposed new ref price
+ * @returns clamped price in integer cents
+ */
+export function clampRefPriceMovement(prevCents: number, newCents: number): number {
+  const maxMove = Math.max(1, Math.round(prevCents * REF_PRICE_MAX_MOVE_PCT));
+  const floor = prevCents - maxMove;
+  const ceiling = prevCents + maxMove;
+  return Math.max(1, Math.min(ceiling, Math.max(floor, newCents)));
+}
+
 // ── Price Discovery ──────────────────────────────────────────
 
 /**
  * Calculate new reference price using supply/demand dynamics.
  *
- * P_ref(t) = P_ref(t-1) * (1 + α * (D - S) / max(S, 1))
+ * P_ref(t) = P_ref(t-1) * (1 + α_clamped * (D_clamped - S_clamped) / max(S_clamped, 1))
  *
- * Result is clamped to [floor(0.1 * prevPrice), ceil(10 * prevPrice)]
- * to prevent runaway prices while allowing significant movement.
+ * Movement per tick is clamped to ±5 % to prevent infinite loops.
+ * Result is further clamped to [floor(0.1 * prevPrice), ceil(10 * prevPrice)]
+ * to prevent runaway prices while allowing significant movement over time.
  *
  * @returns integer cents, minimum 1
  */
@@ -132,14 +179,22 @@ export function calculateRefPrice(
   demand: number,
   supply: number,
 ): number {
-  const denominator = Math.max(supply, 1);
-  const adjustment = 1 + alpha * (demand - supply) / denominator;
+  // Anti-exploit: clamp inputs
+  const clampedAlpha = clampAlpha(alpha);
+  const clampedDemand = clampDS(demand);
+  const clampedSupply = clampDS(supply);
+
+  const denominator = Math.max(clampedSupply, 1);
+  const adjustment = 1 + clampedAlpha * (clampedDemand - clampedSupply) / denominator;
   const raw = prevRefPriceCents * adjustment;
 
   // Clamp to 10x range around prev price, minimum 1 cent
   const floor = Math.max(1, Math.floor(prevRefPriceCents * 0.1));
   const ceiling = Math.ceil(prevRefPriceCents * 10);
-  return Math.max(floor, Math.min(ceiling, Math.round(raw)));
+  const rangeClamped = Math.max(floor, Math.min(ceiling, Math.round(raw)));
+
+  // Anti-exploit: limit per-tick movement to ±5 %
+  return clampRefPriceMovement(prevRefPriceCents, rangeClamped);
 }
 
 /**
@@ -210,6 +265,7 @@ export function calculateNpcPrices(
 
 /**
  * Compute NPC demand/supply based on affordability index and economic health.
+ * D and S values are clamped to [DS_FLOOR, DS_CEILING] to prevent numeric overflow.
  *
  * For essentials:
  *   - Base demand is higher (people need them)
@@ -237,23 +293,20 @@ export function computeNpcDemandSupply(
   const affordabilityIndex = basePriceCents / Math.max(refPriceCents, 1);
 
   if (isEssential) {
-    // Essential goods: demand is inelastic but adjusts with affordability
-    // Supply grows slowly toward a stable equilibrium
     const demandAdjust = 0.02 * (affordabilityIndex - 1);
     const supplyAdjust = 0.01 * (currentDemand / Math.max(currentSupply, 1) - 1);
 
     return {
-      newDemand: Math.max(100, currentDemand * (1 + demandAdjust)),
-      newSupply: Math.max(100, currentSupply * (1 + supplyAdjust)),
+      newDemand: clampDS(Math.max(100, currentDemand * (1 + demandAdjust))),
+      newSupply: clampDS(Math.max(100, currentSupply * (1 + supplyAdjust))),
     };
   } else {
-    // Non-essential: more elastic demand, supply responds to price signals
     const demandAdjust = 0.05 * (affordabilityIndex - 1);
     const supplyAdjust = 0.03 * (refPriceCents / Math.max(basePriceCents, 1) - 1);
 
     return {
-      newDemand: Math.max(10, currentDemand * (1 + demandAdjust)),
-      newSupply: Math.max(10, currentSupply * (1 + supplyAdjust)),
+      newDemand: clampDS(Math.max(10, currentDemand * (1 + demandAdjust))),
+      newSupply: clampDS(Math.max(10, currentSupply * (1 + supplyAdjust))),
     };
   }
 }
