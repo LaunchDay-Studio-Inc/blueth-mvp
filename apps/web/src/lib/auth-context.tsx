@@ -41,8 +41,11 @@ export interface PlayerStateData {
   };
 }
 
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
 interface AuthContextValue {
   user: PlayerStateData | null;
+  status: AuthStatus;
   isLoading: boolean;
   isError: boolean;
   isGuest: boolean;
@@ -63,10 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: queryKeys.player.state(),
     queryFn: () => api.get<PlayerStateData>('/me/state'),
     retry: false,
-    refetchInterval: 60_000,
+    refetchInterval: (query) => (query.state.data ? 60_000 : false),
     staleTime: 30_000,
   });
 
+  const status: AuthStatus = isLoading ? 'loading' : user ? 'authenticated' : 'unauthenticated';
   const isGuest = !!(user?.username?.startsWith('guest_'));
 
   const guestLogin = useCallback(async () => {
@@ -129,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user: user ?? null,
+      status,
       isLoading,
       isError,
       isGuest,
