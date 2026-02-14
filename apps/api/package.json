@@ -12,7 +12,9 @@
     "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --detectOpenHandles",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "worker:scheduler": "tsx src/workers/scheduler.ts",
+    "worker:tick": "tsx src/workers/tick.ts"
   },
   "dependencies": {
     "@blueth/core": "workspace:*",

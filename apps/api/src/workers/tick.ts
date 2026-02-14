@@ -1,0 +1,54 @@
+/**
+ * Tick Worker — Standalone process entry point.
+ *
+ * Creates and processes game ticks (hourly, six-hourly, daily).
+ * Run with: tsx src/workers/tick.ts
+ */
+
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+import { createLogger, createMetrics } from '../services/observability';
+import { runTickIteration } from '../services/tick-service';
+import { registerAllHandlers } from '../handlers/register-all';
+import { closePool } from '@blueth/db';
+
+const POLL_INTERVAL_MS = parseInt(process.env.TICK_POLL_MS || '10000', 10);
+const logger = createLogger('tick');
+const metrics = createMetrics();
+let running = true;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function main(): Promise<void> {
+  registerAllHandlers();
+  logger.info('Tick worker started', { pollIntervalMs: POLL_INTERVAL_MS });
+
+  while (running) {
+    try {
+      const ticksProcessed = await runTickIteration(metrics);
+      if (ticksProcessed > 0) {
+        logger.info('Tick iteration complete', { ticksProcessed });
+      }
+    } catch (err) {
+      logger.error('Tick iteration failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    await sleep(POLL_INTERVAL_MS);
+  }
+
+  logger.info('Tick worker shutting down');
+}
+
+process.on('SIGTERM', () => { running = false; });
+process.on('SIGINT', () => { running = false; });
+
+main()
+  .catch((err) => {
+    logger.error('Fatal error', { error: String(err) });
+    process.exit(1);
+  })
+  .finally(() => closePool());

@@ -48,12 +48,12 @@ export interface ActionRow {
 
 // ── Helpers ──────────────────────────────────────────────────
 
-async function txQueryOne<T>(tx: PoolClient, text: string, params: unknown[]): Promise<T | null> {
+export async function txQueryOne<T>(tx: PoolClient, text: string, params: unknown[]): Promise<T | null> {
   const { rows } = await tx.query(text, params);
   return (rows[0] as T) ?? null;
 }
 
-function getPlayerStateRow(tx: PoolClient, playerId: string): Promise<PlayerStateRow | null> {
+export function getPlayerStateRow(tx: PoolClient, playerId: string): Promise<PlayerStateRow | null> {
   return txQueryOne<PlayerStateRow>(
     tx,
     'SELECT * FROM player_state WHERE player_id = $1 FOR UPDATE',
@@ -179,7 +179,7 @@ export async function submitAction(input: SubmitActionInput): Promise<SubmitActi
 
 // ── Resolve a single action within a transaction ─────────────
 
-async function resolveActionInTx(
+export async function resolveActionInTx(
   tx: PoolClient,
   actionRow: ActionRow,
   lockedState: PlayerStateRow
