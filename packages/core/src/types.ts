@@ -30,6 +30,48 @@ export type VigorKey = (typeof VIGOR_KEYS)[number];
 export const SleepStateSchema = z.enum(['awake', 'sleeping', 'exhausted']);
 export type SleepState = z.infer<typeof SleepStateSchema>;
 
+// ── Buff System ──
+
+export const BuffSourceSchema = z.enum([
+  'MEAL',
+  'LEISURE',
+  'SOCIAL_CALL',
+  'PENALTY',
+]);
+export type BuffSource = z.infer<typeof BuffSourceSchema>;
+
+export const MealQualitySchema = z.enum([
+  'STREET_FOOD',
+  'HOME_COOKED',
+  'RESTAURANT',
+  'FINE_DINING',
+  'NUTRIENT_OPTIMAL',
+]);
+export type MealQuality = z.infer<typeof MealQualitySchema>;
+
+export interface Buff {
+  id: string;
+  source: BuffSource;
+  startsAt: string; // ISO timestamp
+  endsAt: string;   // ISO timestamp
+  perHourBonusByDim: Partial<VigorDimension>;
+  instantDeltaByDim?: Partial<VigorDimension>;
+  metadata?: Record<string, unknown>;
+}
+
+// ── VigorState (full system state for a player) ──
+
+export interface VigorState {
+  vigor: VigorDimension;
+  caps: VigorCaps;
+  sleepState: SleepState;
+  activeBuffs: Buff[];
+  lastMealTimes: string[];      // ISO timestamps
+  mealsEatenToday: number;
+  mealPenaltyLevel: number;     // 0..3 (clamped)
+  lastDailyResetLocalDate: string | null; // YYYY-MM-DD
+}
+
 // ============================================================
 // Player
 // ============================================================
