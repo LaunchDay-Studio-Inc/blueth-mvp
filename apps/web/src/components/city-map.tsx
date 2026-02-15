@@ -162,6 +162,363 @@ export const DISTRICT_ICONS: Record<string, (color: string) => React.ReactNode> 
   ),
 };
 
+// ── Isometric 3D building helpers ──────────────────────
+
+const WIN_COLOR = 'rgba(180,220,255,0.3)';
+
+function isoBox(
+  bx: number, gy: number, w: number, h: number,
+  front: string, side: string, top: string, k: string
+): React.ReactNode {
+  const dp = w * 0.3;
+  const dh = dp * 0.5;
+  const nw = Math.max(0, Math.floor((h - 6) / 7));
+  return (
+    <g key={k}>
+      <rect x={bx} y={gy - h} width={w} height={h} fill={front} />
+      <polygon
+        points={`${bx+w},${gy-h} ${bx+w+dp},${gy-h-dh} ${bx+w+dp},${gy-dh} ${bx+w},${gy}`}
+        fill={side}
+      />
+      <polygon
+        points={`${bx},${gy-h} ${bx+dp},${gy-h-dh} ${bx+w+dp},${gy-h-dh} ${bx+w},${gy-h}`}
+        fill={top}
+      />
+      {Array.from({ length: nw }, (_, i) => (
+        <rect
+          key={i} x={bx + 1.5} y={gy - h + 4 + i * 7}
+          width={w - 3} height={2.5} fill={WIN_COLOR} rx="0.3"
+        />
+      ))}
+    </g>
+  );
+}
+
+function pointedBox(
+  bx: number, gy: number, w: number, h: number,
+  front: string, side: string, roof: string, k: string,
+  roofH?: number
+): React.ReactNode {
+  const dp = w * 0.3;
+  const dh = dp * 0.5;
+  const rh = roofH ?? w * 0.5;
+  const nw = Math.max(0, Math.floor((h - 4) / 8));
+  return (
+    <g key={k}>
+      <rect x={bx} y={gy - h} width={w} height={h} fill={front} />
+      <polygon
+        points={`${bx+w},${gy-h} ${bx+w+dp},${gy-h-dh} ${bx+w+dp},${gy-dh} ${bx+w},${gy}`}
+        fill={side}
+      />
+      <polygon
+        points={`${bx-0.5},${gy-h} ${bx+w/2},${gy-h-rh} ${bx+w+0.5},${gy-h}`}
+        fill={roof}
+      />
+      {/* Right side of roof */}
+      <polygon
+        points={`${bx+w+0.5},${gy-h} ${bx+w/2},${gy-h-rh} ${bx+w/2+dp},${gy-h-rh-dh} ${bx+w+0.5+dp},${gy-h-dh}`}
+        fill={side} opacity="0.7"
+      />
+      {Array.from({ length: nw }, (_, i) => (
+        <rect
+          key={i} x={bx + 2} y={gy - h + 3 + i * 8}
+          width={w - 4} height={2} fill={WIN_COLOR} rx="0.2"
+        />
+      ))}
+      {/* Door */}
+      <rect x={bx + w/2 - 1.5} y={gy - 4} width={3} height={4} fill="rgba(0,0,0,0.15)" rx="0.3" />
+    </g>
+  );
+}
+
+function domeBox(
+  bx: number, gy: number, w: number, h: number,
+  front: string, side: string, dome: string, k: string
+): React.ReactNode {
+  const dp = w * 0.3;
+  const dh = dp * 0.5;
+  const nw = Math.max(0, Math.floor((h - 4) / 7));
+  return (
+    <g key={k}>
+      <rect x={bx} y={gy - h} width={w} height={h} fill={front} />
+      <polygon
+        points={`${bx+w},${gy-h} ${bx+w+dp},${gy-h-dh} ${bx+w+dp},${gy-dh} ${bx+w},${gy}`}
+        fill={side}
+      />
+      <ellipse cx={bx + w/2} cy={gy - h} rx={w/2 + 1} ry={w * 0.35} fill={dome} />
+      {Array.from({ length: nw }, (_, i) => (
+        <rect
+          key={i} x={bx + 2} y={gy - h + 3.5 + i * 7}
+          width={w - 4} height={2} fill={WIN_COLOR} rx="0.2"
+        />
+      ))}
+      {/* Columns */}
+      <line x1={bx + 3} y1={gy} x2={bx + 3} y2={gy - h} stroke={front} strokeWidth="1.2" opacity="0.6" />
+      <line x1={bx + w - 3} y1={gy} x2={bx + w - 3} y2={gy - h} stroke={front} strokeWidth="1.2" opacity="0.6" />
+    </g>
+  );
+}
+
+// ── Per-district building scenes ──────────────────────
+
+function renderDistrictScene(
+  code: string, cx: number, cy: number, g: [string, string]
+): React.ReactNode {
+  const f = `${g[0]}DD`;
+  const s = `${g[1]}CC`;
+  const t = `${g[0]}88`;
+  const gy = cy + 20;
+
+  switch (code) {
+    case 'CBD':
+      return (
+        <g>
+          {isoBox(cx - 40, gy, 13, 52, f, s, t, 'c1')}
+          {isoBox(cx - 22, gy, 16, 70, f, s, t, 'c2')}
+          {isoBox(cx + 0, gy, 12, 44, f, s, t, 'c3')}
+          {isoBox(cx + 16, gy, 15, 62, f, s, t, 'c4')}
+          {isoBox(cx + 35, gy, 11, 36, f, s, t, 'c5')}
+          {/* Antennas */}
+          <line x1={cx - 14} y1={gy - 70} x2={cx - 14} y2={gy - 80} stroke={g[0]} strokeWidth="0.8" />
+          <circle cx={cx - 14} cy={gy - 81} r="1.2" fill={g[0]} opacity="0.8" />
+          <line x1={cx + 23} y1={gy - 62} x2={cx + 23} y2={gy - 70} stroke={g[0]} strokeWidth="0.6" />
+          <circle cx={cx + 23} cy={gy - 71} r="0.9" fill={g[0]} opacity="0.6" />
+          {/* Helipad circle on roof */}
+          <circle cx={cx + 6} cy={gy - 45} r="3" fill="none" stroke={g[0]} strokeWidth="0.4" opacity="0.3" />
+        </g>
+      );
+
+    case 'OLD_TOWN':
+      return (
+        <g>
+          {pointedBox(cx - 36, gy, 14, 20, f, s, g[1], 'o1')}
+          {pointedBox(cx - 16, gy, 13, 18, f, s, g[1], 'o2')}
+          {pointedBox(cx + 2, gy, 11, 34, f, s, g[1], 'o3', 16)}
+          {pointedBox(cx + 18, gy, 15, 22, f, s, g[1], 'o4')}
+          {pointedBox(cx + 36, gy, 12, 16, f, s, g[1], 'o5')}
+          {/* Church cross */}
+          <line x1={cx + 7.5} y1={gy - 51} x2={cx + 7.5} y2={gy - 56} stroke={g[0]} strokeWidth="0.8" />
+          <line x1={cx + 5.5} y1={gy - 54} x2={cx + 9.5} y2={gy - 54} stroke={g[0]} strokeWidth="0.8" />
+          {/* Cobblestone hint */}
+          <line x1={cx - 40} y1={gy + 3} x2={cx + 50} y2={gy + 3} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="2 2" />
+        </g>
+      );
+
+    case 'MARINA':
+      return (
+        <g>
+          {isoBox(cx - 32, gy, 18, 20, f, s, t, 'm1')}
+          {isoBox(cx - 8, gy, 15, 24, f, s, t, 'm2')}
+          {isoBox(cx + 14, gy, 20, 18, f, s, t, 'm3')}
+          {/* Pier/dock */}
+          <rect x={cx + 38} y={gy - 2} width={20} height={2} fill={g[0]} opacity="0.5" rx="0.3" />
+          <rect x={cx + 40} y={gy} width={1.5} height={5} fill={g[1]} opacity="0.4" />
+          <rect x={cx + 52} y={gy} width={1.5} height={5} fill={g[1]} opacity="0.4" />
+          {/* Yacht 1 */}
+          <polygon points={`${cx+42},${gy-4} ${cx+48},${gy-10} ${cx+48},${gy-4}`} fill={g[0]} opacity="0.5" />
+          <line x1={cx + 47} y1={gy - 10} x2={cx + 47} y2={gy - 1} stroke={g[0]} strokeWidth="0.6" opacity="0.4" />
+          <ellipse cx={cx + 46} cy={gy - 2} rx="4" ry="1.5" fill={g[0]} opacity="0.3" />
+          {/* Yacht 2 */}
+          <polygon points={`${cx+52},${gy-5} ${cx+56},${gy-8} ${cx+56},${gy-5}`} fill={g[0]} opacity="0.35" />
+          <ellipse cx={cx + 55} cy={gy - 3} rx="3" ry="1.2" fill={g[0]} opacity="0.25" />
+          {/* Water ripples */}
+          <path d={`M${cx+36},${gy+5} Q${cx+46},${gy+3} ${cx+56},${gy+5}`} fill="none" stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
+          <path d={`M${cx+38},${gy+8} Q${cx+48},${gy+6} ${cx+58},${gy+8}`} fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.15" />
+        </g>
+      );
+
+    case 'TECH_PARK':
+      return (
+        <g>
+          {isoBox(cx - 34, gy, 15, 40, f, s, t, 't1')}
+          {isoBox(cx - 14, gy, 18, 52, f, s, t, 't2')}
+          {isoBox(cx + 10, gy, 13, 36, f, s, t, 't3')}
+          {isoBox(cx + 28, gy, 16, 46, f, s, t, 't4')}
+          {/* Satellite dish */}
+          <path d={`M${cx-6},${gy-52} Q${cx-2},${gy-58} ${cx+2},${gy-52}`} fill="none" stroke={g[0]} strokeWidth="1" opacity="0.5" />
+          <line x1={cx - 2} y1={gy - 52} x2={cx - 2} y2={gy - 55} stroke={g[0]} strokeWidth="0.6" opacity="0.5" />
+          {/* LED display panels */}
+          <rect x={cx + 30} y={gy - 44} width={12} height={5} fill="rgba(120,160,255,0.3)" rx="0.5" />
+          <rect x={cx + 30} y={gy - 36} width={12} height={5} fill="rgba(120,160,255,0.2)" rx="0.5" />
+          {/* Data lines effect */}
+          <line x1={cx - 34} y1={gy - 10} x2={cx - 14} y2={gy - 10} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="1 2" />
+          <line x1={cx + 10} y1={gy - 15} x2={cx + 28} y2={gy - 15} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="1 2" />
+        </g>
+      );
+
+    case 'MARKET_SQ':
+      return (
+        <g>
+          {/* Market stalls with awnings */}
+          <rect x={cx - 38} y={gy - 12} width={14} height={12} fill={f} />
+          <path d={`M${cx-39},${gy-12} L${cx-31},${gy-19} L${cx-23},${gy-12}`} fill={g[1]} opacity="0.8" />
+          <rect x={cx - 36} y={gy - 8} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+
+          <rect x={cx - 18} y={gy - 14} width={14} height={14} fill={f} />
+          <path d={`M${cx-19},${gy-14} L${cx-11},${gy-22} L${cx-3},${gy-14}`} fill={g[1]} opacity="0.9" />
+          <rect x={cx - 15} y={gy - 10} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+
+          <rect x={cx + 2} y={gy - 12} width={14} height={12} fill={f} />
+          <path d={`M${cx+1},${gy-12} L${cx+9},${gy-19} L${cx+17},${gy-12}`} fill={g[1]} opacity="0.8" />
+          <rect x={cx + 5} y={gy - 8} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+
+          <rect x={cx + 22} y={gy - 14} width={14} height={14} fill={f} />
+          <path d={`M${cx+21},${gy-14} L${cx+29},${gy-22} L${cx+37},${gy-14}`} fill={g[1]} opacity="0.85" />
+          <rect x={cx + 25} y={gy - 10} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+
+          {/* Goods/crates */}
+          <circle cx={cx - 32} cy={gy - 4} r="2" fill={g[0]} opacity="0.25" />
+          <circle cx={cx - 28} cy={gy - 4} r="1.5" fill={g[0]} opacity="0.2" />
+          <rect x={cx + 6} y={gy - 3} width="3" height="3" fill={g[0]} opacity="0.2" rx="0.3" />
+          <rect x={cx + 10} y={gy - 3} width="3" height="3" fill={g[1]} opacity="0.2" rx="0.3" />
+          {/* Ground line */}
+          <line x1={cx - 42} y1={gy + 2} x2={cx + 40} y2={gy + 2} stroke={g[0]} strokeWidth="0.3" opacity="0.1" />
+        </g>
+      );
+
+    case 'ENTERTAINMENT':
+      return (
+        <g>
+          {isoBox(cx - 30, gy, 16, 30, f, s, t, 'e1')}
+          {domeBox(cx - 8, gy, 20, 38, f, s, `${g[0]}AA`, 'e2')}
+          {isoBox(cx + 18, gy, 14, 26, f, s, t, 'e3')}
+          {isoBox(cx + 36, gy, 12, 20, f, s, t, 'e4')}
+          {/* Marquee / theater sign */}
+          <rect x={cx - 6} y={gy - 42} width={16} height={4} fill={g[0]} opacity="0.5" rx="0.5" />
+          {/* Stars / spotlights */}
+          <circle cx={cx - 24} cy={gy - 38} r="1.5" fill={g[0]} opacity="0.4" />
+          <circle cx={cx - 24} cy={gy - 38} r="3" fill={g[0]} opacity="0.1" />
+          <circle cx={cx + 25} cy={gy - 32} r="1.2" fill={g[0]} opacity="0.35" />
+          <circle cx={cx + 25} cy={gy - 32} r="2.5" fill={g[0]} opacity="0.08" />
+          {/* Neon sign line */}
+          <line x1={cx - 28} y1={gy - 18} x2={cx - 16} y2={gy - 18} stroke={g[0]} strokeWidth="0.8" opacity="0.3" />
+        </g>
+      );
+
+    case 'UNIVERSITY':
+      return (
+        <g>
+          {domeBox(cx - 22, gy, 22, 28, f, s, `${g[0]}BB`, 'u1')}
+          {pointedBox(cx + 6, gy, 14, 22, f, s, g[1], 'u2')}
+          {isoBox(cx + 26, gy, 14, 18, f, s, t, 'u3')}
+          {/* Grand columns on main building */}
+          <line x1={cx - 17} y1={gy} x2={cx - 17} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
+          <line x1={cx - 11} y1={gy} x2={cx - 11} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
+          <line x1={cx - 5} y1={gy} x2={cx - 5} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
+          {/* Book/scroll decorative element */}
+          <rect x={cx + 28} y={gy - 8} width={8} height={2} fill={g[0]} opacity="0.2" rx="0.3" />
+          <rect x={cx + 29} y={gy - 10} width={7} height={2} fill={g[0]} opacity="0.18" rx="0.3" />
+          <rect x={cx + 28} y={gy - 12} width={6} height={2} fill={g[0]} opacity="0.15" rx="0.3" />
+        </g>
+      );
+
+    case 'HARBOR':
+      return (
+        <g>
+          {isoBox(cx - 34, gy, 20, 18, f, s, t, 'h1')}
+          {isoBox(cx - 8, gy, 18, 16, f, s, t, 'h2')}
+          {/* Crane */}
+          <rect x={cx + 14} y={gy - 42} width="2.5" height="42" fill={g[0]} opacity="0.8" />
+          <line x1={cx + 15} y1={gy - 42} x2={cx + 38} y2={gy - 36} stroke={g[0]} strokeWidth="1.5" opacity="0.7" />
+          <line x1={cx + 15} y1={gy - 42} x2={cx + 8} y2={gy - 38} stroke={g[0]} strokeWidth="1" opacity="0.5" />
+          <line x1={cx + 33} y1={gy - 37} x2={cx + 33} y2={gy - 22} stroke={g[0]} strokeWidth="0.6" opacity="0.5" />
+          <rect x={cx + 31} y={gy - 22} width={4} height={3} fill={g[0]} opacity="0.5" />
+          {/* Shipping containers */}
+          <rect x={cx + 22} y={gy - 6} width={9} height={6} fill={g[0]} opacity="0.5" rx="0.3" />
+          <rect x={cx + 33} y={gy - 6} width={9} height={6} fill={g[1]} opacity="0.6" rx="0.3" />
+          <rect x={cx + 25} y={gy - 12} width={9} height={6} fill={g[0]} opacity="0.35" rx="0.3" />
+          <rect x={cx + 36} y={gy - 12} width={9} height={6} fill={g[1]} opacity="0.45" rx="0.3" />
+          {/* Crane base */}
+          <rect x={cx + 10} y={gy - 2} width={10} height={2} fill={g[0]} opacity="0.4" rx="0.3" />
+        </g>
+      );
+
+    case 'INDUSTRIAL':
+      return (
+        <g>
+          {isoBox(cx - 32, gy, 22, 22, f, s, t, 'i1')}
+          {isoBox(cx - 4, gy, 20, 20, f, s, t, 'i2')}
+          {isoBox(cx + 22, gy, 24, 18, f, s, t, 'i3')}
+          {/* Smokestacks on building 1 */}
+          <rect x={cx - 28} y={gy - 36} width="3" height="14" fill={g[1]} opacity="0.8" />
+          <rect x={cx - 20} y={gy - 32} width="3" height="10" fill={g[1]} opacity="0.7" />
+          {/* Smokestacks on building 2 */}
+          <rect x={cx + 2} y={gy - 34} width="3" height="14" fill={g[1]} opacity="0.75" />
+          {/* Smoke puffs */}
+          <ellipse cx={cx - 26.5} cy={gy - 39} rx="5" ry="2.5" fill={g[0]} opacity="0.08" />
+          <ellipse cx={cx - 24} cy={gy - 42} rx="4" ry="2" fill={g[0]} opacity="0.05" />
+          <ellipse cx={cx + 3.5} cy={gy - 37} rx="4.5" ry="2.2" fill={g[0]} opacity="0.07" />
+          {/* Pipes connecting buildings */}
+          <line x1={cx - 10} y1={gy - 16} x2={cx - 4} y2={gy - 14} stroke={g[0]} strokeWidth="1.2" opacity="0.3" />
+          <line x1={cx + 16} y1={gy - 14} x2={cx + 22} y2={gy - 12} stroke={g[0]} strokeWidth="1.2" opacity="0.3" />
+          {/* Garage door */}
+          <rect x={cx + 28} y={gy - 8} width={8} height={8} fill="rgba(0,0,0,0.12)" rx="0.3" />
+        </g>
+      );
+
+    case 'SUBURBS_N':
+      return (
+        <g>
+          {pointedBox(cx - 34, gy, 14, 14, f, s, g[1], 's1')}
+          {pointedBox(cx - 14, gy, 12, 12, f, s, g[1], 's2')}
+          {pointedBox(cx + 4, gy, 15, 16, f, s, g[1], 's3')}
+          {pointedBox(cx + 26, gy, 12, 13, f, s, g[1], 's4')}
+          {/* Trees */}
+          <circle cx={cx - 24} cy={gy - 11} r="6" fill={g[0]} opacity="0.35" />
+          <circle cx={cx - 22} cy={gy - 9} r="4" fill={g[0]} opacity="0.25" />
+          <rect x={cx - 23} y={gy - 5} width="1.2" height="5" fill={g[1]} opacity="0.4" />
+          <circle cx={cx + 20} cy={gy - 13} r="7" fill={g[0]} opacity="0.3" />
+          <circle cx={cx + 22} cy={gy - 11} r="5" fill={g[0]} opacity="0.2" />
+          <rect x={cx + 20.5} y={gy - 6} width="1.2" height="6" fill={g[1]} opacity="0.4" />
+          {/* Fence */}
+          <line x1={cx - 40} y1={gy + 3} x2={cx + 42} y2={gy + 3} stroke={g[0]} strokeWidth="0.3" opacity="0.12" />
+        </g>
+      );
+
+    case 'SUBURBS_S':
+      return (
+        <g>
+          {pointedBox(cx - 30, gy, 12, 12, f, s, g[1], 'ss1')}
+          {pointedBox(cx - 12, gy, 14, 16, f, s, g[1], 'ss2')}
+          {isoBox(cx + 8, gy, 18, 16, f, s, t, 'ss3')}
+          {pointedBox(cx + 30, gy, 12, 14, f, s, g[1], 'ss4')}
+          {/* Community center sign */}
+          <rect x={cx + 10} y={gy - 20} width={14} height={3} fill={g[0]} opacity="0.3" rx="0.5" />
+          {/* Bushes */}
+          <circle cx={cx - 40} cy={gy - 3} r="3.5" fill={g[0]} opacity="0.25" />
+          <circle cx={cx + 44} cy={gy - 3} r="4" fill={g[0]} opacity="0.2" />
+          {/* Path */}
+          <line x1={cx - 30} y1={gy + 2} x2={cx + 42} y2={gy + 2} stroke={g[0]} strokeWidth="0.4" opacity="0.1" strokeDasharray="3 2" />
+        </g>
+      );
+
+    case 'OUTSKIRTS':
+      return (
+        <g>
+          {pointedBox(cx - 24, gy, 16, 16, f, s, g[1], 'out1')}
+          {isoBox(cx, gy, 12, 10, f, s, t, 'out2')}
+          {/* Windmill */}
+          <rect x={cx + 20} y={gy - 26} width="4" height="26" fill={g[0]} opacity="0.7" />
+          <circle cx={cx + 22} cy={gy - 26} r="1.8" fill={g[1]} opacity="0.6" />
+          <line x1={cx + 22} y1={gy - 26} x2={cx + 22} y2={gy - 38} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+          <line x1={cx + 22} y1={gy - 26} x2={cx + 32} y2={gy - 22} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+          <line x1={cx + 22} y1={gy - 26} x2={cx + 12} y2={gy - 22} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+          <line x1={cx + 22} y1={gy - 26} x2={cx + 26} y2={gy - 16} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+          {/* Field lines */}
+          <line x1={cx - 36} y1={gy + 3} x2={cx - 10} y2={gy + 3} stroke={g[0]} strokeWidth="0.3" opacity="0.1" />
+          <line x1={cx - 34} y1={gy + 6} x2={cx - 12} y2={gy + 6} stroke={g[0]} strokeWidth="0.3" opacity="0.08" />
+          <line x1={cx - 32} y1={gy + 9} x2={cx - 14} y2={gy + 9} stroke={g[0]} strokeWidth="0.3" opacity="0.06" />
+          {/* Silo */}
+          <rect x={cx - 8} y={gy - 14} width="5" height="14" fill={g[0]} opacity="0.3" rx="2.5" />
+          <ellipse cx={cx - 5.5} cy={gy - 14} rx="2.5" ry="1.5" fill={g[0]} opacity="0.2" />
+        </g>
+      );
+
+    default:
+      return null;
+  }
+}
+
 // ── Road segments (pairs of district codes for natural adjacencies) ──
 
 const ROADS: [string, string][] = [
@@ -186,7 +543,6 @@ const ROADS: [string, string][] = [
 export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
 
-  // Pre-compute centers for road drawing and icon placement
   const centers = Object.fromEntries(
     DISTRICTS.map((d) => [d.code, getPolygonCenter(d.points)])
   );
@@ -224,23 +580,27 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
           <filter id="fog" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="20" />
           </filter>
-          <filter id="shadow-lift" x="-10%" y="-10%" width="120%" height="130%">
-            <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000" floodOpacity="0.4" />
-          </filter>
 
           {/* ── Per-district gradients ── */}
           {DISTRICTS.map((d) => (
             <linearGradient key={`grad-${d.code}`} id={`grad-${d.code}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={d.gradient[0]} stopOpacity="0.85" />
-              <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.95" />
+              <stop offset="0%" stopColor={d.gradient[0]} stopOpacity="0.7" />
+              <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.85" />
             </linearGradient>
+          ))}
+
+          {/* ── Per-district clip paths ── */}
+          {DISTRICTS.map((d) => (
+            <clipPath key={`clip-${d.code}`} id={`clip-${d.code}`}>
+              <polygon points={d.points} />
+            </clipPath>
           ))}
 
           {/* ── Glass overlay gradient ── */}
           <linearGradient id="glass-overlay" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#fff" stopOpacity="0.12" />
-            <stop offset="50%" stopColor="#fff" stopOpacity="0.03" />
-            <stop offset="100%" stopColor="#000" stopOpacity="0.08" />
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.1" />
+            <stop offset="50%" stopColor="#fff" stopOpacity="0.02" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
           </linearGradient>
 
           {/* ── Background gradient ── */}
@@ -260,13 +620,6 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
             <path d="M 20 0 L 0 0 0 20" fill="none" stroke="hsl(192 50% 30%)" strokeWidth="0.2" opacity="0.08" />
           </pattern>
-
-          {/* ── Noise texture ── */}
-          <filter id="noise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
-            <feColorMatrix type="saturate" values="0" />
-            <feBlend in="SourceGraphic" mode="multiply" />
-          </filter>
         </defs>
 
         {/* ═══ Background layers ═══ */}
@@ -278,32 +631,9 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
           d="M510,80 Q560,90 620,80 L640,80 L640,280 Q600,290 560,270 Q530,250 510,220 Q500,180 510,130 Z"
           fill="url(#water-grad)"
         />
-        <path
-          d="M520,100 Q560,95 600,100"
-          fill="none"
-          stroke="#22D3EE"
-          strokeWidth="0.5"
-          opacity="0.15"
-          className="animate-icon-float"
-        />
-        <path
-          d="M530,130 Q570,125 610,130"
-          fill="none"
-          stroke="#22D3EE"
-          strokeWidth="0.4"
-          opacity="0.1"
-          className="animate-icon-float"
-          style={{ animationDelay: '1s' }}
-        />
-        <path
-          d="M515,200 Q555,195 605,200"
-          fill="none"
-          stroke="#22D3EE"
-          strokeWidth="0.4"
-          opacity="0.1"
-          className="animate-icon-float"
-          style={{ animationDelay: '2s' }}
-        />
+        <path d="M520,100 Q560,95 600,100" fill="none" stroke="#22D3EE" strokeWidth="0.5" opacity="0.15" />
+        <path d="M530,130 Q570,125 610,130" fill="none" stroke="#22D3EE" strokeWidth="0.4" opacity="0.1" />
+        <path d="M515,200 Q555,195 605,200" fill="none" stroke="#22D3EE" strokeWidth="0.4" opacity="0.1" />
 
         {/* ── Green patches (suburbs/university) ── */}
         <ellipse cx="180" cy="130" rx="60" ry="40" fill="#15803D" opacity="0.06" />
@@ -324,7 +654,6 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
             const ca = centers[a];
             const cb = centers[b];
             if (!ca || !cb) return null;
-            // Slight curve for organic feel
             const mx = (ca.x + cb.x) / 2 + (i % 2 === 0 ? 5 : -5);
             const my = (ca.y + cb.y) / 2 + (i % 3 === 0 ? 5 : -3);
             return (
@@ -342,7 +671,7 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
         </g>
 
         {/* ═══ Districts ═══ */}
-        {DISTRICTS.map((d) => {
+        {DISTRICTS.map((d, idx) => {
           const isSelected = selectedCode === d.code;
           const isHovered = hoveredCode === d.code;
           const isActive = isSelected || isHovered;
@@ -357,13 +686,36 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                   fill={d.gradient[0]}
                   opacity="0.35"
                   filter="url(#district-glow)"
+                  className="pointer-events-none"
                 />
               )}
 
-              {/* Main polygon with gradient fill */}
+              {/* Clipped content: gradient background + 3D buildings + glass overlay */}
+              <g clipPath={`url(#clip-${d.code})`} className="pointer-events-none">
+                {/* Background gradient fill */}
+                <polygon
+                  points={d.points}
+                  fill={`url(#grad-${d.code})`}
+                  opacity={isActive ? 0.9 : 0.6}
+                  style={{ transition: 'opacity 300ms ease' }}
+                />
+
+                {/* 3D isometric building scene */}
+                {center && renderDistrictScene(d.code, center.x, center.y, d.gradient)}
+
+                {/* Glass overlay for depth */}
+                <polygon
+                  points={d.points}
+                  fill="url(#glass-overlay)"
+                  opacity={isActive ? 0.6 : 0.35}
+                  style={{ transition: 'opacity 300ms ease' }}
+                />
+              </g>
+
+              {/* Border */}
               <polygon
                 points={d.points}
-                fill={`url(#grad-${d.code})`}
+                fill="none"
                 stroke={
                   isSelected
                     ? 'hsl(192 91% 52%)'
@@ -371,42 +723,39 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                       ? 'hsl(192 70% 45%)'
                       : d.stroke
                 }
-                strokeWidth={isSelected ? 2.5 : isHovered ? 2 : 0.6}
-                opacity={isActive ? 1 : 0.7}
+                strokeWidth={isSelected ? 2.5 : isHovered ? 1.8 : 0.4}
+                className="pointer-events-none"
+                style={{ transition: 'stroke 300ms ease, stroke-width 300ms ease' }}
+              />
+
+              {/* Clickable transparent overlay — catches all mouse/touch events */}
+              <polygon
+                points={d.points}
+                fill="transparent"
                 className="cursor-pointer"
-                style={{
-                  transition:
-                    'opacity 300ms ease, stroke-width 300ms ease, stroke 300ms ease',
-                  filter: isActive ? 'url(#shadow-lift)' : 'none',
-                }}
                 onMouseEnter={() => setHoveredCode(d.code)}
                 onMouseLeave={() => setHoveredCode(null)}
                 onClick={() => onDistrictSelect?.(d)}
               />
 
-              {/* Glass overlay for 3D depth */}
-              <polygon
-                points={d.points}
-                fill="url(#glass-overlay)"
-                className="pointer-events-none"
-                opacity={isActive ? 0.7 : 0.4}
-                style={{ transition: 'opacity 300ms ease' }}
-              />
-
-              {/* District icon */}
+              {/* District icon — positioned via SVG transform, animated via CSS on inner g */}
               {center && (
                 <g
-                  transform={`translate(${center.x - 12}, ${center.y - 16}) scale(${isActive ? 1.15 : 1})`}
-                  className={`pointer-events-none ${isActive ? '' : 'animate-icon-float'}`}
-                  style={{
-                    transformOrigin: `${center.x}px ${center.y - 4}px`,
-                    transition: 'transform 300ms ease',
-                    filter: isActive ? 'url(#icon-glow)' : 'none',
-                    animationDelay: `${(DISTRICTS.indexOf(d) * 0.4) % 3}s`,
-                  }}
-                  opacity={isActive ? 1 : 0.6}
+                  transform={`translate(${center.x - 14}, ${center.y - 22})`}
+                  className="pointer-events-none"
                 >
-                  {DISTRICT_ICONS[d.icon]?.(isActive ? '#fff' : d.gradient[0])}
+                  <g
+                    className={isActive ? '' : 'animate-icon-float'}
+                    style={{
+                      animationDelay: `${(idx * 0.4) % 3}s`,
+                      opacity: isActive ? 1 : 0.7,
+                      filter: isActive ? 'url(#icon-glow)' : 'none',
+                    }}
+                  >
+                    <g style={{ transform: 'scale(1.15)', transformOrigin: '12px 12px' }}>
+                      {DISTRICT_ICONS[d.icon]?.(isActive ? '#fff' : d.gradient[0])}
+                    </g>
+                  </g>
                 </g>
               )}
 
@@ -414,7 +763,7 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
               {center && (
                 <text
                   x={center.x}
-                  y={center.y + 12}
+                  y={center.y + 8}
                   textAnchor="middle"
                   dominantBaseline="central"
                   className="pointer-events-none select-none"
@@ -437,10 +786,15 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
           );
         })}
 
-        {/* ═══ Vignette overlay ═══ */}
-        <rect x="20" y="60" width="620" height="420" fill="url(#bg-radial)" opacity="0.3" style={{ mixBlendMode: 'multiply' }} />
+        {/* ═══ Vignette overlay (pointer-events-none to not block clicks) ═══ */}
+        <rect
+          x="20" y="60" width="620" height="420"
+          fill="url(#bg-radial)" opacity="0.3"
+          style={{ mixBlendMode: 'multiply' }}
+          className="pointer-events-none"
+        />
 
-        {/* ═══ Outer frame ═══ */}
+        {/* ═══ Outer frame (pointer-events-none to not block clicks) ═══ */}
         <rect
           x="20" y="60" width="620" height="420"
           fill="none"
@@ -448,6 +802,7 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
           strokeWidth="0.8"
           opacity="0.2"
           rx="2"
+          className="pointer-events-none"
         />
       </svg>
     </div>
