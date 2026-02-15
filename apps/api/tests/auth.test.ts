@@ -214,4 +214,17 @@ describe('Protected routes', () => {
 
     expect(response.statusCode).toBe(401);
   });
+
+  it('does not bypass auth via path prefix trick (Bug #24/#48)', async () => {
+    // /auth/register is public, but /auth/register/../../actions must NOT be public
+    const response = await server.inject({
+      method: 'GET',
+      url: '/health/../me/state',
+    });
+
+    // Fastify normalises the URL before routing so this should either
+    // 404 (route not found) or 401 (auth required). Either means the
+    // prefix trick did NOT bypass auth.
+    expect([401, 404]).toContain(response.statusCode);
+  });
 });

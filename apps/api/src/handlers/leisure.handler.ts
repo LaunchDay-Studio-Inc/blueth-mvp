@@ -1,4 +1,4 @@
-import { ACTION_TYPES, createLeisureBuff, addVigor, validateNoHardLockouts, ValidationError } from '@blueth/core';
+import { ACTION_TYPES, createLeisureBuff, addVigor, validateNoHardLockouts, ValidationError, ActionConflictError } from '@blueth/core';
 import type { Buff } from '@blueth/core';
 import { LeisurePayloadSchema } from '../schemas/action.schemas';
 import type { LeisurePayload } from '../schemas/action.schemas';
@@ -21,6 +21,9 @@ export const leisureHandler: ActionHandler<LeisurePayload> = {
   },
 
   checkPreconditions(_payload, state) {
+    if (state.sleep_state !== 'awake') {
+      throw new ActionConflictError('Cannot do leisure while sleeping');
+    }
     const vigor = extractVigor(state);
     const { allowed, reason } = validateNoHardLockouts(vigor, 'LEISURE');
     if (!allowed) {

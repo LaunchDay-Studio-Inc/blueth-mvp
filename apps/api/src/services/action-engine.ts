@@ -138,6 +138,15 @@ export async function submitAction(input: SubmitActionInput): Promise<SubmitActi
     if (existing.type !== type) {
       throw new IdempotencyConflictError(idempotencyKey);
     }
+    // Verify payload matches (same key + type but different payload is a conflict).
+    // Canonicalise: strip undefined, sort keys (jsonb reorders keys alphabetically).
+    const canonical = (p: unknown): string => {
+      const obj = JSON.parse(JSON.stringify(p ?? {})) as Record<string, unknown>;
+      return JSON.stringify(obj, Object.keys(obj).sort());
+    };
+    if (canonical(existing.payload) !== canonical(payload)) {
+      throw new IdempotencyConflictError(idempotencyKey);
+    }
     return {
       actionId: existing.action_id,
       status: existing.status,
@@ -271,6 +280,23 @@ export async function resolveActionInTx(
     `UPDATE actions SET status = 'running', started_at = NOW() WHERE action_id = $1`,
     [actionRow.action_id]
   );
+
+  // Re-check preconditions with locked state (state may have changed since submit).
+  // Skip for SLEEP: it sets sleep_state at submit time, so the recheck would self-conflict.
+  if (actionRow.type !== 'SLEEP') {
+    try {
+      handler.checkPreconditions(payload, lockedState);
+    } catch (err) {
+      if (err instanceof DomainError) {
+        await tx.query(
+          `UPDATE actions SET status = 'failed', finished_at = NOW(), result = $2 WHERE action_id = $1`,
+          [actionRow.action_id, JSON.stringify({ error: err.message, code: err.code })]
+        );
+        return null;
+      }
+      throw err;
+    }
+  }
 
   // Get player wallet account_id
   const wallet = await txQueryOne<{ account_id: string }>(

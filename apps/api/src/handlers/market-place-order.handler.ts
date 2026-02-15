@@ -35,7 +35,7 @@ const PlaceOrderPayloadSchema = z.object({
   side: OrderSideSchema,
   orderType: OrderTypeSchema,
   priceCents: z.number().int().positive().optional(),
-  qty: z.number().positive(),
+  qty: z.number().int().positive().max(10000),
   idempotencyKey: z.string().min(1).max(255).optional(),
 });
 

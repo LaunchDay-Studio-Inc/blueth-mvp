@@ -30,6 +30,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (status === 'authenticated') {
+      hasRedirected.current = false;
+    }
+
     if (status === 'unauthenticated' && !hasRedirected.current) {
       hasRedirected.current = true;
       router.replace('/login');

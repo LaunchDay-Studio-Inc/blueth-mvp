@@ -497,3 +497,164 @@ describe('Concurrent idempotency', () => {
     expect(parseInt(rows[0].cnt, 10)).toBe(1);
   });
 });
+
+// ── Bug #32: Sleep state blocks leisure/social-call ──────────
+
+describe('Sleep state blocks (Bug #32)', () => {
+  it('rejects LEISURE while sleeping', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    await submitAction(cookie, {
+      type: 'SLEEP',
+      payload: { hours: 2 },
+      idempotencyKey: 'sleep-block-1',
+    });
+
+    const res = await submitAction(cookie, {
+      type: 'LEISURE',
+      payload: {},
+      idempotencyKey: 'leisure-sleep-1',
+    });
+
+    expect(res.statusCode).toBe(409);
+    const body = JSON.parse(res.body);
+    expect(body.code).toBe('ACTION_CONFLICT');
+  });
+
+  it('rejects SOCIAL_CALL while sleeping', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    await submitAction(cookie, {
+      type: 'SLEEP',
+      payload: { hours: 2 },
+      idempotencyKey: 'sleep-block-2',
+    });
+
+    const res = await submitAction(cookie, {
+      type: 'SOCIAL_CALL',
+      payload: {},
+      idempotencyKey: 'social-sleep-1',
+    });
+
+    expect(res.statusCode).toBe(409);
+    const body = JSON.parse(res.body);
+    expect(body.code).toBe('ACTION_CONFLICT');
+  });
+});
+
+// ── Bug #33: Idempotency payload mismatch ───────────────────
+
+describe('Idempotency payload mismatch (Bug #33)', () => {
+  it('rejects same key with different payload (409)', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    await submitAction(cookie, {
+      type: 'EAT_MEAL',
+      payload: { quality: 'STREET_FOOD' },
+      idempotencyKey: 'payload-mismatch',
+    });
+
+    const res = await submitAction(cookie, {
+      type: 'EAT_MEAL',
+      payload: { quality: 'FINE_DINING' },
+      idempotencyKey: 'payload-mismatch',
+    });
+
+    expect(res.statusCode).toBe(409);
+    const body = JSON.parse(res.body);
+    expect(body.code).toBe('IDEMPOTENCY_CONFLICT');
+  });
+});
+
+// ── Bug #34: Preview validates payload and checks preconditions ─
+
+describe('Preview validation (Bug #34)', () => {
+  it('rejects invalid payload in preview', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    const res = await server.inject({
+      method: 'POST',
+      url: '/actions/preview',
+      headers: authHeaders(cookie),
+      payload: {
+        type: 'SLEEP',
+        payload: { hours: 999 },
+        idempotencyKey: 'preview-invalid',
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('rejects preview of LEISURE while sleeping', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    await submitAction(cookie, {
+      type: 'SLEEP',
+      payload: { hours: 2 },
+      idempotencyKey: 'sleep-preview-1',
+    });
+
+    const res = await server.inject({
+      method: 'POST',
+      url: '/actions/preview',
+      headers: authHeaders(cookie),
+      payload: {
+        type: 'LEISURE',
+        payload: {},
+        idempotencyKey: 'preview-leisure-sleep',
+      },
+    });
+
+    expect(res.statusCode).toBe(409);
+  });
+});
+
+// ── Bug #35: Preview shows meal buff gains ──────────────────
+
+describe('Preview meal buff gains (Bug #35)', () => {
+  it('STREET_FOOD preview shows estimated pv gain from buffs', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    const res = await server.inject({
+      method: 'POST',
+      url: '/actions/preview',
+      headers: authHeaders(cookie),
+      payload: {
+        type: 'EAT_MEAL',
+        payload: { quality: 'STREET_FOOD' },
+        idempotencyKey: 'preview-buff',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    // STREET_FOOD: pv +2/hr * 2hr = 4 estimated gain (vigorDelta is cost-subtracted)
+    expect(body.vigorDelta.pv).toBe(4);
+  });
+});
+
+// ── Bug #36: Meal payment goes to NPC_VENDOR ──────────────────
+
+describe('Meal payment account (Bug #36)', () => {
+  it('meal payment ledger entry goes to NPC_VENDOR (account 5)', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+
+    await submitAction(cookie, {
+      type: 'EAT_MEAL',
+      payload: { quality: 'STREET_FOOD' },
+      idempotencyKey: 'meal-account-1',
+    });
+
+    // Check ledger: most recent PURCHASE entry should have to_account = 5 (NPC_VENDOR)
+    const { rows } = await pool.query(
+      `SELECT le.to_account FROM ledger_entries le
+       JOIN player_wallets pw ON le.from_account = pw.account_id
+       WHERE pw.player_id = $1 AND le.entry_type = 'purchase'
+       ORDER BY le.created_at DESC LIMIT 1`,
+      [playerId]
+    );
+    expect(rows.length).toBe(1);
+    expect(rows[0].to_account).toBe('5'); // NPC_VENDOR
+  });
+});

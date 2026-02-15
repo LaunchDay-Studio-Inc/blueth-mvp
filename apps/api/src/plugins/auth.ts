@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { queryOne } from '@blueth/db';
 
 const SESSION_COOKIE = 'session_id';
-const PUBLIC_PREFIXES = ['/health', '/auth', '/ready'];
+const PUBLIC_PATHS = ['/health', '/health/db', '/auth/register', '/auth/login', '/auth/guest', '/ready'];
 
 function hashToken(raw: string): string {
   return crypto.createHash('sha256').update(raw).digest('hex');
@@ -20,7 +20,7 @@ const authPluginImpl: FastifyPluginAsync = async (server) => {
 
   server.addHook('preHandler', async (request, reply) => {
     // Skip auth for public routes
-    if (PUBLIC_PREFIXES.some((p) => request.url.startsWith(p))) return;
+    if (PUBLIC_PATHS.some((p) => request.url === p || request.url.startsWith(p + '?'))) return;
 
     // 1. Try cookie-based session auth (existing path)
     const sessionId = request.cookies[SESSION_COOKIE];

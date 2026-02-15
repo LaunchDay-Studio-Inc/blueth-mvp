@@ -1,4 +1,4 @@
-import { ACTION_TYPES, createSocialCallInstantDelta, addVigor, validateNoHardLockouts, ValidationError } from '@blueth/core';
+import { ACTION_TYPES, createSocialCallInstantDelta, addVigor, validateNoHardLockouts, ValidationError, ActionConflictError } from '@blueth/core';
 import { SocialCallPayloadSchema } from '../schemas/action.schemas';
 import type { SocialCallPayload } from '../schemas/action.schemas';
 import type { ActionHandler } from './registry';
@@ -20,6 +20,9 @@ export const socialCallHandler: ActionHandler<SocialCallPayload> = {
   },
 
   checkPreconditions(_payload, state) {
+    if (state.sleep_state !== 'awake') {
+      throw new ActionConflictError('Cannot make social calls while sleeping');
+    }
     const vigor = extractVigor(state);
     const { allowed, reason } = validateNoHardLockouts(vigor, 'SOCIAL_CALL');
     if (!allowed) {

@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { SubmitActionSchema } from '../schemas/action.schemas';
 import { submitAction, getActionQueue, getActionHistory, getActionById, resolveAllDue, getQueueEndTime } from '../services/action-engine';
 import { getFullPlayerState } from '../services/player.service';
+import { getHandler, hasHandler } from '../handlers/registry';
 import {
   ValidationError,
   NotFoundError,
@@ -74,8 +75,28 @@ export const actionRoutes: FastifyPluginAsync = async (server) => {
     const playerId = request.player!.id;
     const { type, payload } = parsed.data;
 
+    // Validate type-specific payload (Bug #34)
+    if (!hasHandler(type)) {
+      throw new ValidationError(`Unknown action type: ${type}`);
+    }
+    const handler = getHandler(type);
+    handler.validatePayload(payload);
+
     // Get current state
     const state = await getFullPlayerState(playerId);
+
+    // Check preconditions against current state (Bug #34)
+    const stateForCheck = {
+      pv: state.vigor.pv,
+      mv: state.vigor.mv,
+      sv: state.vigor.sv,
+      cv: state.vigor.cv,
+      spv: state.vigor.spv,
+      sleep_state: state.sleepState,
+      meal_day_count: state.mealsEatenToday,
+    } as Parameters<typeof handler.checkPreconditions>[1];
+    handler.checkPreconditions(payload, stateForCheck);
+
     const queueEndTime = await getQueueEndTime(playerId);
 
     const vigor = state.vigor;
@@ -102,8 +123,21 @@ export const actionRoutes: FastifyPluginAsync = async (server) => {
         const quality = ((payload as Record<string, unknown>)?.quality as string ?? 'STREET_FOOD') as MealQuality;
         moneyCostCents = MEAL_PRICES_CENTS[quality] ?? 300;
         const mealDef = MEAL_DEFINITIONS[quality];
-        if (mealDef?.instantDelta) {
-          vigorGain = { ...mealDef.instantDelta };
+        if (mealDef) {
+          // Estimate total buff gain: perHourBonus * durationHours + instantDelta
+          const estimated: Partial<VigorDimension> = {};
+          if (mealDef.perHourBonusByDim) {
+            for (const [k, v] of Object.entries(mealDef.perHourBonusByDim)) {
+              const dimDuration = mealDef.perDimDurationOverrides?.[k as keyof VigorDimension] ?? mealDef.durationHours;
+              estimated[k as keyof VigorDimension] = (estimated[k as keyof VigorDimension] ?? 0) + v * dimDuration;
+            }
+          }
+          if (mealDef.instantDelta) {
+            for (const [k, v] of Object.entries(mealDef.instantDelta)) {
+              estimated[k as keyof VigorDimension] = (estimated[k as keyof VigorDimension] ?? 0) + v;
+            }
+          }
+          vigorGain = estimated;
         }
         durationSeconds = 0;
         break;

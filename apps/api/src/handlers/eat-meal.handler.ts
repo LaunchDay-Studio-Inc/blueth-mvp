@@ -66,7 +66,7 @@ export const eatMealHandler: ActionHandler<EatMealPayload> = {
       await transferCents(
         ctx.tx,
         ctx.playerAccountId,
-        SYSTEM_ACCOUNTS.BILL_PAYMENT_SINK,
+        SYSTEM_ACCOUNTS.NPC_VENDOR,
         costCents,
         LEDGER_ENTRY_TYPES.PURCHASE,
         ctx.actionId,

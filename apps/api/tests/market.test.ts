@@ -814,3 +814,35 @@ describe('Market order rate limit (Bug #13)', () => {
     expect(body.error).toContain('Rate limit');
   });
 });
+
+// ── Bug #39/#40: Order qty validation ────────────────────────
+
+describe('Order qty validation (Bug #39, #40)', () => {
+  it('rejects fractional qty', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'market',
+      qty: 2.5,
+      idempotencyKey: 'frac-qty-1',
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('rejects qty exceeding 10 000', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'market',
+      qty: 10001,
+      idempotencyKey: 'max-qty-1',
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+});

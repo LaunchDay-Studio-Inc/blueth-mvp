@@ -506,8 +506,13 @@ export interface CompleteJobResult {
   jobId: string;
   businessId: string;
   recipeCode: string;
-  outputsProduced: Array<{ goodCode: string; qty: number }>;
+  outputsProduced: Array<{
+    goodCode: string;
+    qty: number;
+  }>;
   wasteDisposalFeeCents: number;
+  wasteFeePaidCents: number;
+  wasteFeeUnpaidCents: number;
   machineryDepreciation: number;
   newMachineryQty: number;
 }
@@ -585,20 +590,24 @@ export async function completeProductionJob(
 
   // Waste disposal fee
   const wasteDisposalFeeCents = calculateWasteDisposalFee(wasteQty);
+  let wasteFeePaidCents = 0;
+  let wasteFeeUnpaidCents = 0;
   if (wasteDisposalFeeCents > 0 && biz.account_id) {
     const bizBalance = await getBalanceInTx(tx, biz.account_id);
-    if (bizBalance >= wasteDisposalFeeCents) {
+    const payable = Math.min(wasteDisposalFeeCents, bizBalance);
+    if (payable > 0) {
       await transferCents(
         tx,
         biz.account_id,
         SYSTEM_ACCOUNTS.BILL_PAYMENT_SINK,
-        wasteDisposalFeeCents,
+        payable,
         LEDGER_ENTRY_TYPES.WASTE_DISPOSAL,
         null,
         `Waste disposal: ${wasteQty} units from ${recipe.code}`
       );
+      wasteFeePaidCents = payable;
     }
-    // If business can't afford disposal, skip (waste still produced but fee deferred)
+    wasteFeeUnpaidCents = wasteDisposalFeeCents - payable;
   }
 
   // Machinery depreciation
@@ -618,6 +627,8 @@ export async function completeProductionJob(
     recipeCode: recipe.code,
     outputsProduced,
     wasteDisposalFeeCents,
+    wasteFeePaidCents,
+    wasteFeeUnpaidCents,
     machineryDepreciation: machineryDep,
     newMachineryQty,
   };
