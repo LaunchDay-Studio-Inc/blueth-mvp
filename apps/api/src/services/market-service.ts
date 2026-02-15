@@ -465,7 +465,7 @@ async function matchOrder(
         if (isBuy) {
           break;
         } else {
-          skippedOrderIds.push(counterOrder.id);
+          skippedOrderIds.push(counterOrder.order_id);
           continue;
         }
       }
