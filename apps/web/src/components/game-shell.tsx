@@ -9,7 +9,6 @@ import { VigorBar } from './vigor-bar';
 import { MoneyDisplay } from './money-display';
 import { DailyResetTimer } from './daily-reset-timer';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Map, Heart, Wallet, Receipt, Briefcase, UtensilsCrossed,
@@ -39,10 +38,10 @@ export function GameShell({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen game-gradient">
         <div className="space-y-4 text-center">
-          <Skeleton className="h-8 w-48 mx-auto" />
-          <Skeleton className="h-4 w-32 mx-auto" />
+          <Skeleton className="h-8 w-48 mx-auto bg-muted/40" />
+          <Skeleton className="h-4 w-32 mx-auto bg-muted/30" />
         </div>
       </div>
     );
@@ -51,24 +50,24 @@ export function GameShell({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen game-gradient">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 border-b border-border/40 bg-card/70 backdrop-blur-md">
         <div className="flex h-14 items-center px-4 gap-4">
           <button
-            className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
-          <Link href="/city" className="font-bold text-primary hidden sm:block">
-            Blueth City
+          <Link href="/city" className="font-bold tracking-tight hidden sm:block neon-text text-sm">
+            BLUETH CITY
           </Link>
 
-          <Separator orientation="vertical" className="h-6 hidden sm:block" />
+          <div className="hidden sm:block h-4 w-px bg-border/40" />
 
-          <span className="text-sm text-muted-foreground hidden md:block">{user.username}</span>
+          <span className="text-xs text-muted-foreground hidden md:block font-mono">{user.username}</span>
 
           <div className="flex-1" />
 
@@ -94,27 +93,30 @@ export function GameShell({ children }: { children: React.ReactNode }) {
               const dot = pct > 60 ? 'bg-green-500' : pct > 20 ? 'bg-yellow-500' : 'bg-red-500';
               return (
                 <span key={key} className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                  <span className={cn('inline-block h-1.5 w-1.5 rounded-full', dot)} />
+                  <span
+                    className={cn('inline-block h-1.5 w-1.5 rounded-full', dot)}
+                    style={{ boxShadow: pct <= 20 ? '0 0 4px hsl(0 80% 50%)' : 'none' }}
+                  />
                   {val}
                 </span>
               );
             })}
           </div>
 
-          <Separator orientation="vertical" className="h-6 hidden md:block" />
+          <div className="hidden md:block h-4 w-px bg-border/40" />
 
           <MoneyDisplay cents={user.balanceCents} size="sm" />
 
-          <Separator orientation="vertical" className="h-6 hidden md:block" />
+          <div className="hidden md:block h-4 w-px bg-border/40" />
 
           <ActionQueueDropdown />
 
-          <Separator orientation="vertical" className="h-6 hidden md:block" />
+          <div className="hidden md:block h-4 w-px bg-border/40" />
           <div className="hidden md:block">
             <DailyResetTimer />
           </div>
 
-          <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="min-h-[44px] min-w-[44px]">
+          <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -122,17 +124,17 @@ export function GameShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex">
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex w-56 flex-col border-r min-h-[calc(100vh-3.5rem)] p-2">
-          <nav className="space-y-1">
+        <aside className="hidden lg:flex w-52 flex-col border-r border-border/30 min-h-[calc(100vh-3.5rem)] p-2 bg-card/30">
+          <nav className="space-y-0.5">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 min-h-[44px] text-sm transition-colors',
+                  'flex items-center gap-3 rounded-lg px-3 py-2 min-h-[40px] text-sm transition-all',
                   pathname === item.href
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    ? 'bg-primary/10 text-primary font-medium neon-border'
+                    : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground',
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -145,19 +147,19 @@ export function GameShell({ children }: { children: React.ReactNode }) {
         {/* Mobile sidebar overlay */}
         {mobileOpen && (
           <div className="fixed inset-0 z-30 lg:hidden">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-            <aside className="absolute left-0 top-14 bottom-0 w-64 bg-background border-r p-2 overflow-y-auto">
-              <nav className="space-y-1">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+            <aside className="absolute left-0 top-14 bottom-0 w-64 bg-card/95 backdrop-blur-md border-r border-border/30 p-2 overflow-y-auto animate-slide-up">
+              <nav className="space-y-0.5">
                 {NAV_ITEMS.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 min-h-[44px] text-sm transition-colors',
+                      'flex items-center gap-3 rounded-lg px-3 py-2 min-h-[44px] text-sm transition-all',
                       pathname === item.href
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                        ? 'bg-primary/10 text-primary font-medium neon-border'
+                        : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground',
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -176,16 +178,17 @@ export function GameShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/30 bg-card/80 backdrop-blur-md lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-around py-1">
           {NAV_ITEMS.slice(0, 5).map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-2 text-xs',
+                'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-2 text-xs transition-colors',
                 pathname === item.href ? 'text-primary' : 'text-muted-foreground',
               )}
+              style={pathname === item.href ? { textShadow: '0 0 8px hsl(192 91% 52% / 0.5)' } : undefined}
             >
               <item.icon className="h-4 w-4" />
               <span>{item.label}</span>

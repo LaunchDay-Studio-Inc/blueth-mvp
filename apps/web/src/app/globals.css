@@ -3,27 +3,34 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Dark-first theme: neon-blue / teal accents ── */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --background: 222 47% 6%;
+    --foreground: 210 20% 90%;
+    --card: 222 44% 8%;
+    --card-foreground: 210 20% 90%;
+    --popover: 222 44% 8%;
+    --popover-foreground: 210 20% 90%;
+    --primary: 192 91% 52%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 220 30% 14%;
+    --secondary-foreground: 210 20% 82%;
+    --muted: 220 25% 12%;
+    --muted-foreground: 215 16% 52%;
+    --accent: 192 72% 18%;
+    --accent-foreground: 192 91% 72%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 20% 16%;
+    --input: 220 20% 16%;
+    --ring: 192 91% 52%;
     --radius: 0.5rem;
+
+    /* ── Custom tokens ── */
+    --neon: 192 91% 52%;
+    --neon-glow: 0 0 12px hsl(192 91% 52% / 0.5);
+    --neon-glow-strong: 0 0 20px hsl(192 91% 52% / 0.6), 0 0 40px hsl(192 91% 52% / 0.2);
+    --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
   }
 }
 
@@ -31,6 +38,7 @@
   html {
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
+    color-scheme: dark;
   }
   * {
     @apply border-border;
@@ -39,5 +47,71 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     padding-bottom: env(safe-area-inset-bottom);
+    background-image: var(--surface-noise);
+    background-repeat: repeat;
   }
 }
+
+/* ── Utility classes ── */
+@layer utilities {
+  .neon-text {
+    color: hsl(var(--neon));
+    text-shadow: var(--neon-glow);
+  }
+  .neon-border {
+    border-color: hsl(var(--neon) / 0.4);
+    box-shadow: var(--neon-glow);
+  }
+  .neon-glow-strong {
+    box-shadow: var(--neon-glow-strong);
+  }
+  .game-gradient {
+    background: linear-gradient(
+      180deg,
+      hsl(222 47% 4%) 0%,
+      hsl(222 47% 8%) 40%,
+      hsl(220 40% 10%) 100%
+    );
+  }
+  .skyline-gradient {
+    background: linear-gradient(
+      180deg,
+      hsl(222 60% 3%) 0%,
+      hsl(222 50% 6%) 30%,
+      hsl(192 40% 8%) 60%,
+      hsl(192 50% 12%) 100%
+    );
+  }
+}
+
+/* ── Animations ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes pulse-neon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.6; }
+  94% { opacity: 1; }
+  96% { opacity: 0.8; }
+  97% { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-pulse-neon { animation: pulse-neon 2s ease-in-out infinite; }
+.animate-flicker { animation: flicker 4s linear infinite; }
+.animate-slide-up { animation: slide-up 0.5s ease-out both; }
+.animate-fade-in { animation: fade-in 0.4s ease-out both; }

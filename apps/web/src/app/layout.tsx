@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Blueth City',
-  description: 'Clickable Map RPG Simulator',
+  description: 'City life sim — hustle, survive, thrive.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -25,7 +25,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#3b82f6',
+  themeColor: '#0d1117',
 };
 
 export default function RootLayout({
