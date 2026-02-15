@@ -132,12 +132,12 @@ test.describe('Mobile smoke — 360 × 800', () => {
     expect(overflows).toBe(false);
   });
 
-  test('viewport meta prevents double-tap zoom', async ({ page }) => {
+  test('viewport meta allows pinch zoom', async ({ page }) => {
     await page.goto('/login');
     await page.waitForTimeout(1000);
 
     const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
-    expect(viewport).toContain('maximum-scale=1');
+    expect(viewport).toContain('maximum-scale=5');
     expect(viewport).toContain('width=device-width');
   });
 });

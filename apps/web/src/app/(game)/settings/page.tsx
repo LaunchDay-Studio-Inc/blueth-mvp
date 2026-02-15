@@ -5,13 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, apiLog, ApiError } from '@/lib/api';
 import { queryKeys } from '@/lib/queries';
+import { useAccessibility } from '@/hooks/use-accessibility';
+import { useTutorial } from '@/hooks/use-tutorial';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const IS_DEV = process.env.NODE_ENV === 'development';
+
+const TEXT_SIZE_OPTIONS: Array<{ value: 100 | 110 | 125; label: string }> = [
+  { value: 100, label: '100%' },
+  { value: 110, label: '110%' },
+  { value: 125, label: '125%' },
+];
 
 export default function SettingsPage() {
   const { user, isGuest, resetToken } = useAuth();
@@ -19,6 +28,8 @@ export default function SettingsPage() {
   const [tokenResetMsg, setTokenResetMsg] = useState('');
   const [ffMsg, setFfMsg] = useState('');
   const [ffLoading, setFfLoading] = useState(false);
+  const { prefs, setReduceMotion, setTextSize, setHighContrast, setEnhancedFocus } = useAccessibility();
+  const tutorial = useTutorial();
 
   const { isError: apiDown } = useQuery({
     queryKey: ['health'],
@@ -97,6 +108,91 @@ export default function SettingsPage() {
             <span className="text-muted-foreground">Player ID:</span>
             <span className="font-mono text-xs">{user.playerId}</span>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Accessibility */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Accessibility</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between min-h-[44px]">
+            <div>
+              <p className="text-sm font-medium">Reduce motion</p>
+              <p className="text-xs text-muted-foreground">Disable animations and transitions</p>
+            </div>
+            <Switch
+              checked={prefs.reduceMotion}
+              onCheckedChange={setReduceMotion}
+              aria-label="Reduce motion"
+            />
+          </div>
+
+          <div className="flex items-center justify-between min-h-[44px]">
+            <div>
+              <p className="text-sm font-medium">Text size</p>
+              <p className="text-xs text-muted-foreground">Scale UI text for readability</p>
+            </div>
+            <div className="flex gap-1">
+              {TEXT_SIZE_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  variant={prefs.textSize === opt.value ? 'default' : 'outline'}
+                  size="sm"
+                  className="min-h-[36px] min-w-[48px] text-xs"
+                  onClick={() => setTextSize(opt.value)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between min-h-[44px]">
+            <div>
+              <p className="text-sm font-medium">High contrast</p>
+              <p className="text-xs text-muted-foreground">Increase text and border contrast</p>
+            </div>
+            <Switch
+              checked={prefs.highContrast}
+              onCheckedChange={setHighContrast}
+              aria-label="High contrast"
+            />
+          </div>
+
+          <div className="flex items-center justify-between min-h-[44px]">
+            <div>
+              <p className="text-sm font-medium">Enhanced focus outlines</p>
+              <p className="text-xs text-muted-foreground">Larger, more visible focus indicators</p>
+            </div>
+            <Switch
+              checked={prefs.enhancedFocus}
+              onCheckedChange={setEnhancedFocus}
+              aria-label="Enhanced focus outlines"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tutorial */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Getting Started Guide</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {tutorial.allComplete
+              ? 'You\'ve completed all getting-started steps.'
+              : `${tutorial.state.completed.length} of ${tutorial.steps.length} steps completed.`}
+          </p>
+          <Button
+            variant="outline"
+            className="min-h-[44px]"
+            onClick={tutorial.reset}
+          >
+            Restart Getting Started Guide
+          </Button>
         </CardContent>
       </Card>
 

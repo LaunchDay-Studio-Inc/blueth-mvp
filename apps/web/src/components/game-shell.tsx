@@ -16,10 +16,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Map, Heart, Wallet, Receipt, Briefcase, UtensilsCrossed,
   Smile, TrendingUp, Building2, LayoutDashboard, LogOut, Menu, X, Settings,
-  Ellipsis,
+  Ellipsis, BookOpen,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ActionQueueDropdown } from './action-queue-dropdown';
+import { TutorialChecklist } from './tutorial-checklist';
 
 const NAV_ITEMS = [
   { href: '/city', label: 'City Map', icon: Map },
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: '/business', label: 'Business', icon: Building2 },
   { href: '/summary', label: 'Summary', icon: LayoutDashboard },
   { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/almanac', label: 'Almanac', icon: BookOpen },
 ];
 
 export function GameShell({ children }: { children: React.ReactNode }) {
@@ -240,6 +242,9 @@ export function GameShell({ children }: { children: React.ReactNode }) {
       {/* Stat breakdown modals */}
       <StatDetailModal dimension={openStat} onClose={() => setOpenStat(null)} user={user} />
       <CashDetailModal open={cashOpen} onClose={() => setCashOpen(false)} user={user} />
+
+      {/* First-run tutorial */}
+      <TutorialChecklist />
     </div>
   );
 }

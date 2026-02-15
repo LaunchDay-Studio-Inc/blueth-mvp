@@ -166,7 +166,7 @@
 .animate-slide-up { animation: slide-up 0.5s ease-out both; }
 .animate-fade-in { animation: fade-in 0.4s ease-out both; }
 
-/* ── Accessibility: reduced motion ── */
+/* ── Accessibility: reduced motion (OS-level) ── */
 @media (prefers-reduced-motion: reduce) {
   .animate-float,
   .animate-pulse-neon,
@@ -177,4 +177,43 @@
     animation: none !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Accessibility: app-level reduce motion (Settings toggle) ── */
+html[data-reduce-motion="true"] .animate-float,
+html[data-reduce-motion="true"] .animate-pulse-neon,
+html[data-reduce-motion="true"] .animate-flicker,
+html[data-reduce-motion="true"] .animate-slide-up,
+html[data-reduce-motion="true"] .animate-fade-in,
+html[data-reduce-motion="true"] .glass-btn-motion,
+html[data-reduce-motion="true"] .animate-spin {
+  animation: none !important;
+  transition-duration: 0.01ms !important;
+}
+html[data-reduce-motion="true"] [class*="animate-in"],
+html[data-reduce-motion="true"] [class*="animate-out"] {
+  animation: none !important;
+}
+
+/* ── Accessibility: high contrast ── */
+html[data-high-contrast="true"] {
+  --muted-foreground: 215 16% 72%;
+  --text-secondary: 215 16% 80%;
+  --text-tertiary: 215 12% 65%;
+}
+html[data-high-contrast="true"] .glass-surface {
+  border-color: hsl(var(--glass-border) / 0.20);
+}
+html[data-high-contrast="true"] .glass-elevated {
+  border-color: hsl(var(--glass-border) / 0.25);
+}
+html[data-high-contrast="true"] .glass-inset {
+  border-color: hsl(var(--glass-border) / 0.15);
+}
+
+/* ── Accessibility: enhanced keyboard focus ── */
+html[data-focus-enhanced="true"] *:focus-visible {
+  outline: 3px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px hsl(var(--ring) / 0.3) !important;
 }
