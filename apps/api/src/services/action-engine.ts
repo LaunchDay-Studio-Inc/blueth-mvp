@@ -399,6 +399,21 @@ export async function getActionQueue(playerId: string): Promise<ActionRow[]> {
 }
 
 /**
+ * Get recent completed/failed actions (history) for display.
+ * Returns last N actions ordered by most recent finished first.
+ */
+export async function getActionHistory(playerId: string, limit = 20): Promise<ActionRow[]> {
+  return query<ActionRow>(
+    `SELECT * FROM actions
+     WHERE player_id = $1
+     AND status IN ('completed', 'failed')
+     ORDER BY finished_at DESC NULLS LAST
+     LIMIT $2`,
+    [playerId, limit]
+  );
+}
+
+/**
  * Get the queue end time (when the last queued action completes).
  * Used for projection calculations.
  */

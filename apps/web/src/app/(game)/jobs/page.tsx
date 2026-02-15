@@ -12,11 +12,10 @@ import {
   calculateShiftPay,
   calculatePerformance,
   canAffordVigorCost,
-  formatBlueth,
   type ShiftDuration,
   type VigorDimension,
 } from '@blueth/core';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Info } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const SHIFTS: ShiftDuration[] = ['short', 'full'];
@@ -44,6 +43,14 @@ export default function JobsPage() {
       <p className="text-sm text-muted-foreground">
         Choose a job and shift duration. Pay depends on your skills and vigor.
       </p>
+
+      <div className="flex items-start gap-2 p-3 rounded-md bg-muted text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0 mt-0.5" />
+        <span>
+          Clicking <strong>Go</strong> queues the shift. Pay and vigor costs apply when the shift
+          completes (after the duration elapses). Check the Queue in the top bar to track progress.
+        </span>
+      </div>
 
       <div className="grid gap-4">
         {JOBS_CATALOG.map((job) => {
@@ -74,9 +81,10 @@ export default function JobsPage() {
                       <ActionCard
                         key={shift}
                         title={`${shift === 'short' ? 'Short' : 'Full'} Shift`}
-                        description={`${hours}h — Est. pay: ${formatBlueth(pay)}`}
+                        description={`${hours}h — Completes in ${hours} hour${hours > 1 ? 's' : ''}`}
                         icon={Briefcase}
                         vigorCost={vigorCost}
+                        moneyGainCents={pay}
                         duration={`${hours}h`}
                         disabled={!affordable}
                         loading={submitAction.isPending}

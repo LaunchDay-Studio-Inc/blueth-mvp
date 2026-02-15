@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { SubmitActionSchema } from '../schemas/action.schemas';
-import { submitAction, getActionQueue, getActionById, resolveAllDue, getQueueEndTime } from '../services/action-engine';
+import { submitAction, getActionQueue, getActionHistory, getActionById, resolveAllDue, getQueueEndTime } from '../services/action-engine';
 import { getFullPlayerState } from '../services/player.service';
 import {
   ValidationError,
@@ -175,6 +175,16 @@ export const actionRoutes: FastifyPluginAsync = async (server) => {
     const playerId = request.player!.id;
     await resolveAllDue(playerId);
     return getActionQueue(playerId);
+  });
+
+  /**
+   * GET /actions/history
+   * List recent completed/failed actions for the authenticated player.
+   */
+  server.get('/history', async (request) => {
+    const playerId = request.player!.id;
+    await resolveAllDue(playerId);
+    return getActionHistory(playerId);
   });
 
   /**
