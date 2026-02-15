@@ -48,7 +48,8 @@ describe('useSubmitAction feedback', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(toastMock.success).toHaveBeenCalledWith('Queued: Work shift');
+    // No durationSeconds/scheduledFor in response → instant completion toast
+    expect(toastMock.success).toHaveBeenCalledWith('Work shift completed');
   });
 
   it('shows error toast on API error', async () => {
