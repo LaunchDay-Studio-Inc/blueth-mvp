@@ -20,8 +20,12 @@ COPY apps/web/ ./apps/web/
 RUN pnpm --filter @blueth/core build
 
 # NEXT_PUBLIC_* vars are inlined at build time by Next.js
-ARG NEXT_PUBLIC_API_URL=http://localhost:3001
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+# API_INTERNAL_URL is used server-side only for Next.js rewrites
+ARG API_INTERNAL_URL=http://api:3001
+ENV API_INTERNAL_URL=${API_INTERNAL_URL}
 
 RUN pnpm --filter @blueth/web build
 
@@ -44,5 +48,9 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV NODE_ENV=production
+
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=${GIT_COMMIT}
 
 CMD ["node", "apps/web/server.js"]

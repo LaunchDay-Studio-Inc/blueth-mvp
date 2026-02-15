@@ -54,6 +54,9 @@ RUN pnpm install --frozen-lockfile --prod
 USER blueth
 EXPOSE 3001
 
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=${GIT_COMMIT}
+
 # Default: run API server. Override for workers/migration:
 #   scheduler: node apps/api/dist/workers/scheduler.js
 #   tick:      node apps/api/dist/workers/tick.js

@@ -37,12 +37,19 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # -- Migrations (one-shot) --
   migrate:
     build:
       context: ..
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     command: ['node', 'packages/db/dist/migrate.js']
     environment:
       DATABASE_URL: postgres://${DB_USER:?Set DB_USER}:${DB_PASSWORD:?Set DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
@@ -52,37 +59,52 @@ services:
     networks:
       - blueth-net
     restart: 'no'
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # -- API Server --
   api:
     build:
       context: ..
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
       PORT: ${PORT:-3001}
       HOST: 0.0.0.0
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*.sslip.io}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     depends_on:
       migrate:
         condition: service_completed_successfully
     networks:
       - blueth-net
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:${PORT:-3001}/health']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:${PORT:-3001}/health']
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # -- Scheduler Worker --
   scheduler:
     build:
       context: ..
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     command: ['node', 'apps/api/dist/workers/scheduler.js']
     restart: unless-stopped
     environment:
@@ -90,17 +112,25 @@ services:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
       SCHEDULER_POLL_MS: ${SCHEDULER_POLL_MS:-5000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     depends_on:
       migrate:
         condition: service_completed_successfully
     networks:
       - blueth-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # -- Tick Worker (SINGLE INSTANCE ONLY) --
   tick:
     build:
       context: ..
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     command: ['node', 'apps/api/dist/workers/tick.js']
     restart: unless-stopped
     environment:
@@ -108,6 +138,7 @@ services:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@cloudsql-proxy:5432/${DB_NAME:-blueth_city}
       TICK_POLL_MS: ${TICK_POLL_MS:-10000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -115,6 +146,11 @@ services:
       - blueth-net
     deploy:
       replicas: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # -- Caddy Reverse Proxy (HTTPS) --
   caddy:
@@ -126,6 +162,7 @@ services:
       - '443:443/udp'
     environment:
       API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN (e.g. api.yourdomain.com or api.34.42.121.95.sslip.io)}
+      WEB_DOMAIN: ${WEB_DOMAIN:-${API_DOMAIN}}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -135,6 +172,11 @@ services:
         condition: service_healthy
     networks:
       - blueth-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
 networks:
   blueth-net:

@@ -1,16 +1,17 @@
 import { FastifyPluginAsync } from 'fastify';
 import { pool } from '@blueth/db';
+import { APP_VERSION, GIT_COMMIT } from '../version';
 
 export const healthRoutes: FastifyPluginAsync = async (server) => {
   server.get('/', async (_request, _reply) => {
-    const health = {
+    return {
       status: 'ok',
+      version: APP_VERSION,
+      commit: GIT_COMMIT,
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
     };
-
-    return health;
   });
 
   server.get('/db', async (_request, reply) => {

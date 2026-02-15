@@ -8,7 +8,7 @@ interface ConfigIssue {
   message: string;
 }
 
-function maskDatabaseUrl(url: string): string {
+export function maskDatabaseUrl(url: string): string {
   try {
     return url.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
   } catch {

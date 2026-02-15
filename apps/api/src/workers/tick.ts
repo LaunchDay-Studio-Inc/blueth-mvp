@@ -48,6 +48,19 @@ async function main(): Promise<void> {
 process.on('SIGTERM', () => { running = false; });
 process.on('SIGINT', () => { running = false; });
 
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection', { error: String(reason) });
+  // Keep alive — do not exit
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception — exiting', {
+    error: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  });
+  process.exit(1);
+});
+
 main()
   .catch((err) => {
     logger.error('Fatal error', { error: String(err) });

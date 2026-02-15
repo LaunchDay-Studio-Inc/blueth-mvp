@@ -3,7 +3,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import * as dotenv from 'dotenv';
-import { closePool } from '@blueth/db';
+import { closePool, pool } from '@blueth/db';
 import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { playerRoutes } from './routes/player';
@@ -13,7 +13,8 @@ import { businessRoutes } from './routes/business';
 import { authPlugin } from './plugins/auth';
 import { errorHandlerPlugin } from './plugins/error-handler';
 import { registerAllHandlers } from './handlers/register-all';
-import { validateConfig } from './config';
+import { validateConfig, maskDatabaseUrl } from './config';
+import { APP_VERSION, GIT_COMMIT } from './version';
 
 dotenv.config();
 
@@ -68,7 +69,20 @@ export async function buildServer() {
   // 3. Error handler (DomainError-aware)
   await server.register(errorHandlerPlugin);
 
-  // 4. Routes
+  // 4. Top-level readiness probe (skips auth via PUBLIC_PREFIXES)
+  server.get('/ready', async (_request, reply) => {
+    try {
+      await pool.query('SELECT 1');
+      return reply.send({ status: 'ready' });
+    } catch (err) {
+      return reply.status(503).send({
+        status: 'not_ready',
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
+  // 5. Routes
   await server.register(healthRoutes, { prefix: '/health' });
   await server.register(authRoutes, { prefix: '/auth' });
   await server.register(playerRoutes, { prefix: '/me' });
@@ -76,7 +90,7 @@ export async function buildServer() {
   await server.register(marketRoutes, { prefix: '/market' });
   await server.register(businessRoutes, { prefix: '/business' });
 
-  // 5. Register all action handlers
+  // 6. Register all action handlers
   registerAllHandlers();
 
   return server;
@@ -89,8 +103,16 @@ async function start() {
 
     await server.listen({ port: PORT, host: HOST });
 
-    server.log.info(`Blueth City API running at http://${HOST}:${PORT}`);
-    server.log.info(`Environment: ${NODE_ENV}`);
+    const dbUrl = process.env.DATABASE_URL || '(not set)';
+    server.log.info({
+      msg: 'Blueth City API started',
+      version: APP_VERSION,
+      commit: GIT_COMMIT,
+      nodeEnv: NODE_ENV,
+      host: HOST,
+      port: PORT,
+      dbHost: maskDatabaseUrl(dbUrl),
+    });
 
     // Graceful shutdown
     const shutdown = async () => {
@@ -102,6 +124,17 @@ async function start() {
 
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
+
+    // Crash handlers
+    process.on('unhandledRejection', (reason) => {
+      server.log.error({ msg: 'Unhandled rejection', error: String(reason) });
+      // Keep alive — do not exit
+    });
+
+    process.on('uncaughtException', (err) => {
+      server.log.error({ msg: 'Uncaught exception — exiting', error: err.message, stack: err.stack });
+      process.exit(1);
+    });
   } catch (err) {
     console.error('Failed to start server:', err);
     process.exit(1);

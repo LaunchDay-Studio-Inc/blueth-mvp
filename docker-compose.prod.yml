@@ -16,12 +16,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # ── Migrations (one-shot) ────────────────────────────────────
   migrate:
     build:
       context: .
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     command: ['node', 'packages/db/dist/migrate.js']
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -29,12 +36,19 @@ services:
       postgres:
         condition: service_healthy
     restart: 'no'
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # ── API Server ───────────────────────────────────────────────
   api:
     build:
       context: .
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -43,23 +57,31 @@ services:
       HOST: 0.0.0.0
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     ports:
       - '${PORT:-3001}:${PORT:-3001}'
     depends_on:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:${PORT:-3001}/health']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:${PORT:-3001}/health']
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # ── Scheduler Worker ─────────────────────────────────────────
   scheduler:
     build:
       context: .
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     command: ['node', 'apps/api/dist/workers/scheduler.js']
     restart: unless-stopped
     environment:
@@ -67,9 +89,15 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       SCHEDULER_POLL_MS: ${SCHEDULER_POLL_MS:-5000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     depends_on:
       migrate:
         condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # ── Tick Worker ──────────────────────────────────────────────
   # WARNING: Run exactly ONE tick worker instance.
@@ -79,6 +107,8 @@ services:
     build:
       context: .
       dockerfile: ./apps/api/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     command: ['node', 'apps/api/dist/workers/tick.js']
     restart: unless-stopped
     environment:
@@ -86,11 +116,17 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       TICK_POLL_MS: ${TICK_POLL_MS:-10000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     depends_on:
       migrate:
         condition: service_completed_successfully
     deploy:
       replicas: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # ── Web (Next.js) ────────────────────────────────────────────
   web:
@@ -98,12 +134,54 @@ services:
       context: .
       dockerfile: ./apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_API_URL: ''
+        API_INTERNAL_URL: http://api:3001
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     ports:
       - '${WEB_PORT:-3000}:3000'
     depends_on:
       - api
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:3000/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # ── Caddy Reverse Proxy ────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-api.localhost}
+      WEB_DOMAIN: ${WEB_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

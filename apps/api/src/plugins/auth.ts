@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { queryOne } from '@blueth/db';
 
 const SESSION_COOKIE = 'session_id';
-const PUBLIC_PREFIXES = ['/health', '/auth'];
+const PUBLIC_PREFIXES = ['/health', '/auth', '/ready'];
 
 function hashToken(raw: string): string {
   return crypto.createHash('sha256').update(raw).digest('hex');

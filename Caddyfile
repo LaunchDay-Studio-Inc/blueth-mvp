@@ -1,0 +1,16 @@
+# Caddyfile — Blueth City reverse proxy
+#
+# Used by docker-compose.prod.yml (self-hosted) and deploy/docker-compose.cloud.yml.
+# Caddy auto-provisions TLS certificates via Let's Encrypt.
+#
+# Environment variables (set in docker-compose or .env):
+#   API_DOMAIN  — e.g. api.34.42.121.95.sslip.io
+#   WEB_DOMAIN  — e.g. 34.42.121.95.sslip.io
+
+{$API_DOMAIN:api.localhost} {
+	reverse_proxy api:3001
+}
+
+{$WEB_DOMAIN:localhost} {
+	reverse_proxy web:3000
+}
