@@ -550,6 +550,8 @@ export const LEDGER_ENTRY_TYPES = {
   BUSINESS_CAPEX: 'business_capex',
   WORKER_WAGE: 'worker_wage',
   WASTE_DISPOSAL: 'waste_disposal',
+  MARKET_ESCROW: 'market_escrow',
+  MARKET_ESCROW_RELEASE: 'market_escrow_release',
 } as const;
 
 export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[keyof typeof LEDGER_ENTRY_TYPES];

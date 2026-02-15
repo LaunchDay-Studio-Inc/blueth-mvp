@@ -91,12 +91,15 @@ describe('Business Registration', () => {
   });
 
   it('rejects registration if insufficient funds', async () => {
-    // Drain player wallet first
-    await pool.query(
-      `UPDATE ledger_entries SET amount_cents = 1 WHERE to_account = (
-        SELECT account_id FROM player_wallets WHERE player_id = $1
-      )`,
+    // Drain player wallet: update balance_cents directly (old ledger entries don't matter)
+    const walletRow = await pool.query(
+      'SELECT account_id FROM player_wallets WHERE player_id = $1',
       [playerId]
+    );
+    const accountId = walletRow.rows[0].account_id;
+    await pool.query(
+      'UPDATE ledger_accounts SET balance_cents = 1 WHERE id = $1',
+      [accountId]
     );
 
     const res = await server.inject({
@@ -543,6 +546,14 @@ describe('Business Queries', () => {
        VALUES (1, $1, 200000, 'initial_grant', 'extra funds for test')`,
       [acctId]
     );
+    // Keep materialized balance in sync
+    await pool.query(
+      'UPDATE ledger_accounts SET balance_cents = balance_cents + 200000 WHERE id = $1',
+      [acctId]
+    );
+    await pool.query(
+      'UPDATE ledger_accounts SET balance_cents = balance_cents - 200000 WHERE id = 1'
+    );
 
     await registerBusiness('Factory A', 'INDUSTRIAL');
     await registerBusiness('Factory B', 'TECH_PARK');
@@ -874,6 +885,15 @@ describe('Unpaid wage satisfaction (Bug #14)', () => {
         `INSERT INTO ledger_entries (from_account, to_account, amount_cents, entry_type, memo)
          VALUES ($1, 4, $2, 'test_drain', 'drain for bug14 test')`,
         [acctId, bal]
+      );
+      // Keep materialized balance in sync
+      await pool.query(
+        'UPDATE ledger_accounts SET balance_cents = balance_cents - $2 WHERE id = $1',
+        [acctId, bal]
+      );
+      await pool.query(
+        'UPDATE ledger_accounts SET balance_cents = balance_cents + $1 WHERE id = 4',
+        [bal]
       );
     }
 

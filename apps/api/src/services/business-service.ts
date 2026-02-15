@@ -134,17 +134,12 @@ async function getPlayerAccountId(tx: PoolClient, playerId: string): Promise<num
 }
 
 async function getBalanceInTx(tx: PoolClient, accountId: number): Promise<number> {
-  const row = await txQueryOne<{ balance: string }>(
+  const row = await txQueryOne<{ balance_cents: string }>(
     tx,
-    `SELECT
-       COALESCE(SUM(CASE WHEN to_account = $1 THEN amount_cents ELSE 0 END), 0)
-       - COALESCE(SUM(CASE WHEN from_account = $1 THEN amount_cents ELSE 0 END), 0)
-       AS balance
-     FROM ledger_entries
-     WHERE from_account = $1 OR to_account = $1`,
+    'SELECT balance_cents FROM ledger_accounts WHERE id = $1',
     [accountId]
   );
-  return parseInt(row?.balance ?? '0', 10);
+  return parseInt(row?.balance_cents ?? '0', 10);
 }
 
 async function getInventoryQty(

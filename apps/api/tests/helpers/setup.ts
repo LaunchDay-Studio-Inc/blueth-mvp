@@ -15,7 +15,7 @@ export async function cleanDatabase(): Promise<void> {
     DELETE FROM market_sessions;
     DELETE FROM actions;
     DELETE FROM sessions;
-    DELETE FROM ledger_entries WHERE from_account > 6 OR to_account > 6;
+    DELETE FROM ledger_entries;
     DELETE FROM player_wallets;
     DELETE FROM inventories WHERE owner_type = 'player';
     DELETE FROM inventories WHERE owner_type = 'business';
@@ -24,6 +24,7 @@ export async function cleanDatabase(): Promise<void> {
     DELETE FROM player_state;
     DELETE FROM players;
     DELETE FROM ledger_accounts WHERE id > 6;
+    UPDATE ledger_accounts SET balance_cents = 0 WHERE id <= 6;
   `);
 }
 

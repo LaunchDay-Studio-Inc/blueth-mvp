@@ -846,3 +846,207 @@ describe('Order qty validation (Bug #39, #40)', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+// ── Bug #26: Fund escrow for buy limit orders ─────────────────
+
+describe('Buy limit order escrow (Bug #26)', () => {
+  it('escrows funds at placement and deducts from balance', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+    const balanceBefore = await getPlayerBalance(playerId);
+
+    // Place a resting buy limit order (below best ask)
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'limit',
+      priceCents: 150,
+      qty: 5,
+      idempotencyKey: 'escrow-test-1',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.result.status).toBe('open');
+    expect(body.result.fills.length).toBe(0);
+
+    // Escrow amount: floor(150 * 5 * 1.01) = 757
+    const expectedEscrow = Math.floor(150 * 5 * 1.01);
+    const balanceAfter = await getPlayerBalance(playerId);
+    expect(balanceBefore - balanceAfter).toBe(expectedEscrow);
+
+    // Verify escrowed_cents on the order
+    const { rows } = await pool.query(
+      'SELECT escrowed_cents FROM market_orders WHERE order_id = $1',
+      [body.result.orderId]
+    );
+    expect(parseInt(rows[0].escrowed_cents, 10)).toBe(expectedEscrow);
+  });
+
+  it('refunds escrow on cancel', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+    const balanceBefore = await getPlayerBalance(playerId);
+
+    // Place a resting buy limit order
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'limit',
+      priceCents: 150,
+      qty: 5,
+      idempotencyKey: 'escrow-cancel-1',
+    });
+    expect(res.statusCode).toBe(200);
+    const orderId = JSON.parse(res.body).result.orderId;
+
+    // Balance should be reduced by escrow
+    const balanceMid = await getPlayerBalance(playerId);
+    expect(balanceMid).toBeLessThan(balanceBefore);
+
+    // Cancel the order
+    const cancelRes = await cancelMarketOrder(cookie, orderId);
+    expect(cancelRes.statusCode).toBe(200);
+
+    // Balance should be restored
+    const balanceAfter = await getPlayerBalance(playerId);
+    expect(balanceAfter).toBe(balanceBefore);
+
+    // escrowed_cents should be 0
+    const { rows } = await pool.query(
+      'SELECT escrowed_cents FROM market_orders WHERE order_id = $1',
+      [orderId]
+    );
+    expect(parseInt(rows[0].escrowed_cents, 10)).toBe(0);
+  });
+
+  it('refunds surplus escrow when filled at better price', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+
+    // NPC sell at 200
+    await createNpcSellOrder('RAW_FOOD', 200, 100);
+
+    const balanceBefore = await getPlayerBalance(playerId);
+
+    // Place limit buy at 220 (crosses spread, fills at 200)
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'limit',
+      priceCents: 220,
+      qty: 5,
+      idempotencyKey: 'escrow-surplus-1',
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.result.status).toBe('filled');
+
+    // Actual cost: fillValue 200*5=1000 + fee floor(1000*0.01)=10 = 1010
+    const balanceAfter = await getPlayerBalance(playerId);
+    expect(balanceBefore - balanceAfter).toBe(1010);
+
+    // escrowed_cents should be 0 (fully refunded)
+    const { rows } = await pool.query(
+      'SELECT escrowed_cents FROM market_orders WHERE order_id = $1',
+      [body.result.orderId]
+    );
+    expect(parseInt(rows[0].escrowed_cents, 10)).toBe(0);
+  });
+
+  it('draws from escrow when resting buy is matched by incoming sell', async () => {
+    const { cookie: buyerCookie, playerId: buyerId } = await registerTestPlayer(server);
+    const { cookie: sellerCookie, playerId: sellerId } = await registerTestPlayer(server);
+
+    const buyerBalanceBefore = await getPlayerBalance(buyerId);
+
+    // Buyer places resting limit buy at 190
+    const buyRes = await placeMarketOrder(buyerCookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'limit',
+      priceCents: 190,
+      qty: 5,
+      idempotencyKey: 'escrow-match-buy-1',
+    });
+    expect(buyRes.statusCode).toBe(200);
+    const buyBody = JSON.parse(buyRes.body);
+    expect(buyBody.result.status).toBe('open');
+
+    // Escrow deducted
+    const buyerBalanceMid = await getPlayerBalance(buyerId);
+    const escrowAmount = Math.floor(190 * 5 * 1.01);
+    expect(buyerBalanceBefore - buyerBalanceMid).toBe(escrowAmount);
+
+    // Give seller inventory
+    await givePlayerInventory(sellerId, 'RAW_FOOD', 10);
+
+    // Create NPC buy order so the sell can match against both
+    // Actually, the sell will match against the resting player buy at 190
+    const sellRes = await placeMarketOrder(sellerCookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'sell',
+      orderType: 'market',
+      qty: 5,
+      idempotencyKey: 'escrow-match-sell-1',
+    });
+    expect(sellRes.statusCode).toBe(200);
+    const sellBody = JSON.parse(sellRes.body);
+    expect(sellBody.result.fills.length).toBe(1);
+    expect(sellBody.result.fills[0].priceCents).toBe(190);
+
+    // Buyer's net cost: fillValue 190*5=950 + fee 9 = 959
+    // But escrow was 959 (floor(190*5*1.01)), so exactly consumed
+    const buyerBalanceAfter = await getPlayerBalance(buyerId);
+    expect(buyerBalanceBefore - buyerBalanceAfter).toBe(959);
+
+    // Buyer should have the goods
+    const inv = await getPlayerInventory(buyerId, 'RAW_FOOD');
+    expect(inv).toBe(5);
+  });
+});
+
+// ── Bug #28: Materialized balance ─────────────────────────────
+
+describe('Materialized balance (Bug #28)', () => {
+  it('balance_cents matches ledger SUM after trades', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+
+    // Create NPC sell and buy orders
+    await createNpcSellOrder('RAW_FOOD', 200, 100);
+    await createNpcBuyOrder('RAW_FOOD', 180, 100);
+
+    // Execute a buy
+    await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'market',
+      qty: 10,
+      idempotencyKey: 'balance-check-buy',
+    });
+
+    // Execute a sell
+    await givePlayerInventory(playerId, 'RAW_FOOD', 5);
+    await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'sell',
+      orderType: 'market',
+      qty: 5,
+      idempotencyKey: 'balance-check-sell',
+    });
+
+    // Compare balance_cents (materialized) vs SUM (ground truth)
+    const { rows } = await pool.query(
+      `SELECT la.balance_cents::int AS materialized,
+              COALESCE(SUM(CASE WHEN le.to_account = la.id THEN le.amount_cents ELSE 0 END), 0)
+              - COALESCE(SUM(CASE WHEN le.from_account = la.id THEN le.amount_cents ELSE 0 END), 0)
+              AS computed
+       FROM player_wallets pw
+       JOIN ledger_accounts la ON la.id = pw.account_id
+       LEFT JOIN ledger_entries le ON le.from_account = la.id OR le.to_account = la.id
+       WHERE pw.player_id = $1
+       GROUP BY la.id, la.balance_cents`,
+      [playerId]
+    );
+
+    expect(rows.length).toBe(1);
+    expect(rows[0].materialized).toBe(parseInt(rows[0].computed, 10));
+  });
+});

@@ -47,17 +47,12 @@ export const eatMealHandler: ActionHandler<EatMealPayload> = {
     const costCents = MEAL_PRICES_CENTS[quality as MealQuality];
     if (costCents > 0 && ctx.playerAccountId > 0) {
       // Check balance first
-      const balRow = await txQueryOne<{ balance: string }>(
+      const balRow = await txQueryOne<{ balance_cents: string }>(
         ctx.tx,
-        `SELECT
-           COALESCE(SUM(CASE WHEN to_account = $1 THEN amount_cents ELSE 0 END), 0)
-           - COALESCE(SUM(CASE WHEN from_account = $1 THEN amount_cents ELSE 0 END), 0)
-           AS balance
-         FROM ledger_entries
-         WHERE from_account = $1 OR to_account = $1`,
+        'SELECT balance_cents FROM ledger_accounts WHERE id = $1',
         [ctx.playerAccountId],
       );
-      const balance = parseInt(balRow?.balance ?? '0', 10);
+      const balance = parseInt(balRow?.balance_cents ?? '0', 10);
 
       if (balance < costCents) {
         throw new InsufficientFundsError(costCents, balance);

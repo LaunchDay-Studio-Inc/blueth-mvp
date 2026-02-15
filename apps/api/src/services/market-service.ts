@@ -66,6 +66,7 @@ export interface MarketOrderRow {
   qty_open: string;
   qty_initial: string;
   status: string;
+  escrowed_cents: string;
   created_at: string;
   updated_at: string;
 }
@@ -159,17 +160,12 @@ async function getPlayerAccountId(tx: PoolClient, playerId: string): Promise<num
 }
 
 async function getBalanceInTx(tx: PoolClient, accountId: number): Promise<number> {
-  const row = await txQueryOne<{ balance: string }>(
+  const row = await txQueryOne<{ balance_cents: string }>(
     tx,
-    `SELECT
-       COALESCE(SUM(CASE WHEN to_account = $1 THEN amount_cents ELSE 0 END), 0)
-       - COALESCE(SUM(CASE WHEN from_account = $1 THEN amount_cents ELSE 0 END), 0)
-       AS balance
-     FROM ledger_entries
-     WHERE from_account = $1 OR to_account = $1`,
+    'SELECT balance_cents FROM ledger_accounts WHERE id = $1',
     [accountId]
   );
-  return parseInt(row?.balance ?? '0', 10);
+  return parseInt(row?.balance_cents ?? '0', 10);
 }
 
 async function getInventoryQty(
@@ -299,6 +295,8 @@ export async function placeOrder(
     }
 
     // For buy orders: check player has sufficient funds for estimated cost
+    // For buy limit orders: escrow funds to MARKET_ESCROW (Bug #26)
+    let escrowedCents = 0;
     if (input.side === 'buy') {
       const estimatedPrice = input.orderType === 'limit'
         ? input.priceCents!
@@ -307,6 +305,19 @@ export async function placeOrder(
       const balance = await getBalanceInTx(tx, playerAccountId);
       if (balance < estimatedCost) {
         throw new InsufficientFundsError(estimatedCost, balance);
+      }
+
+      if (input.orderType === 'limit') {
+        escrowedCents = estimatedCost;
+        await transferCents(
+          tx,
+          playerAccountId,
+          SYSTEM_ACCOUNTS.MARKET_ESCROW,
+          escrowedCents,
+          LEDGER_ENTRY_TYPES.MARKET_ESCROW,
+          null,
+          `Escrow: buy ${input.qty} x ${input.goodCode} @ ${input.priceCents}c`,
+        );
       }
     }
 
@@ -322,8 +333,8 @@ export async function placeOrder(
     const orderRow = await txQueryOne<MarketOrderRow>(
       tx,
       `INSERT INTO market_orders
-         (actor_type, actor_id, good_id, side, order_type, price_cents, qty_open, qty_initial, status)
-       VALUES ('player', $1, $2, $3, $4, $5, $6, $6, 'open')
+         (actor_type, actor_id, good_id, side, order_type, price_cents, qty_open, qty_initial, status, escrowed_cents)
+       VALUES ('player', $1, $2, $3, $4, $5, $6, $6, 'open', $7)
        RETURNING *`,
       [
         input.playerId,
@@ -332,6 +343,7 @@ export async function placeOrder(
         input.orderType,
         input.orderType === 'limit' ? input.priceCents : null,
         input.qty,
+        escrowedCents,
       ]
     );
 
@@ -358,6 +370,27 @@ export async function placeOrder(
     // Update reference price based on trades
     if (fills.length > 0) {
       await updateRefPriceFromTrades(tx, good.id, npcState, fills);
+    }
+
+    // Refund remaining escrow if order is fully resolved (filled or cancelled)
+    if (input.side === 'buy' && escrowedCents > 0) {
+      const remainingEscrow = parseInt(finalOrder?.escrowed_cents ?? '0', 10);
+      const finalStatus = finalOrder?.status ?? orderRow.status;
+      if (remainingEscrow > 0 && (finalStatus === 'filled' || finalStatus === 'cancelled')) {
+        await transferCents(
+          tx,
+          SYSTEM_ACCOUNTS.MARKET_ESCROW,
+          playerAccountId,
+          remainingEscrow,
+          LEDGER_ENTRY_TYPES.MARKET_ESCROW_RELEASE,
+          null,
+          `Escrow refund: order ${orderRow.order_id}`,
+        );
+        await tx.query(
+          'UPDATE market_orders SET escrowed_cents = 0 WHERE order_id = $1',
+          [orderRow.order_id]
+        );
+      }
     }
 
     return {
@@ -452,16 +485,29 @@ async function matchOrder(
       sellerAccountId = incomingPlayerAccountId;
     }
 
-    // Validate buyer has sufficient funds (including fee)
+    // Determine the buy order and check if it has escrow
+    const buyOrder = isBuy ? incomingOrder : counterOrder;
     const buyerCost = fillValueCents + totalFeeCents;
+
+    // Read current escrow for the buy order
+    let buyerEscrow = 0;
     if (buyerAccountId !== SYSTEM_ACCOUNTS.NPC_VENDOR) {
-      const buyerBalance = await getBalanceInTx(tx, buyerAccountId);
-      if (buyerBalance < buyerCost) {
-        // Buyer can't afford this fill.
-        // If buyer is the incoming order (isBuy), remaining counter-orders are same
-        // or higher price — no point continuing.
-        // If buyer is the counter-order (!isBuy), skip this counter and try the next
-        // resting buy at a lower price that might have funds.
+      const escrowRow = await txQueryOne<{ escrowed_cents: string }>(
+        tx,
+        'SELECT escrowed_cents FROM market_orders WHERE order_id = $1',
+        [buyOrder.order_id]
+      );
+      buyerEscrow = parseInt(escrowRow?.escrowed_cents ?? '0', 10);
+    }
+    const useEscrow = buyerEscrow > 0 && buyerAccountId !== SYSTEM_ACCOUNTS.NPC_VENDOR;
+
+    // Validate buyer can afford: check escrow (limit) or balance (market)
+    if (buyerAccountId !== SYSTEM_ACCOUNTS.NPC_VENDOR) {
+      const canAfford = useEscrow
+        ? buyerEscrow >= buyerCost
+        : (await getBalanceInTx(tx, buyerAccountId)) >= buyerCost;
+
+      if (!canAfford) {
         if (isBuy) {
           break;
         } else {
@@ -472,11 +518,13 @@ async function matchOrder(
     }
 
     // Execute the trade ledger entries:
+    const paymentSource = useEscrow ? SYSTEM_ACCOUNTS.MARKET_ESCROW : buyerAccountId;
+
     // 1. Buyer pays seller for goods
     if (fillValueCents > 0) {
       await transferCents(
         tx,
-        buyerAccountId,
+        paymentSource,
         sellerAccountId,
         fillValueCents,
         LEDGER_ENTRY_TYPES.MARKET_TRADE,
@@ -486,15 +534,23 @@ async function matchOrder(
     }
 
     // 2. Fee from buyer to TAX_SINK
-    if (totalFeeCents > 0 && buyerAccountId !== SYSTEM_ACCOUNTS.TAX_SINK) {
+    if (totalFeeCents > 0 && paymentSource !== SYSTEM_ACCOUNTS.TAX_SINK) {
       await transferCents(
         tx,
-        buyerAccountId,
+        paymentSource,
         SYSTEM_ACCOUNTS.TAX_SINK,
         totalFeeCents,
         LEDGER_ENTRY_TYPES.FEE,
         null,
         `Market fee: ${totalFeeCents}c on ${good.code} trade`
+      );
+    }
+
+    // 3. Update escrow tracking on the buy order
+    if (useEscrow) {
+      await tx.query(
+        'UPDATE market_orders SET escrowed_cents = escrowed_cents - $2 WHERE order_id = $1',
+        [buyOrder.order_id, fillValueCents + totalFeeCents]
       );
     }
 
@@ -529,6 +585,32 @@ async function matchOrder(
       'UPDATE market_orders SET qty_open = $2, status = $3 WHERE order_id = $1',
       [counterOrder.order_id, Math.max(0, newCounterQty), counterStatus]
     );
+
+    // Refund remaining escrow when a counter buy order is fully filled
+    if (!isBuy && counterStatus === 'filled' && counterOrder.actor_type === 'player') {
+      const counterEscrowRow = await txQueryOne<{ escrowed_cents: string }>(
+        tx,
+        'SELECT escrowed_cents FROM market_orders WHERE order_id = $1',
+        [counterOrder.order_id]
+      );
+      const remainingEscrow = parseInt(counterEscrowRow?.escrowed_cents ?? '0', 10);
+      if (remainingEscrow > 0) {
+        const counterAccountId = await getPlayerAccountId(tx, counterOrder.actor_id!);
+        await transferCents(
+          tx,
+          SYSTEM_ACCOUNTS.MARKET_ESCROW,
+          counterAccountId,
+          remainingEscrow,
+          LEDGER_ENTRY_TYPES.MARKET_ESCROW_RELEASE,
+          null,
+          `Escrow refund: filled order ${counterOrder.order_id}`,
+        );
+        await tx.query(
+          'UPDATE market_orders SET escrowed_cents = 0 WHERE order_id = $1',
+          [counterOrder.order_id]
+        );
+      }
+    }
 
     // Update incoming order
     qtyRemaining -= fillQty;
@@ -650,6 +732,25 @@ export async function cancelOrder(
     // Refund reserved inventory for sell orders
     if (order.side === 'sell' && qtyOpen > 0 && order.actor_id) {
       await adjustInventory(tx, 'player', order.actor_id, order.good_id, qtyOpen);
+    }
+
+    // Refund escrowed funds for buy orders (Bug #26)
+    const remainingEscrow = parseInt(order.escrowed_cents ?? '0', 10);
+    if (order.side === 'buy' && remainingEscrow > 0 && order.actor_id) {
+      const playerAccountId = await getPlayerAccountId(tx, order.actor_id);
+      await transferCents(
+        tx,
+        SYSTEM_ACCOUNTS.MARKET_ESCROW,
+        playerAccountId,
+        remainingEscrow,
+        LEDGER_ENTRY_TYPES.MARKET_ESCROW_RELEASE,
+        null,
+        `Escrow refund: cancelled order ${orderId}`,
+      );
+      await tx.query(
+        'UPDATE market_orders SET escrowed_cents = 0 WHERE order_id = $1',
+        [orderId]
+      );
     }
 
     return { success: true };

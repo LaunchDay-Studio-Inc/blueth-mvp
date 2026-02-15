@@ -129,6 +129,15 @@ describe('Tick Service', () => {
            VALUES ($1, 4, $2, 'test_drain', 'Test: drain wallet')`,
           [accountId, drainAmount]
         );
+        // Keep materialized balance_cents in sync
+        await pool.query(
+          `UPDATE ledger_accounts SET balance_cents = balance_cents - $2 WHERE id = $1`,
+          [accountId, drainAmount]
+        );
+        await pool.query(
+          `UPDATE ledger_accounts SET balance_cents = balance_cents + $1 WHERE id = 4`,
+          [drainAmount]
+        );
       }
 
       // Set last_daily_reset to yesterday so daily tick processes this player
