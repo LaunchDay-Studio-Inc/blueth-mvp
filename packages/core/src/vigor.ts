@@ -3,6 +3,7 @@ import { VIGOR_KEYS } from './types';
 import { InsufficientVigorError } from './errors';
 import { getLocalDate } from './time';
 import { calculateSpvRegenMultiplier } from './soft-gates';
+import { getHousingRegenBonuses } from './economy';
 import { DateTime } from 'luxon';
 
 /**
@@ -845,4 +846,112 @@ export function projectActionOutcome(opts: {
     completionTime: completionTime.toISOString(),
     warnings,
   };
+}
+
+// ════════════════════════════════════════════════════════════════
+// REGEN BREAKDOWN — Read-only computation for UI display
+// ════════════════════════════════════════════════════════════════
+
+/** Per-dimension regen breakdown detail for UI display. */
+export interface DimBreakdown {
+  baseRate: number;
+  housingBonus: number;
+  circadianMultiplier: number;
+  circadianPeriod: string;
+  sleepMultiplier: number;
+  penaltyMultiplier: number;
+  spvRegenMultiplier: number;
+  buffBonus: number;
+  cascadeDrain: number;
+  netPerHour: number;
+}
+
+/** Full regen breakdown across all vigor dimensions. */
+export interface RegenBreakdown {
+  perDim: Record<VigorKey, DimBreakdown>;
+  activeBuffDetails: Array<{
+    id: string;
+    source: string;
+    remainingMs: number;
+    perHourBonusByDim: Partial<VigorDimension>;
+  }>;
+  criticalDims: VigorKey[];
+  localHour: number;
+}
+
+/**
+ * Compute the current regen breakdown for all vigor dimensions.
+ *
+ * Pure function — no mutation. Uses the SAME internal helpers as
+ * `applyHourlyVigorTick()` to ensure zero math duplication.
+ *
+ * The net rate formula:
+ *   net = (base * circadian * sleep * penalty * spvRegen) + housing + buff - drain
+ *
+ * Housing bonus is additive (not in the multiplicative chain) because the
+ * hourly tick does not pipe it through circadian/sleep/penalty modifiers.
+ */
+export function computeRegenBreakdown(
+  vigor: VigorDimension,
+  sleepState: SleepState,
+  activeBuffs: Buff[],
+  mealPenaltyLevel: number,
+  housingTier: number,
+  nowIso: string,
+  timezone: string,
+): RegenBreakdown {
+  const dt = DateTime.fromISO(nowIso, { zone: timezone });
+  const localHour = dt.hour;
+  const period = getCircadianPeriod(localHour);
+
+  const housingBonuses = getHousingRegenBonuses(housingTier);
+  const spvRegenMult = calculateSpvRegenMultiplier(vigor.spv);
+  const cascadeDrain = computeCascadeDrain(vigor);
+
+  const perDim = {} as Record<VigorKey, DimBreakdown>;
+  for (const key of VIGOR_KEYS) {
+    const base = BASE_REGEN_RATES[key];
+    const housing = housingBonuses[key] ?? 0;
+    const circadian = getCircadianMultiplier(key, period, sleepState);
+    const sleep = getSleepMultiplier(key, sleepState);
+    const penalty = getPenaltyMultiplier(key, mealPenaltyLevel);
+    const buff = computeBuffBonus(key, activeBuffs, nowIso);
+    const drain = cascadeDrain[key];
+
+    const regen = base * circadian * sleep * penalty * spvRegenMult;
+    const net = regen + housing + buff - drain;
+
+    perDim[key] = {
+      baseRate: base,
+      housingBonus: housing,
+      circadianMultiplier: circadian,
+      circadianPeriod: period,
+      sleepMultiplier: sleep,
+      penaltyMultiplier: penalty,
+      spvRegenMultiplier: spvRegenMult,
+      buffBonus: buff,
+      cascadeDrain: drain,
+      netPerHour: net,
+    };
+  }
+
+  // Active buff details with remaining time
+  const nowMs = new Date(nowIso).getTime();
+  const activeBuffDetails = activeBuffs
+    .filter((b) => {
+      const startMs = new Date(b.startsAt).getTime();
+      const endMs = new Date(b.endsAt).getTime();
+      return nowMs >= startMs && nowMs < endMs;
+    })
+    .map((b) => ({
+      id: b.id,
+      source: b.source,
+      remainingMs: new Date(b.endsAt).getTime() - nowMs,
+      perHourBonusByDim: b.perHourBonusByDim,
+    }));
+
+  // Dimensions below cascade threshold
+  const criticalDims = VIGOR_KEYS.filter((k) => vigor[k] < CASCADE_THRESHOLD);
+
+  return { perDim, activeBuffDetails, criticalDims, localHour };
 }
