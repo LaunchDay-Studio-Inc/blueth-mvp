@@ -51,9 +51,9 @@ export function GameShell({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen game-gradient">
+    <div className="min-h-screen game-gradient vignette-bg">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-card/70 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border/40 bg-card/70 backdrop-blur-md glass-glow-cool">
         <div className="flex h-14 items-center px-4 gap-4">
           <button
             className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -125,7 +125,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex">
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex w-52 flex-col border-r border-border/30 min-h-[calc(100vh-3.5rem)] p-2 bg-card/30">
+        <aside className="hidden lg:flex w-52 flex-col border-r border-border/30 min-h-[calc(100vh-3.5rem)] p-2 bg-card/30 glass-inset">
           <nav className="space-y-0.5">
             {NAV_ITEMS.map((item) => (
               <Link

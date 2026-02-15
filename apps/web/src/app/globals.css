@@ -31,6 +31,22 @@
     --neon-glow: 0 0 12px hsl(192 91% 52% / 0.5);
     --neon-glow-strong: 0 0 20px hsl(192 91% 52% / 0.6), 0 0 40px hsl(192 91% 52% / 0.2);
     --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+
+    /* ── Glass UI foundation tokens ── */
+    --glass-bg:           222 44% 10%;
+    --glass-bg-elevated:  222 40% 12%;
+    --glass-bg-inset:     222 50% 6%;
+    --glass-border:       210 20% 90%;
+
+    --glow-warm:          38 90% 55%;
+    --glow-cool:          192 91% 52%;
+    --glow-neutral:       220 20% 60%;
+
+    --vignette:           222 47% 3%;
+
+    --text-primary:       210 20% 92%;
+    --text-secondary:     215 16% 65%;
+    --text-tertiary:      215 12% 45%;
   }
 }
 
@@ -82,6 +98,40 @@
       hsl(192 50% 12%) 100%
     );
   }
+
+  /* ── Glass surface utilities ── */
+  .glass-surface {
+    background: hsl(var(--glass-bg) / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border) / 0.08);
+  }
+  .glass-elevated {
+    background: hsl(var(--glass-bg-elevated) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--glass-border) / 0.12);
+    box-shadow: 0 4px 24px hsl(var(--vignette) / 0.4);
+  }
+  .glass-inset {
+    background: hsl(var(--glass-bg-inset) / 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid hsl(var(--glass-border) / 0.05);
+  }
+  .glass-glow-cool {
+    box-shadow: 0 0 16px hsl(var(--glow-cool) / 0.15),
+                0 0 4px hsl(var(--glow-cool) / 0.1);
+  }
+  .glass-glow-warm {
+    box-shadow: 0 0 16px hsl(var(--glow-warm) / 0.15),
+                0 0 4px hsl(var(--glow-warm) / 0.1);
+  }
+  .vignette-bg {
+    background:
+      radial-gradient(ellipse at center, transparent 50%, hsl(var(--vignette) / 0.6) 100%),
+      linear-gradient(180deg, hsl(222 47% 4%) 0%, hsl(222 47% 8%) 40%, hsl(220 40% 10%) 100%);
+  }
 }
 
 /* ── Animations ── */
@@ -115,3 +165,16 @@
 .animate-flicker { animation: flicker 4s linear infinite; }
 .animate-slide-up { animation: slide-up 0.5s ease-out both; }
 .animate-fade-in { animation: fade-in 0.4s ease-out both; }
+
+/* ── Accessibility: reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-pulse-neon,
+  .animate-flicker,
+  .animate-slide-up,
+  .animate-fade-in,
+  .glass-btn-motion {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
