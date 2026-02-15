@@ -22,6 +22,22 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
+/** Recent API request log (ring buffer of last 20 entries). */
+export interface ApiLogEntry {
+  method: string;
+  path: string;
+  status: number | null;
+  error: string | null;
+  ts: number;
+}
+const API_LOG_SIZE = 20;
+export const apiLog: ApiLogEntry[] = [];
+
+function pushLog(entry: ApiLogEntry) {
+  apiLog.push(entry);
+  if (apiLog.length > API_LOG_SIZE) apiLog.shift();
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const opts: RequestInit = {
     method,
@@ -34,16 +50,28 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   const url = API_BASE ? `${API_BASE}${path}` : `/api${path}`;
-  const res = await fetch(url, opts);
+
+  let res: Response;
+  try {
+    res = await fetch(url, opts);
+  } catch {
+    pushLog({ method, path, status: null, error: 'Network error', ts: Date.now() });
+    throw new ApiError(0, 'NETWORK_ERROR', 'Network error — check your connection');
+  }
 
   if (res.status === 401) {
+    pushLog({ method, path, status: 401, error: 'Session expired', ts: Date.now() });
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
   }
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: 'Unknown error', code: 'UNKNOWN' }));
-    throw new ApiError(res.status, data.code || 'UNKNOWN', data.error || res.statusText);
+    const msg = data.error || res.statusText;
+    pushLog({ method, path, status: res.status, error: msg, ts: Date.now() });
+    throw new ApiError(res.status, data.code || 'UNKNOWN', msg);
   }
+
+  pushLog({ method, path, status: res.status, error: null, ts: Date.now() });
 
   if (res.status === 204) return undefined as T;
   return res.json();
