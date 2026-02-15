@@ -19,6 +19,7 @@ interface ActionResult {
 
 const ACTION_LABELS: Record<string, string> = {
   WORK_SHIFT: 'Work shift',
+  GIG_JOB: 'Gig',
   EAT_MEAL: 'Eat meal',
   LEISURE: 'Leisure',
   SOCIAL_CALL: 'Social call',
