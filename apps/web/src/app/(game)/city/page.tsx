@@ -1,12 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { CityMap } from '@/components/city-map';
+import { CityMapV3 } from '@/components/map/city-map-v3';
 import { DistrictPanel } from '@/components/district-panel';
 import type { DistrictMeta } from '@/lib/districts';
 
 export default function CityPage() {
   const [selected, setSelected] = useState<DistrictMeta | null>(null);
+
+  const handleSelect = (district: DistrictMeta | null) => {
+    // Toggle: clicking same district deselects
+    if (district && selected?.code === district.code) {
+      setSelected(null);
+    } else {
+      setSelected(district);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -18,7 +27,7 @@ export default function CityPage() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <CityMap onDistrictSelect={setSelected} selectedCode={selected?.code} />
+          <CityMapV3 onDistrictSelect={handleSelect} selectedCode={selected?.code} />
         </div>
         <div>
           {selected ? (
