@@ -53,7 +53,7 @@ describe('POST /auth/register', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { username: 'cookietest', password: 'password123' },
+      payload: { username: 'cookietest', password: 'Test_password_123' },
     });
 
     expect(response.statusCode).toBe(201);
@@ -70,7 +70,7 @@ describe('POST /auth/register', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { username: 'dupuser', password: 'password123' },
+      payload: { username: 'dupuser', password: 'Test_password_123' },
     });
 
     expect(response.statusCode).toBe(400);
@@ -82,7 +82,7 @@ describe('POST /auth/register', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { username: 'ab', password: 'password123' },
+      payload: { username: 'ab', password: 'Test_password_123' },
     });
 
     expect(response.statusCode).toBe(400);
@@ -106,7 +106,7 @@ describe('POST /auth/login', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/auth/login',
-      payload: { username: 'loginuser', password: 'test_password_123' },
+      payload: { username: 'loginuser', password: 'Test_password_123' },
     });
 
     expect(response.statusCode).toBe(200);

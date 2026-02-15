@@ -699,7 +699,7 @@ describe('Market fee ledger verification', () => {
     // Expected fee: floor(1000 * 0.01) = 10 cents
     const expectedFee = Math.floor(200 * 5 * 0.01);
 
-    // Look for fee entry in ledger (to TAX_SINK = account 3)
+    // Look for fee entry in ledger (to TAX_SINK = account 2)
     const walletRow = await pool.query(
       'SELECT account_id FROM player_wallets WHERE player_id = $1',
       [playerId]
@@ -708,7 +708,7 @@ describe('Market fee ledger verification', () => {
 
     const feeEntries = await pool.query(
       `SELECT * FROM ledger_entries
-       WHERE from_account = $1 AND to_account = 3 AND entry_type = 'fee'`,
+       WHERE from_account = $1 AND to_account = 2 AND entry_type = 'fee'`,
       [accountId]
     );
 

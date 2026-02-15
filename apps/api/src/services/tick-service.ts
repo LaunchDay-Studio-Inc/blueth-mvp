@@ -449,7 +449,7 @@ async function processDailyTickForPlayer(
            CASE WHEN le.from_account = $2 THEN le.amount_cents ELSE 0 END
          ), 0) AS expenses_cents
        FROM actions a
-       LEFT JOIN ledger_entries le ON le.action_id = a.action_id::text
+       LEFT JOIN ledger_entries le ON le.action_id = a.action_id
        WHERE a.player_id = $1
          AND a.finished_at >= ($3::date)
          AND a.finished_at < ($3::date + interval '1 day')`,

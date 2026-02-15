@@ -20,6 +20,7 @@ export async function cleanDatabase(): Promise<void> {
     DELETE FROM inventories WHERE owner_type = 'player';
     DELETE FROM inventories WHERE owner_type = 'business';
     DELETE FROM businesses;
+    DELETE FROM daily_summaries;
     DELETE FROM player_state;
     DELETE FROM players;
     DELETE FROM ledger_accounts WHERE id > 6;

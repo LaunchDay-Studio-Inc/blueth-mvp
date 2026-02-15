@@ -62,9 +62,25 @@ describe('Scheduler Service', () => {
     it('two concurrent claimDueScheduledActions calls do not overlap', async () => {
       const { cookie } = await registerTestPlayer(server);
 
-      // Schedule 4 actions and make them all due
+      // Submit all 4 actions first (without backdating in between),
+      // so that resolveAllDue in POST /actions doesn't resolve previous ones
+      const idemKeys: string[] = [];
       for (let i = 0; i < 4; i++) {
-        await scheduleAndMakeDue(cookie, 'SOCIAL_CALL');
+        const idemKey = `sched-${Date.now()}-${Math.random()}`;
+        await submitAction(cookie, {
+          type: 'SOCIAL_CALL',
+          payload: {},
+          idempotencyKey: idemKey,
+        });
+        idemKeys.push(idemKey);
+      }
+
+      // Now backdate all 4 at once to make them due
+      for (const idemKey of idemKeys) {
+        await pool.query(
+          `UPDATE actions SET scheduled_for = NOW() - interval '2 hours' WHERE idempotency_key = $1`,
+          [idemKey]
+        );
       }
 
       // Claim concurrently from two "workers"

@@ -162,10 +162,9 @@ describe('Tick Service', () => {
       // Should be downgraded below tier 2 (to 0 since 500 < tier 1 cost of 1200)
       expect(state.housing_tier).toBeLessThan(2);
 
-      // PV should reflect discomfort penalty (-3)
-      // Original PV was 50 (from initialization), minus 3 from downgrade penalty
-      // The exact value depends on hourly tick processing, but it should be less than initial
-      expect(parseFloat(state.pv)).toBeLessThan(50);
+      // PV should reflect discomfort penalty (-3) and meal penalty (-10)
+      // Initial PV is 100 (DB default), minus penalties from daily tick
+      expect(parseFloat(state.pv)).toBeLessThan(100);
     });
   });
 
