@@ -84,6 +84,22 @@ export function GameShell({ children }: { children: React.ReactNode }) {
             ))}
           </div>
 
+          {/* Mini vigor chips - mobile */}
+          <div className="flex md:hidden items-center gap-1.5">
+            {VIGOR_KEYS.map((key) => {
+              const val = Math.round(user.vigor[key]);
+              const cap = user.caps[`${key}_cap` as keyof typeof user.caps];
+              const pct = cap > 0 ? (val / cap) * 100 : 0;
+              const dot = pct > 60 ? 'bg-green-500' : pct > 20 ? 'bg-yellow-500' : 'bg-red-500';
+              return (
+                <span key={key} className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                  <span className={cn('inline-block h-1.5 w-1.5 rounded-full', dot)} />
+                  {val}
+                </span>
+              );
+            })}
+          </div>
+
           <Separator orientation="vertical" className="h-6 hidden md:block" />
 
           <MoneyDisplay cents={user.balanceCents} size="sm" />

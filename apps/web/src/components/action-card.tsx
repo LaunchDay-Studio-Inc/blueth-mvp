@@ -130,7 +130,7 @@ export function ActionCard({
           </div>
 
           {onClick && (
-            <Button size="sm" onClick={onClick} disabled={disabled || loading} className="shrink-0">
+            <Button size="sm" onClick={onClick} disabled={disabled || loading} className="shrink-0 min-h-[44px] min-w-[44px]">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Go'}
             </Button>
           )}

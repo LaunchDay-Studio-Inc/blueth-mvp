@@ -37,7 +37,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>

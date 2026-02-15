@@ -45,7 +45,7 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                 y={getPolygonCenter(d.points).y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="pointer-events-none select-none fill-white text-[10px] font-medium"
+                className="pointer-events-none select-none fill-white text-[12px] font-medium"
                 style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
               >
                 {d.name.length > 12 ? d.code.replace(/_/g, ' ') : d.name}
