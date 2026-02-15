@@ -17,8 +17,8 @@ RUN pnpm install --frozen-lockfile
 # Copy source
 COPY . .
 
-# Build
-RUN pnpm build
+# Build only packages the API depends on
+RUN pnpm --filter @blueth/core build && pnpm --filter @blueth/db build && pnpm --filter @blueth/api build
 
 EXPOSE 3001
 
