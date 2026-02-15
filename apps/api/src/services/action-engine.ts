@@ -225,6 +225,25 @@ export async function submitAction(input: SubmitActionInput): Promise<SubmitActi
       };
     });
   } catch (err) {
+    // Handle idempotency race: if two concurrent requests pass the fast-path check,
+    // the second INSERT hits the UNIQUE(player_id, idempotency_key) constraint.
+    // Catch Postgres error 23505 and return the cached result instead of a 500.
+    const pgErr = err as { code?: string };
+    if (pgErr.code === '23505') {
+      const raced = await queryOne<ActionRow>(
+        'SELECT * FROM actions WHERE player_id = $1 AND idempotency_key = $2',
+        [playerId, idempotencyKey]
+      );
+      if (raced) {
+        return {
+          actionId: raced.action_id,
+          status: raced.status,
+          scheduledFor: raced.scheduled_for,
+          durationSeconds: raced.duration_seconds,
+          result: raced.result,
+        };
+      }
+    }
     // D) Graceful failure: augment domain errors with recovery suggestions
     if (err instanceof DomainError) {
       const suggestions = buildFailureSuggestions(err, type);

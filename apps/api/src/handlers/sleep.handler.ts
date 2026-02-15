@@ -46,7 +46,7 @@ export const sleepHandler: ActionHandler<SleepPayload> = {
        SET pv = $2, mv = $3, sv = $4, cv = $5, spv = $6,
            sleep_state = 'awake'
        WHERE player_id = $1`,
-      [ctx.playerId, newVigor.pv, newVigor.mv, newVigor.sv, newVigor.cv, newVigor.spv]
+      [ctx.playerId, Math.round(newVigor.pv), Math.round(newVigor.mv), Math.round(newVigor.sv), Math.round(newVigor.cv), Math.round(newVigor.spv)]
     );
 
     return {

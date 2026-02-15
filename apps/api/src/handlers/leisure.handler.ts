@@ -48,7 +48,7 @@ export const leisureHandler: ActionHandler<LeisurePayload> = {
        WHERE player_id = $1`,
       [
         ctx.playerId,
-        newVigor.pv, newVigor.mv, newVigor.sv, newVigor.cv, newVigor.spv,
+        Math.round(newVigor.pv), Math.round(newVigor.mv), Math.round(newVigor.sv), Math.round(newVigor.cv), Math.round(newVigor.spv),
         JSON.stringify(allBuffs),
       ]
     );

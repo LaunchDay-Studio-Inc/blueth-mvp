@@ -422,6 +422,48 @@ describe('Atomicity', () => {
 
 // ── Concurrent idempotency ──────────────────────────────────────
 
+// ── Bug #20: Vigor rounding ──────────────────────────────────────
+
+describe('Vigor rounding (Bug #20)', () => {
+  it('vigor values are integers after a work shift', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+
+    const res = await submitAction(cookie, {
+      type: 'WORK_SHIFT',
+      payload: { jobFamily: 'physical', duration: 'short' },
+      idempotencyKey: 'vigor-round-1',
+    });
+    expect(res.statusCode).toBe(202);
+    const actionId = JSON.parse(res.body).actionId;
+
+    // Fast-forward
+    await pool.query(
+      `UPDATE actions SET scheduled_for = NOW() - INTERVAL '1 day' WHERE action_id = $1`,
+      [actionId]
+    );
+
+    // Trigger resolution
+    await server.inject({
+      method: 'GET',
+      url: '/me/state',
+      headers: authHeaders(cookie),
+    });
+
+    // Verify vigor values in DB are integers
+    const { rows } = await pool.query(
+      'SELECT pv, mv, sv, cv, spv FROM player_state WHERE player_id = $1',
+      [playerId]
+    );
+    const state = rows[0];
+    for (const key of ['pv', 'mv', 'sv', 'cv', 'spv']) {
+      const val = parseFloat(state[key]);
+      expect(val).toBe(Math.round(val));
+    }
+  });
+});
+
+// ── Concurrent idempotency ──────────────────────────────────────
+
 describe('Concurrent idempotency', () => {
   it('5 identical concurrent submissions produce exactly 1 action', async () => {
     const { cookie } = await registerTestPlayer(server);

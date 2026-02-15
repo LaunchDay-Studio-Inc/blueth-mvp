@@ -17,7 +17,7 @@ import { cleanDatabase } from './helpers/setup';
 import { teardown } from './helpers/setup';
 import { createTestServer, registerTestPlayer, authHeaders } from './helpers/factories';
 import { BUSINESS_REGISTRATION_FEE_CENTS, GOOD_BASE_PRICES } from '@blueth/core';
-import { completeProductionJob, processCompletedProductionJobs } from '../src/services/business-service';
+import { completeProductionJob, processCompletedProductionJobs, processBusinessDailyTick } from '../src/services/business-service';
 
 let server: FastifyInstance;
 let cookie: string;
@@ -831,5 +831,61 @@ describe('Inventory double-spend prevention (Bug #12)', () => {
     });
     expect(res2.statusCode).toBe(400);
     expect(JSON.parse(res2.body).error).toContain('Insufficient');
+  });
+});
+
+// ── Bug #14: Unpaid wages don't count toward satisfaction ────────
+
+describe('Unpaid wage satisfaction (Bug #14)', () => {
+  it('satisfaction decreases when wages are unpaid due to zero balance', async () => {
+    const regResult = await registerBusiness();
+    const businessId = regResult.result.businessId;
+
+    // Hire a worker
+    await server.inject({
+      method: 'POST',
+      url: '/business/hire',
+      headers: authHeaders(cookie),
+      payload: { businessId, wageCents: 12000, hoursPerDay: 8, idempotencyKey: idem() },
+    });
+
+    // Verify initial satisfaction is 1.0
+    const workersBefore = await pool.query(
+      'SELECT satisfaction FROM business_workers WHERE business_id = $1',
+      [businessId]
+    );
+    expect(parseFloat(workersBefore.rows[0].satisfaction)).toBe(1.0);
+
+    // Drain player wallet completely
+    const wallet = await pool.query(
+      'SELECT account_id FROM player_wallets WHERE player_id = $1',
+      [playerId]
+    );
+    const acctId = wallet.rows[0].account_id;
+    const balRow = await pool.query(
+      `SELECT COALESCE(SUM(CASE WHEN to_account = $1 THEN amount_cents ELSE 0 END), 0)
+         - COALESCE(SUM(CASE WHEN from_account = $1 THEN amount_cents ELSE 0 END), 0) AS balance
+       FROM ledger_entries WHERE from_account = $1 OR to_account = $1`,
+      [acctId]
+    );
+    const bal = parseInt(balRow.rows[0].balance, 10);
+    if (bal > 0) {
+      await pool.query(
+        `INSERT INTO ledger_entries (from_account, to_account, amount_cents, entry_type, memo)
+         VALUES ($1, 4, $2, 'test_drain', 'drain for bug14 test')`,
+        [acctId, bal]
+      );
+    }
+
+    // Run business daily tick
+    await processBusinessDailyTick();
+
+    // Satisfaction should have decreased (unpaid wages → 0 passed to updateWorkerSatisfaction)
+    const workersAfter = await pool.query(
+      'SELECT satisfaction FROM business_workers WHERE business_id = $1',
+      [businessId]
+    );
+    const satAfter = parseFloat(workersAfter.rows[0].satisfaction);
+    expect(satAfter).toBeLessThan(1.0);
   });
 });

@@ -37,7 +37,7 @@ export const socialCallHandler: ActionHandler<SocialCallPayload> = {
       `UPDATE player_state
        SET pv = $2, mv = $3, sv = $4, cv = $5, spv = $6
        WHERE player_id = $1`,
-      [ctx.playerId, newVigor.pv, newVigor.mv, newVigor.sv, newVigor.cv, newVigor.spv]
+      [ctx.playerId, Math.round(newVigor.pv), Math.round(newVigor.mv), Math.round(newVigor.sv), Math.round(newVigor.cv), Math.round(newVigor.spv)]
     );
 
     return {

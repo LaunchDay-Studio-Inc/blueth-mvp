@@ -122,11 +122,36 @@ async function completeTick(tickId: string, detail: unknown): Promise<void> {
 }
 
 async function failTick(tickId: string, error: string): Promise<void> {
+  // Read existing detail to preserve retry count
+  const existing = await queryOne<{ detail: { retryCount?: number } | null }>(
+    'SELECT detail FROM ticks WHERE tick_id = $1',
+    [tickId]
+  );
+  const prevRetryCount = existing?.detail?.retryCount ?? 0;
+
   await execute(
     `UPDATE ticks SET status = 'failed', finished_at = NOW(), detail = $2
      WHERE tick_id = $1`,
-    [tickId, JSON.stringify({ error })]
+    [tickId, JSON.stringify({ error, retryCount: prevRetryCount + 1 })]
   );
+}
+
+/**
+ * Reset stale failed ticks back to pending for retry.
+ * Only retries ticks that have failed fewer than 3 times (tracked in detail.retryCount).
+ * Ticks that have exhausted retries stay in 'failed' status permanently.
+ */
+export async function resetStaleFailedTicks(): Promise<number> {
+  const count = await execute(
+    `UPDATE ticks SET status = 'pending', started_at = NULL, finished_at = NULL
+     WHERE status = 'failed'
+       AND finished_at < NOW() - interval '2 minutes'
+       AND COALESCE((detail->>'retryCount')::int, 0) < 3`
+  );
+  if (count > 0) {
+    logger.info('Reset stale failed ticks for retry', { count });
+  }
+  return count;
 }
 
 // ── VigorState Builder ───────────────────────────────────────
@@ -570,6 +595,9 @@ export async function processTick(tick: TickRow, metrics: Metrics): Promise<void
  * 2. Claim and process pending ticks until none remain
  */
 export async function runTickIteration(metrics: Metrics): Promise<number> {
+  // Retry failed ticks that haven't exhausted their retry budget
+  await resetStaleFailedTicks();
+
   await ensureTicksCreated(new Date());
 
   let ticksProcessed = 0;

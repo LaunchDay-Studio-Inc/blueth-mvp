@@ -102,7 +102,7 @@ export const eatMealHandler: ActionHandler<EatMealPayload> = {
        WHERE player_id = $1`,
       [
         ctx.playerId,
-        vigor.pv, vigor.mv, vigor.sv, vigor.cv, vigor.spv,
+        Math.round(vigor.pv), Math.round(vigor.mv), Math.round(vigor.sv), Math.round(vigor.cv), Math.round(vigor.spv),
         JSON.stringify(allBuffs),
         JSON.stringify(updatedMealTimes),
       ]

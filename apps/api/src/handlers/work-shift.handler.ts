@@ -96,7 +96,7 @@ export const workShiftHandler: ActionHandler<WorkShiftPayload> = {
        WHERE player_id = $1`,
       [
         ctx.playerId,
-        postCostVigor.pv, postCostVigor.mv, postCostVigor.sv, postCostVigor.cv, postCostVigor.spv,
+        Math.round(postCostVigor.pv), Math.round(postCostVigor.mv), Math.round(postCostVigor.sv), Math.round(postCostVigor.cv), Math.round(postCostVigor.spv),
         JSON.stringify(updatedSkills),
       ]
     );

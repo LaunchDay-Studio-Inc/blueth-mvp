@@ -155,6 +155,25 @@ describe('POST /auth/logout', () => {
     expect(JSON.parse(response.body)).toEqual({ ok: true });
   });
 
+  it('logout set-cookie includes HttpOnly and Path (Bug #11)', async () => {
+    const { cookie } = await registerTestPlayer(server, 'logoutcookie');
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      headers: authHeaders(cookie),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const setCookie = response.headers['set-cookie'];
+    expect(setCookie).toBeDefined();
+    const cookieStr = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    // clearCookie should use full sessionCookieOptions (HttpOnly, SameSite, Path)
+    expect(cookieStr).toMatch(/HttpOnly/i);
+    expect(cookieStr).toMatch(/Path=\//i);
+    expect(cookieStr).toMatch(/SameSite=Lax/i);
+  });
+
   it('invalidates session after logout', async () => {
     const { cookie } = await registerTestPlayer(server, 'logouttest2');
 

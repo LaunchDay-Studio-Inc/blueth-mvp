@@ -721,6 +721,7 @@ export async function processBusinessDailyTick(): Promise<{
 
         for (const worker of workers) {
           // Pay wage from player wallet to BILL_PAYMENT_SINK
+          let actualPaidCents = 0;
           if (worker.wage_cents > 0) {
             const balance = await getBalanceInTx(tx, playerAccountId);
             if (balance >= worker.wage_cents) {
@@ -733,14 +734,15 @@ export async function processBusinessDailyTick(): Promise<{
                 null,
                 `Worker wage: ${biz.name}`
               );
+              actualPaidCents = worker.wage_cents;
               wagesPaid++;
             }
           }
 
-          // Update satisfaction
+          // Update satisfaction — use actual paid amount, not configured wage
           const newSat = updateWorkerSatisfaction(
             parseFloat(worker.satisfaction),
-            worker.wage_cents,
+            actualPaidCents,
             MARKET_AVERAGE_WAGE_CENTS,
             worker.hours_per_day,
           );

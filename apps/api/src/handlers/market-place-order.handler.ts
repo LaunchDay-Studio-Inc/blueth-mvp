@@ -95,7 +95,7 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
 
       await tx.query(
         `UPDATE player_state SET mv = $2 WHERE player_id = $1`,
-        [playerId, newVigor.mv]
+        [playerId, Math.round(newVigor.mv)]
       );
 
       await markSessionVigorCharged(tx, session.sessionId);

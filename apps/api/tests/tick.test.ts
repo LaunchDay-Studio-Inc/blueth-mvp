@@ -6,6 +6,7 @@ import {
   ensureTicksCreated,
   claimTick,
   processTick,
+  resetStaleFailedTicks,
 } from '../src/services/tick-service';
 import { createMetrics } from '../src/services/observability';
 
@@ -165,6 +166,52 @@ describe('Tick Service', () => {
       // Original PV was 50 (from initialization), minus 3 from downgrade penalty
       // The exact value depends on hourly tick processing, but it should be less than initial
       expect(parseFloat(state.pv)).toBeLessThan(50);
+    });
+  });
+
+  describe('failed tick retry (Bug #15)', () => {
+    it('resets a failed tick with retries remaining after cooldown', async () => {
+      const now = new Date('2024-03-15T10:00:00Z');
+      await ensureTicksCreated(now);
+
+      // Claim the hourly tick, then manually fail it with retryCount = 1
+      const tick = await claimTick();
+      expect(tick).not.toBeNull();
+
+      await pool.query(
+        `UPDATE ticks SET status = 'failed', finished_at = NOW() - interval '5 minutes',
+         detail = '{"error":"test failure","retryCount":1}'
+         WHERE tick_id = $1`,
+        [tick!.tick_id]
+      );
+
+      // Reset stale failed ticks — should move it back to pending
+      const resetCount = await resetStaleFailedTicks();
+      expect(resetCount).toBe(1);
+
+      // Tick should be claimable again
+      const retried = await claimTick();
+      expect(retried).not.toBeNull();
+      expect(retried!.tick_id).toBe(tick!.tick_id);
+    });
+
+    it('does NOT reset a failed tick that has exhausted retries', async () => {
+      const now = new Date('2024-03-15T11:00:00Z');
+      await ensureTicksCreated(now);
+
+      const tick = await claimTick();
+      expect(tick).not.toBeNull();
+
+      // Set retryCount = 3 (exhausted)
+      await pool.query(
+        `UPDATE ticks SET status = 'failed', finished_at = NOW() - interval '5 minutes',
+         detail = '{"error":"permanent failure","retryCount":3}'
+         WHERE tick_id = $1`,
+        [tick!.tick_id]
+      );
+
+      const resetCount = await resetStaleFailedTicks();
+      expect(resetCount).toBe(0);
     });
   });
 });

@@ -78,6 +78,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     if (sessionId) {
       await authService.logout(sessionId);
     }
-    reply.clearCookie(SESSION_COOKIE, { path: '/' }).send({ ok: true });
+    const isProduction = process.env.NODE_ENV === 'production';
+    reply.clearCookie(SESSION_COOKIE, sessionCookieOptions(isProduction)).send({ ok: true });
   });
 };
