@@ -20,9 +20,9 @@ import {
   OrderTypeSchema,
 } from '@blueth/core';
 import { z } from 'zod';
-import { queryOne } from '@blueth/db';
 import type { ActionHandler } from './registry';
 import { extractVigor, extractCaps } from './registry';
+import { txQueryOne } from '../services/action-engine';
 import {
   placeOrder,
   getOrCreateMarketSession,
@@ -72,8 +72,9 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
     const vigor = extractVigor(playerState);
     const caps = extractCaps(playerState);
 
-    // C) API rate limit: check orders in last minute
-    const rateRow = await queryOne<{ cnt: string }>(
+    // C) API rate limit: check orders in last minute (inside transaction for consistency)
+    const rateRow = await txQueryOne<{ cnt: string }>(
+      tx,
       `SELECT COUNT(*) AS cnt FROM market_orders
        WHERE actor_type = 'player' AND actor_id = $1
        AND created_at > NOW() - interval '1 minute'`,

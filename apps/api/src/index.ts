@@ -2,7 +2,9 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
-import * as dotenv from 'dotenv';
+// dotenv.config() is called at module-load time by @blueth/db (before pool creation).
+// No separate dotenv call is needed here — static imports are hoisted in ESM,
+// so any dotenv.config() in this file body would run AFTER @blueth/db has already initialized.
 import { closePool, pool } from '@blueth/db';
 import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
@@ -15,8 +17,6 @@ import { errorHandlerPlugin } from './plugins/error-handler';
 import { registerAllHandlers } from './handlers/register-all';
 import { validateConfig, maskDatabaseUrl } from './config';
 import { APP_VERSION, GIT_COMMIT } from './version';
-
-dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';

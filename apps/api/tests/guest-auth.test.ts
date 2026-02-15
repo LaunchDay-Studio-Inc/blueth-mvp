@@ -28,7 +28,19 @@ describe('Guest Auth', () => {
     const body = JSON.parse(response.body);
     expect(body.token).toBeDefined();
     expect(body.playerId).toBeDefined();
-    expect(body.username).toMatch(/^guest_[0-9a-f]{8}$/);
+    expect(body.username).toMatch(/^guest_[0-9a-f]{24}$/);
+  });
+
+  it('multiple guest registrations produce unique usernames (Bug #10)', async () => {
+    const usernames = new Set<string>();
+    for (let i = 0; i < 10; i++) {
+      const res = await server.inject({ method: 'POST', url: '/auth/guest' });
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(usernames.has(body.username)).toBe(false);
+      usernames.add(body.username);
+    }
+    expect(usernames.size).toBe(10);
   });
 
   it('Bearer token authenticates to GET /me/state', async () => {

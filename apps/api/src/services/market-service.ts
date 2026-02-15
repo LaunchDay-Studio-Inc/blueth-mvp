@@ -393,6 +393,7 @@ async function matchOrder(
   const priceOrder = isBuy ? 'ASC' : 'DESC';
 
   let qtyRemaining = parseFloat(incomingOrder.qty_open);
+  const skippedOrderIds: string[] = [];
 
   while (qtyRemaining > 0) {
     // Build price condition for matching
@@ -418,12 +419,13 @@ async function matchOrder(
         AND status IN ('open', 'partial')
         AND order_type = 'limit'
         ${priceCondition}
+        ${skippedOrderIds.length > 0 ? `AND id NOT IN (${skippedOrderIds.map((_, i) => `$${params.length + i + 1}`).join(',')})` : ''}
       ORDER BY price_cents ${priceOrder}, created_at ASC
       LIMIT 1
       FOR UPDATE SKIP LOCKED
     `;
 
-    const counterOrder = await txQueryOne<MarketOrderRow>(tx, matchQuery, params);
+    const counterOrder = await txQueryOne<MarketOrderRow>(tx, matchQuery, [...params, ...skippedOrderIds]);
     if (!counterOrder) break;
 
     const counterQty = parseFloat(counterOrder.qty_open);
@@ -455,8 +457,17 @@ async function matchOrder(
     if (buyerAccountId !== SYSTEM_ACCOUNTS.NPC_VENDOR) {
       const buyerBalance = await getBalanceInTx(tx, buyerAccountId);
       if (buyerBalance < buyerCost) {
-        // If buyer can't afford full fill, skip this match
-        break;
+        // Buyer can't afford this fill.
+        // If buyer is the incoming order (isBuy), remaining counter-orders are same
+        // or higher price — no point continuing.
+        // If buyer is the counter-order (!isBuy), skip this counter and try the next
+        // resting buy at a lower price that might have funds.
+        if (isBuy) {
+          break;
+        } else {
+          skippedOrderIds.push(counterOrder.id);
+          continue;
+        }
       }
     }
 

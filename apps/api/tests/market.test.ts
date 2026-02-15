@@ -782,3 +782,35 @@ describe('Transaction atomicity (Bug #4, #5)', () => {
     expect(invAfter).toBe(10);
   });
 });
+
+// ── Bug #13: Rate limit inside transaction ────────────────────
+
+describe('Market order rate limit (Bug #13)', () => {
+  it('rejects orders exceeding the per-minute rate limit', async () => {
+    const { cookie } = await registerTestPlayer(server);
+
+    // Place 10 orders (the rate limit) — all should succeed
+    for (let i = 0; i < 10; i++) {
+      const res = await placeMarketOrder(cookie, {
+        goodCode: 'RAW_FOOD',
+        side: 'buy',
+        orderType: 'market',
+        qty: 1,
+        idempotencyKey: `rate-limit-${Date.now()}-${i}`,
+      });
+      expect(res.statusCode).toBe(200);
+    }
+
+    // The 11th order should be rate-limited
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'market',
+      qty: 1,
+      idempotencyKey: `rate-limit-${Date.now()}-overflow`,
+    });
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(body.error).toContain('Rate limit');
+  });
+});

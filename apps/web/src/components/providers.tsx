@@ -20,8 +20,8 @@ export function Providers({ children }: { children: ReactNode }) {
               }
               return failureCount < 1;
             },
-            refetchOnWindowFocus: false,
-            refetchOnReconnect: false,
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
           },
         },
       }),

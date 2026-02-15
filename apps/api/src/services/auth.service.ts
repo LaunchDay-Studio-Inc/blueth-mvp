@@ -116,27 +116,35 @@ export async function register(username: string, password: string): Promise<Auth
  * Used for itch.io / cross-origin play.
  */
 export async function guestRegister(): Promise<GuestAuthResult> {
-  const randomHex = crypto.randomBytes(4).toString('hex');
+  const randomHex = crypto.randomBytes(12).toString('hex');
   const username = `guest_${randomHex}`;
   const placeholderHash = await bcrypt.hash(crypto.randomUUID(), BCRYPT_ROUNDS);
   const rawToken = crypto.randomUUID();
   const tokenHash = hashToken(rawToken);
 
-  return withTransaction(async (tx) => {
-    const playerId = await bootstrapPlayer(tx, username, placeholderHash);
+  try {
+    return await withTransaction(async (tx) => {
+      const playerId = await bootstrapPlayer(tx, username, placeholderHash);
 
-    await tx.query(
-      `INSERT INTO guest_tokens (player_id, token_hash, expires_at)
+      await tx.query(
+        `INSERT INTO guest_tokens (player_id, token_hash, expires_at)
        VALUES ($1, $2, NOW() + INTERVAL '${GUEST_TOKEN_DURATION_DAYS} days')`,
-      [playerId, tokenHash]
-    );
+        [playerId, tokenHash]
+      );
 
-    return {
-      token: rawToken,
-      playerId,
-      username,
-    };
-  });
+      return {
+        token: rawToken,
+        playerId,
+        username,
+      };
+    });
+  } catch (err) {
+    const pgErr = err as { code?: string };
+    if (pgErr.code === '23505') {
+      throw new ValidationError('Guest registration conflict — please retry');
+    }
+    throw err;
+  }
 }
 
 /**

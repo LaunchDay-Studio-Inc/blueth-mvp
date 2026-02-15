@@ -8,7 +8,7 @@ const DATABASE_URL =
 
 export const pool = new Pool({
   connectionString: DATABASE_URL,
-  max: 20,
+  max: parseInt(process.env.DB_POOL_MAX || '8', 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,

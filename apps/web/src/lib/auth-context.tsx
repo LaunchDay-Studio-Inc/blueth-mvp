@@ -117,10 +117,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('guest_token');
     }
     queryClient.clear();
-    if (typeof window !== 'undefined' && !ITCH_MODE) {
-      window.location.href = '/login';
+    if (typeof window !== 'undefined') {
+      if (ITCH_MODE) {
+        // In ITCH_MODE, immediately create a fresh guest session
+        // instead of leaving the user stranded with no auth
+        guestLoginAttempted.current = false;
+        guestLogin().catch(() => {
+          guestLoginAttempted.current = false;
+        });
+      } else {
+        window.location.href = '/login';
+      }
     }
-  }, [queryClient]);
+  }, [queryClient, guestLogin]);
 
   const resetToken = useCallback(async () => {
     const res = await api.post<{ token: string }>('/me/token-reset');

@@ -26,9 +26,11 @@ export function useSubmitAction() {
         idempotencyKey: params.idempotencyKey || generateIdempotencyKey(),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.player.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.actions.all });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.player.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.actions.all }),
+      ]);
     },
     onError: (error) => {
       if (error instanceof ApiError) {
