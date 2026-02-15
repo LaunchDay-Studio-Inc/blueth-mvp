@@ -15,6 +15,7 @@ export const ACTION_TYPES = {
 
   // ── Employment ──
   WORK_SHIFT: 'WORK_SHIFT',
+  GIG_JOB: 'GIG_JOB',
 
   // ── Market ──
   MARKET_PLACE_ORDER: 'MARKET_PLACE_ORDER',

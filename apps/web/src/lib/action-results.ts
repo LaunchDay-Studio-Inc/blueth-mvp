@@ -21,7 +21,8 @@ export function extractActionDeltas(
   if (!result) return {};
 
   switch (type) {
-    case 'WORK_SHIFT': {
+    case 'WORK_SHIFT':
+    case 'GIG_JOB': {
       const moneyCents =
         typeof result.payCents === 'number' ? result.payCents : undefined;
       const vigorCost = result.vigorCost as

@@ -12,10 +12,14 @@ import {
   calculateShiftPay,
   calculatePerformance,
   canAffordVigorCost,
+  GIGS_CATALOG,
+  getGigVigorCost,
+  calculateGigPay,
+  GIG_DIMINISH_THRESHOLD,
   type ShiftDuration,
   type VigorDimension,
 } from '@blueth/core';
-import { Briefcase, Info } from 'lucide-react';
+import { Briefcase, Zap, Info } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const SHIFTS: ShiftDuration[] = ['short', 'full'];
@@ -37,6 +41,13 @@ export default function JobsPage() {
     });
   }
 
+  function handleGig(gigId: string) {
+    submitAction.mutate({
+      type: 'GIG_JOB',
+      payload: { gigId },
+    });
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Job Center</h1>
@@ -47,10 +58,46 @@ export default function JobsPage() {
       <div className="flex items-start gap-2 p-3 rounded-md bg-muted text-sm text-muted-foreground">
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
         <span>
-          Clicking <strong>Go</strong> queues the shift. Pay and vigor costs apply when the shift
-          completes (after the duration elapses). Check the Queue in the top bar to track progress.
+          Clicking <strong>Go</strong> queues the action. Pay and vigor costs apply when it
+          completes. Check the Queue in the top bar to track progress.
         </span>
       </div>
+
+      {/* ── Gig Board ── */}
+      <div>
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
+          <Zap className="h-5 w-5 text-primary" />
+          Gig Board
+        </h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Quick 10-minute tasks. Better hourly rate for active players. Returns diminish after {GIG_DIMINISH_THRESHOLD} gigs/day.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {GIGS_CATALOG.map((gig) => {
+            const skill = user.skills[gig.family] ?? 0.1;
+            const perf = calculatePerformance(gig.family, skill, vigor);
+            const vigorCost = getGigVigorCost(gig.family);
+            const estPay = calculateGigPay(gig.baseWageDaily, perf, 0);
+
+            return (
+              <ActionCard
+                key={gig.id}
+                title={gig.label}
+                description={`${gig.family} gig`}
+                icon={Zap}
+                vigorCost={vigorCost}
+                moneyGainCents={estPay}
+                duration="10 min"
+                loading={submitAction.isPending}
+                onClick={() => handleGig(gig.id)}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Standard Jobs ── */}
+      <h2 className="text-lg font-semibold">Available Jobs</h2>
 
       <div className="grid gap-4">
         {JOBS_CATALOG.map((job) => {

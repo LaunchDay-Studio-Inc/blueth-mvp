@@ -4,6 +4,7 @@ import { sleepHandler } from './sleep.handler';
 import { leisureHandler } from './leisure.handler';
 import { socialCallHandler } from './social-call.handler';
 import { workShiftHandler } from './work-shift.handler';
+import { gigJobHandler } from './gig-job.handler';
 import { marketPlaceOrderHandler } from './market-place-order.handler';
 import { marketCancelOrderHandler } from './market-cancel-order.handler';
 import { marketDayTradeHandler } from './market-day-trade.handler';
@@ -23,6 +24,7 @@ export function registerAllHandlers(): void {
   registerHandler(leisureHandler);
   registerHandler(socialCallHandler);
   registerHandler(workShiftHandler);
+  registerHandler(gigJobHandler);
   registerHandler(marketPlaceOrderHandler);
   registerHandler(marketCancelOrderHandler);
   registerHandler(marketDayTradeHandler);

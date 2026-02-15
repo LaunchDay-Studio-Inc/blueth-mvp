@@ -36,3 +36,8 @@ export const WorkShiftPayloadSchema = z.object({
   duration: z.enum(['short', 'full']),
 });
 export type WorkShiftPayload = z.infer<typeof WorkShiftPayloadSchema>;
+
+export const GigJobPayloadSchema = z.object({
+  gigId: z.enum(['courier_run', 'data_entry_burst', 'cafe_rush', 'quick_inventory']),
+});
+export type GigJobPayload = z.infer<typeof GigJobPayloadSchema>;
