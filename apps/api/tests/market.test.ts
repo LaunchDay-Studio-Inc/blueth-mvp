@@ -720,3 +720,65 @@ describe('Market fee ledger verification', () => {
     expect(totalFee).toBe(expectedFee);
   });
 });
+
+// ── Bug #4 / #5: Transaction atomicity ────────────────────────
+
+describe('Transaction atomicity (Bug #4, #5)', () => {
+  it('placeOrder uses action engine transaction — balance check is atomic', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+
+    // Get the player's starting balance
+    const startBalance = await getPlayerBalance(playerId);
+
+    // Create NPC sell order so market buy can fill
+    await createNpcSellOrder('RAW_FOOD', 210, 100);
+
+    // Place a buy order that should succeed within the action engine's tx
+    const res = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'buy',
+      orderType: 'market',
+      qty: 2,
+      idempotencyKey: 'atomic-buy-1',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.status).toBe('completed');
+
+    // Verify balance was deducted (order filled at 210 × 2 + fee)
+    const endBalance = await getPlayerBalance(playerId);
+    expect(endBalance).toBeLessThan(startBalance);
+  });
+
+  it('cancelOrder uses action engine transaction — refund is atomic', async () => {
+    const { cookie, playerId } = await registerTestPlayer(server);
+
+    // Give player inventory and place a sell limit order
+    await givePlayerInventory(playerId, 'RAW_FOOD', 10);
+
+    const placeRes = await placeMarketOrder(cookie, {
+      goodCode: 'RAW_FOOD',
+      side: 'sell',
+      orderType: 'limit',
+      priceCents: 500,
+      qty: 5,
+      idempotencyKey: 'atomic-sell-1',
+    });
+    expect(placeRes.statusCode).toBe(200);
+    const placeBody = JSON.parse(placeRes.body);
+    const orderId = placeBody.result.orderId;
+
+    // Inventory should be 5 (10 - 5 reserved)
+    const invBefore = await getPlayerInventory(playerId, 'RAW_FOOD');
+    expect(invBefore).toBe(5);
+
+    // Cancel the order
+    const cancelRes = await cancelMarketOrder(cookie, orderId);
+    expect(cancelRes.statusCode).toBe(200);
+
+    // Inventory should be restored to 10
+    const invAfter = await getPlayerInventory(playerId, 'RAW_FOOD');
+    expect(invAfter).toBe(10);
+  });
+});

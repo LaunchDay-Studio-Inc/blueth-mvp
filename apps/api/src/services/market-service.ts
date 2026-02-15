@@ -181,7 +181,8 @@ async function getInventoryQty(
   const row = await txQueryOne<{ qty: string }>(
     tx,
     `SELECT qty FROM inventories
-     WHERE owner_type = $1 AND owner_id ${ownerId ? '= $2' : 'IS NULL'} AND good_id = $3`,
+     WHERE owner_type = $1 AND owner_id ${ownerId ? '= $2' : 'IS NULL'} AND good_id = $3
+     FOR UPDATE`,
     ownerId ? [ownerType, ownerId, goodId] : [ownerType, goodId]
   );
   return parseFloat(row?.qty ?? '0');
@@ -267,8 +268,9 @@ export async function markSessionVigorCharged(tx: PoolClient, sessionId: string)
  */
 export async function placeOrder(
   input: PlaceOrderInput,
+  txOverride?: PoolClient,
 ): Promise<PlaceOrderResult> {
-  return withTransaction(async (tx) => {
+  const run = async (tx: PoolClient) => {
     const good = await getGoodByCode(tx, input.goodCode);
     const npcState = await getNpcMarketState(tx, good.id);
     const playerAccountId = await getPlayerAccountId(tx, input.playerId);
@@ -364,7 +366,8 @@ export async function placeOrder(
       fills,
       qtyRemaining: parseFloat(finalOrder?.qty_open ?? '0'),
     };
-  });
+  };
+  return txOverride ? run(txOverride) : withTransaction(run);
 }
 
 // ── Matching Engine ──────────────────────────────────────────
@@ -609,8 +612,9 @@ async function updateRefPriceFromTrades(
 export async function cancelOrder(
   playerId: string,
   orderId: string,
+  txOverride?: PoolClient,
 ): Promise<{ success: boolean }> {
-  return withTransaction(async (tx) => {
+  const run = async (tx: PoolClient) => {
     const order = await txQueryOne<MarketOrderRow>(
       tx,
       `SELECT * FROM market_orders
@@ -638,7 +642,8 @@ export async function cancelOrder(
     }
 
     return { success: true };
-  });
+  };
+  return txOverride ? run(txOverride) : withTransaction(run);
 }
 
 // ── Market Queries ───────────────────────────────────────────

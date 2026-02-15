@@ -207,7 +207,6 @@ describe('Production — Input Reservation', () => {
     });
     expect(res.statusCode).toBe(200);
     const result = JSON.parse(res.body);
-    expect(result.result.inputsReserved).toBeDefined();
     expect(result.result.inputsReserved).toHaveLength(3);
 
     // Verify inputs were deducted
@@ -746,5 +745,91 @@ describe('Insufficient Labor', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(JSON.parse(res.body).error).toContain('labor');
+  });
+});
+
+// ── Bug #6: Labor double-spend ────────────────────────────────
+
+describe('Labor double-spend prevention (Bug #6)', () => {
+  it('rejects second production job when labor is fully committed', async () => {
+    const regResult = await registerBusiness();
+    const businessId = regResult.result.businessId;
+
+    await pool.query('UPDATE businesses SET machinery_qty = 1 WHERE id = $1', [businessId]);
+
+    // Hire a worker with exactly 2 hours (PROCESS_FOOD needs 2)
+    await server.inject({
+      method: 'POST',
+      url: '/business/hire',
+      headers: authHeaders(cookie),
+      payload: { businessId, wageCents: 12000, hoursPerDay: 2, idempotencyKey: idem() },
+    });
+
+    // Give enough inventory for two jobs
+    await giveBusinessInventory(businessId, 'RAW_FOOD', 20);
+    await giveBusinessInventory(businessId, 'FRESH_WATER', 10);
+    await giveBusinessInventory(businessId, 'ENERGY', 10);
+
+    // First production should succeed
+    const res1 = await server.inject({
+      method: 'POST',
+      url: '/business/production/start',
+      headers: authHeaders(cookie),
+      payload: { businessId, recipeCode: 'PROCESS_FOOD', idempotencyKey: idem() },
+    });
+    expect(res1.statusCode).toBe(200);
+
+    // Second production should fail — all labor committed to first job
+    const res2 = await server.inject({
+      method: 'POST',
+      url: '/business/production/start',
+      headers: authHeaders(cookie),
+      payload: { businessId, recipeCode: 'PROCESS_FOOD', idempotencyKey: idem() },
+    });
+    expect(res2.statusCode).toBe(400);
+    expect(JSON.parse(res2.body).error).toContain('labor');
+  });
+});
+
+// ── Bug #12: Inventory double-spend ───────────────────────────
+
+describe('Inventory double-spend prevention (Bug #12)', () => {
+  it('rejects second production job when inventory is consumed by first', async () => {
+    const regResult = await registerBusiness();
+    const businessId = regResult.result.businessId;
+
+    await pool.query('UPDATE businesses SET machinery_qty = 1 WHERE id = $1', [businessId]);
+
+    // Hire worker with enough hours for two concurrent jobs
+    await server.inject({
+      method: 'POST',
+      url: '/business/hire',
+      headers: authHeaders(cookie),
+      payload: { businessId, wageCents: 12000, hoursPerDay: 8, idempotencyKey: idem() },
+    });
+
+    // Give exactly enough inventory for ONE PROCESS_FOOD job (3 RAW_FOOD, 1 FRESH_WATER, 1 ENERGY)
+    await giveBusinessInventory(businessId, 'RAW_FOOD', 3);
+    await giveBusinessInventory(businessId, 'FRESH_WATER', 1);
+    await giveBusinessInventory(businessId, 'ENERGY', 1);
+
+    // First production should succeed
+    const res1 = await server.inject({
+      method: 'POST',
+      url: '/business/production/start',
+      headers: authHeaders(cookie),
+      payload: { businessId, recipeCode: 'PROCESS_FOOD', idempotencyKey: idem() },
+    });
+    expect(res1.statusCode).toBe(200);
+
+    // Second production should fail — inventory already consumed
+    const res2 = await server.inject({
+      method: 'POST',
+      url: '/business/production/start',
+      headers: authHeaders(cookie),
+      payload: { businessId, recipeCode: 'PROCESS_FOOD', idempotencyKey: idem() },
+    });
+    expect(res2.statusCode).toBe(400);
+    expect(JSON.parse(res2.body).error).toContain('Insufficient');
   });
 });

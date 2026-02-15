@@ -40,7 +40,7 @@ export const marketCancelOrderHandler: ActionHandler<CancelOrderPayload> = {
   },
 
   async resolve(ctx) {
-    const result = await cancelOrder(ctx.playerId, ctx.payload.orderId);
+    const result = await cancelOrder(ctx.playerId, ctx.payload.orderId, ctx.tx);
     return result;
   },
 };

@@ -156,7 +156,8 @@ async function getInventoryQty(
   const row = await txQueryOne<{ qty: string }>(
     tx,
     `SELECT qty FROM inventories
-     WHERE owner_type = $1 AND owner_id = $2 AND good_id = $3`,
+     WHERE owner_type = $1 AND owner_id = $2 AND good_id = $3
+     FOR UPDATE`,
     [ownerType, ownerId, goodId]
   );
   return parseFloat(row?.qty ?? '0');
@@ -428,21 +429,34 @@ export async function startProduction(
     throw new ValidationError('Business has no machinery. Purchase machinery first.');
   }
 
-  // Check labor
-  const workers = await query<BusinessWorkerRow>(
-    `SELECT * FROM business_workers WHERE business_id = $1`,
+  // Check labor (use transaction to get consistent snapshot)
+  const workerResult = await tx.query<BusinessWorkerRow>(
+    `SELECT * FROM business_workers WHERE business_id = $1 FOR UPDATE`,
     [businessId]
   );
+  const workers = workerResult.rows;
   const effectiveLabor = calculateEffectiveLabor(
     workers.map((w) => ({
       hoursPerDay: w.hours_per_day,
       satisfaction: parseFloat(w.satisfaction),
     }))
   );
+
+  // Subtract labor already committed by running production jobs
+  const committedResult = await tx.query<{ committed: string }>(
+    `SELECT COALESCE(SUM(r.labor_hours), 0) AS committed
+     FROM production_jobs pj
+     JOIN recipes r ON r.id = pj.recipe_id
+     WHERE pj.business_id = $1 AND pj.status = 'running'`,
+    [businessId]
+  );
+  const committedLabor = parseFloat(committedResult.rows[0]?.committed ?? '0');
+  const availableLabor = effectiveLabor - committedLabor;
+
   const requiredLabor = parseFloat(recipe.labor_hours);
-  if (!hasEnoughLabor(effectiveLabor, requiredLabor)) {
+  if (!hasEnoughLabor(availableLabor, requiredLabor)) {
     throw new ValidationError(
-      `Insufficient labor: need ${requiredLabor}h, have ${effectiveLabor.toFixed(1)}h effective`
+      `Insufficient labor: need ${requiredLabor}h, have ${availableLabor.toFixed(1)}h available (${committedLabor.toFixed(1)}h committed to running jobs)`
     );
   }
 

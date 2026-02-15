@@ -101,7 +101,7 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
       await markSessionVigorCharged(tx, session.sessionId);
     }
 
-    // Place the order via market service
+    // Place the order via market service (using action engine's transaction)
     const result = await placeOrder({
       playerId,
       goodCode: payload.goodCode,
@@ -110,7 +110,7 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
       priceCents: payload.priceCents,
       qty: payload.qty,
       idempotencyKey: payload.idempotencyKey,
-    });
+    }, tx);
 
     // E) Non-blocking spam detection
     detectOrderSpam(playerId).catch(() => {});
