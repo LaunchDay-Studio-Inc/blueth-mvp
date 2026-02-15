@@ -30,10 +30,7 @@ services:
     ports:
       - '3001:3001'
     volumes:
-      - ./apps/api:/app/apps/api
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/api/node_modules
+      - ./:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,11 +47,7 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - ./apps/web:/app/apps/web
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
+      - ./:/app
     depends_on:
       - api
     command: pnpm --filter @blueth/web dev
