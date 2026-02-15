@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useActionQueue, type ActionQueueItem } from '@/hooks/use-action-queue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Clock, CheckCircle2, Loader2, AlertCircle, ListTodo, ChevronDown } from 'lucide-react';
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
@@ -26,24 +27,38 @@ function formatActionType(type: string): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function RunningCountdown({ item }: { item: ActionQueueItem }) {
-  const [elapsed, setElapsed] = useState('');
+function formatDuration(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+  return `${m}m ${String(s).padStart(2, '0')}s`;
+}
+
+function ActionTimer({ item }: { item: ActionQueueItem }) {
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    function update() {
-      const start = new Date(item.createdAt).getTime();
-      const now = Date.now();
-      const diffS = Math.max(0, Math.floor((now - start) / 1000));
-      const m = Math.floor(diffS / 60);
-      const s = diffS % 60;
-      setElapsed(`${m}m ${String(s).padStart(2, '0')}s`);
-    }
-    update();
-    const id = setInterval(update, 1000);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [item.createdAt]);
+  }, []);
 
-  return <span className="text-xs text-amber-600">{elapsed}</span>;
+  const startMs = new Date(item.scheduled_for).getTime();
+  const durationMs = item.duration_seconds * 1000;
+  const endMs = startMs + durationMs;
+  const elapsedMs = now - startMs;
+  const remainingS = Math.max(0, Math.ceil((endMs - now) / 1000));
+  const pct = durationMs > 0 ? Math.min(100, Math.max(0, (elapsedMs / durationMs) * 100)) : 100;
+
+  return (
+    <div className="space-y-1 w-full mt-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-amber-600 font-mono">{formatDuration(remainingS)} left</span>
+        <span className="text-muted-foreground">{Math.round(pct)}%</span>
+      </div>
+      <Progress value={pct} className="h-1.5" indicatorClassName="bg-amber-500" />
+    </div>
+  );
 }
 
 export function ActionQueueDropdown() {
@@ -95,8 +110,8 @@ export function ActionQueueDropdown() {
                       <span className="flex-1 truncate font-medium text-xs">
                         {formatActionType(running.type)}
                       </span>
-                      <RunningCountdown item={running} />
                     </div>
+                    <ActionTimer item={running} />
                   </div>
                 )}
 
@@ -105,7 +120,7 @@ export function ActionQueueDropdown() {
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground font-medium">Up next</p>
                     {pending.slice(0, 5).map((item) => (
-                      <div key={item.id} className="flex items-center gap-2 text-xs py-1">
+                      <div key={item.action_id} className="flex items-center gap-2 text-xs py-1">
                         {STATUS_ICONS[item.status] || STATUS_ICONS.pending}
                         <span className="flex-1 truncate">{formatActionType(item.type)}</span>
                         <Badge variant={STATUS_VARIANTS[item.status] || 'outline'} className="text-[10px] px-1">
@@ -124,7 +139,7 @@ export function ActionQueueDropdown() {
                       {STATUS_ICONS.completed}
                       <span className="flex-1 truncate">{formatActionType(lastCompleted.type)}</span>
                       <span className="text-muted-foreground text-[10px]">
-                        {new Date(lastCompleted.resolvedAt || lastCompleted.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(lastCompleted.finished_at || lastCompleted.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>

@@ -62,7 +62,7 @@ export function ActionQueue() {
         ) : (
           <ul className="space-y-1.5">
             {items.slice(0, 12).map((item) => (
-              <li key={item.id} className="flex items-center gap-2 text-sm">
+              <li key={item.action_id} className="flex items-center gap-2 text-sm">
                 {STATUS_ICONS[item.status] || STATUS_ICONS.pending}
                 <span className="flex-1 truncate">{formatActionType(item.type)}</span>
                 <Badge variant={STATUS_VARIANTS[item.status] || 'outline'} className="text-xs">

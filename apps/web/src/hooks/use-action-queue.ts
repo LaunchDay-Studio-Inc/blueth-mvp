@@ -3,13 +3,15 @@ import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queries';
 
 export interface ActionQueueItem {
-  id: string;
+  action_id: string;
   type: string;
   status: string;
   payload: Record<string, unknown>;
-  scheduledFor: string | null;
-  resolvedAt: string | null;
-  createdAt: string;
+  scheduled_for: string;
+  duration_seconds: number;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
 }
 
 export function useActionQueue() {
