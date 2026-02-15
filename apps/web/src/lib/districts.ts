@@ -7,6 +7,12 @@ export interface DistrictMeta {
   stroke: string;
   points: string;
   locations: string[];
+  /** Gradient stops [light, dark] for SVG linearGradient fills */
+  gradient: [string, string];
+  /** Key into DISTRICT_ICONS for the district emblem */
+  icon: string;
+  /** Terrain type affecting background rendering */
+  terrain: 'urban' | 'water' | 'green' | 'industrial' | 'rural';
 }
 
 export const DISTRICTS: DistrictMeta[] = [
@@ -19,6 +25,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#2563EB',
     points: '300,180 380,160 400,200 380,260 300,260 280,220',
     locations: ['Office', 'Bank', 'Fine Dining'],
+    gradient: ['#5B9CF6', '#1E40AF'],
+    icon: 'skyscraper',
+    terrain: 'urban',
   },
   {
     code: 'OLD_TOWN',
@@ -29,6 +38,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#B45309',
     points: '200,160 280,140 300,180 280,220 200,240 180,200',
     locations: ['Market', 'Cafe', 'Workshop'],
+    gradient: ['#F4A742', '#92400E'],
+    icon: 'clocktower',
+    terrain: 'urban',
   },
   {
     code: 'MARINA',
@@ -39,6 +51,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#0891B2',
     points: '400,120 480,100 520,140 500,200 400,200 380,160',
     locations: ['Restaurant', 'Leisure Club', 'Marina Store'],
+    gradient: ['#22D3EE', '#0E7490'],
+    icon: 'sailboat',
+    terrain: 'water',
   },
   {
     code: 'TECH_PARK',
@@ -49,6 +64,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#7C3AED',
     points: '400,200 500,200 520,260 480,300 400,280 380,260',
     locations: ['Tech Office', 'Lab', 'Cafe'],
+    gradient: ['#A78BFA', '#5B21B6'],
+    icon: 'circuit',
+    terrain: 'urban',
   },
   {
     code: 'MARKET_SQ',
@@ -59,6 +77,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#16A34A',
     points: '240,240 320,240 340,300 300,340 240,340 220,280',
     locations: ['Market Stall', 'Street Food', 'General Store'],
+    gradient: ['#4ADE80', '#15803D'],
+    icon: 'market-stall',
+    terrain: 'urban',
   },
   {
     code: 'ENTERTAINMENT',
@@ -69,6 +90,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#DB2777',
     points: '320,240 400,260 420,320 380,360 320,340 300,300',
     locations: ['Theater', 'Nightclub', 'Arcade'],
+    gradient: ['#F472B6', '#9D174D'],
+    icon: 'spotlight',
+    terrain: 'urban',
   },
   {
     code: 'UNIVERSITY',
@@ -79,6 +103,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#D97706',
     points: '140,240 200,240 220,300 200,340 140,340 120,280',
     locations: ['Library', 'Campus Cafe', 'Bookstore'],
+    gradient: ['#FBBF24', '#92400E'],
+    icon: 'book-tower',
+    terrain: 'urban',
   },
   {
     code: 'HARBOR',
@@ -89,6 +116,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#475569',
     points: '520,140 600,140 620,200 600,260 520,260 500,200',
     locations: ['Warehouse', 'Dock Office', 'Canteen'],
+    gradient: ['#94A3B8', '#334155'],
+    icon: 'crane',
+    terrain: 'water',
   },
   {
     code: 'INDUSTRIAL',
@@ -99,6 +129,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#57534E',
     points: '520,260 600,260 620,340 580,380 520,360 500,300',
     locations: ['Factory', 'Workshop', 'Power Plant'],
+    gradient: ['#A8A29E', '#44403C'],
+    icon: 'factory',
+    terrain: 'industrial',
   },
   {
     code: 'SUBURBS_N',
@@ -109,6 +142,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#84CC16',
     points: '140,100 240,80 280,140 240,180 140,180 120,140',
     locations: ['Home', 'Corner Shop', 'Park'],
+    gradient: ['#BEF264', '#4D7C0F'],
+    icon: 'house-tree',
+    terrain: 'green',
   },
   {
     code: 'SUBURBS_S',
@@ -119,6 +155,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#4ADE80',
     points: '140,340 240,340 260,400 220,440 140,440 120,380',
     locations: ['Home', 'Grocery', 'Community Center'],
+    gradient: ['#A7F3D0', '#047857'],
+    icon: 'community',
+    terrain: 'green',
   },
   {
     code: 'OUTSKIRTS',
@@ -129,6 +168,9 @@ export const DISTRICTS: DistrictMeta[] = [
     stroke: '#9CA3AF',
     points: '60,180 140,180 140,340 120,380 60,380 40,280',
     locations: ['Farm', 'Shelter', 'Roadside Stall'],
+    gradient: ['#E5E7EB', '#6B7280'],
+    icon: 'windmill',
+    terrain: 'rural',
   },
 ];
 
