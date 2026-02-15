@@ -28,7 +28,7 @@ export default function FoodPage() {
   function handleEat(quality: MealQuality) {
     submitAction.mutate({
       type: 'EAT_MEAL',
-      payload: { mealQuality: quality },
+      payload: { quality },
     });
   }
 

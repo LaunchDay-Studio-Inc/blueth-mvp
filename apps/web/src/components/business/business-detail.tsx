@@ -38,7 +38,7 @@ export function BusinessDetail({ businessId }: BusinessDetailProps) {
 
   function startProduction(recipeCode: string) {
     submitAction.mutate({
-      type: 'START_PRODUCTION',
+      type: 'BUSINESS_START_PRODUCTION',
       payload: { businessId, recipeCode },
     });
   }

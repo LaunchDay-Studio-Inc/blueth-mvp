@@ -36,7 +36,7 @@ const PlaceOrderPayloadSchema = z.object({
   orderType: OrderTypeSchema,
   priceCents: z.number().int().positive().optional(),
   qty: z.number().positive(),
-  idempotencyKey: z.string().min(1).max(255),
+  idempotencyKey: z.string().min(1).max(255).optional(),
 });
 
 type PlaceOrderPayload = z.infer<typeof PlaceOrderPayloadSchema>;
@@ -110,7 +110,7 @@ export const marketPlaceOrderHandler: ActionHandler<PlaceOrderPayload> = {
       orderType: payload.orderType,
       priceCents: payload.priceCents,
       qty: payload.qty,
-      idempotencyKey: payload.idempotencyKey,
+      idempotencyKey: payload.idempotencyKey ?? ctx.actionId,
     }, tx);
 
     // E) Non-blocking spam detection

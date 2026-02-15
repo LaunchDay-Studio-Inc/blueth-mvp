@@ -23,7 +23,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     if (!name.trim()) return;
     submitAction.mutate(
       {
-        type: 'REGISTER_BUSINESS',
+        type: 'BUSINESS_REGISTER',
         payload: { name: name.trim(), districtCode: district },
       },
       {

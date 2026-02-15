@@ -31,10 +31,10 @@ export default function JobsPage() {
 
   const vigor = user.vigor as VigorDimension;
 
-  function handleWork(jobId: string, shift: ShiftDuration) {
+  function handleWork(jobFamily: string, shift: ShiftDuration) {
     submitAction.mutate({
       type: 'WORK_SHIFT',
-      payload: { jobId, shiftDuration: shift },
+      payload: { jobFamily, duration: shift },
     });
   }
 
@@ -80,7 +80,7 @@ export default function JobsPage() {
                         duration={`${hours}h`}
                         disabled={!affordable}
                         loading={submitAction.isPending}
-                        onClick={() => handleWork(job.id, shift)}
+                        onClick={() => handleWork(job.family, shift)}
                       >
                         {!affordable && (
                           <p className="text-xs text-destructive mt-1">Not enough vigor</p>

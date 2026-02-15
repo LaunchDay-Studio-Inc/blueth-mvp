@@ -25,7 +25,7 @@ export function OrderForm({ goodCode }: OrderFormProps) {
     if (isNaN(priceCents) || priceCents <= 0 || isNaN(quantity) || quantity <= 0) return;
 
     submitAction.mutate({
-      type: 'PLACE_ORDER',
+      type: 'MARKET_PLACE_ORDER',
       payload: {
         goodCode,
         side,

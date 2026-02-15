@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@/lib/auth-context';
-import { useSubmitAction } from '@/hooks/use-submit-action';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,17 +11,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BillsPage() {
   const { user } = useAuth();
-  const submitAction = useSubmitAction();
 
   if (!user) {
     return <Skeleton className="h-96 w-full" />;
-  }
-
-  function handleChangeTier(tier: number) {
-    submitAction.mutate({
-      type: 'CHANGE_HOUSING',
-      payload: { tier },
-    });
   }
 
   return (
@@ -80,8 +71,8 @@ export default function BillsPage() {
                     <Button
                       size="sm"
                       variant={ht.tier > user.housingTier ? 'default' : 'outline'}
-                      disabled={!canAfford || submitAction.isPending}
-                      onClick={() => handleChangeTier(ht.tier)}
+                      disabled
+                      title="Housing changes are applied automatically during the daily tick"
                     >
                       {ht.tier > user.housingTier ? (
                         <><ArrowUp className="h-3 w-3 mr-1" />Upgrade</>
