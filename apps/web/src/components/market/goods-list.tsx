@@ -56,7 +56,7 @@ export function GoodsList({ selectedCode, onSelect }: GoodsListProps) {
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Ref: {formatBlueth(good.refPriceCents)}
-                {good.lastTradePriceCents !== null && (
+                {good.lastTradePriceCents != null && (
                   <> | Last: {formatBlueth(good.lastTradePriceCents)}</>
                 )}
               </p>
