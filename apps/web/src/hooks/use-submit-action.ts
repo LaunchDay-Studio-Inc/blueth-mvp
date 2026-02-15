@@ -15,6 +15,28 @@ interface ActionResult {
   result?: unknown;
 }
 
+const ACTION_LABELS: Record<string, string> = {
+  WORK_SHIFT: 'Work shift',
+  EAT_MEAL: 'Eat meal',
+  LEISURE: 'Leisure',
+  SOCIAL_CALL: 'Social call',
+  SLEEP: 'Sleep',
+  MARKET_PLACE_ORDER: 'Market order',
+  MARKET_CANCEL_ORDER: 'Cancel order',
+  MARKET_DAY_TRADE_SESSION: 'Day trade',
+  BUSINESS_REGISTER: 'Register business',
+  BUSINESS_RENT_LOCATION: 'Rent location',
+  BUSINESS_BUY_MACHINERY: 'Buy machinery',
+  BUSINESS_HIRE_SESSION: 'Hire session',
+  BUSINESS_PLAN_PRODUCTION: 'Plan production',
+  BUSINESS_START_PRODUCTION: 'Start production',
+  BUSINESS_SELL_OUTPUTS: 'Sell outputs',
+};
+
+function friendlyLabel(type: string): string {
+  return ACTION_LABELS[type] ?? type.replace(/_/g, ' ').toLowerCase();
+}
+
 export function useSubmitAction() {
   const queryClient = useQueryClient();
 
@@ -26,17 +48,28 @@ export function useSubmitAction() {
         idempotencyKey: params.idempotencyKey || generateIdempotencyKey(),
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
+      toast.success(`Queued: ${friendlyLabel(variables.type)}`);
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.player.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.actions.all }),
       ]);
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      const label = friendlyLabel(variables.type);
       if (error instanceof ApiError) {
-        toast.error(error.message);
+        if (error.statusCode === 0) {
+          toast.error(`${label} failed: Network error — check your connection`);
+        } else if (error.statusCode === 401) {
+          toast.error(`${label} failed: Session expired — please log in again`);
+        } else if (error.statusCode >= 500) {
+          toast.error(`${label} failed: Server error (${error.statusCode}) — try again later`);
+        } else {
+          toast.error(`${label} failed: ${error.message}`);
+        }
       } else {
-        toast.error('Something went wrong');
+        toast.error(`${label} failed: Something went wrong`);
       }
     },
   });

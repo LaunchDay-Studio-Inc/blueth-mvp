@@ -16,6 +16,7 @@ import {
   Smile, TrendingUp, Building2, LayoutDashboard, LogOut, Menu, X, Settings,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ActionQueueDropdown } from './action-queue-dropdown';
 
 const NAV_ITEMS = [
   { href: '/city', label: 'City Map', icon: Map },
@@ -106,7 +107,9 @@ export function GameShell({ children }: { children: React.ReactNode }) {
 
           <Separator orientation="vertical" className="h-6 hidden md:block" />
 
-          {/* Daily reset timer — desktop */}
+          <ActionQueueDropdown />
+
+          <Separator orientation="vertical" className="h-6 hidden md:block" />
           <div className="hidden md:block">
             <DailyResetTimer />
           </div>

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { apiLog } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -49,7 +50,7 @@ export default function SettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">API Status</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <div className="flex items-center gap-2">
             <span
               className={`inline-block h-3 w-3 rounded-full ${apiDown ? 'bg-red-500' : 'bg-green-500'}`}
@@ -59,6 +60,20 @@ export default function SettingsPage() {
               <span className="text-xs text-muted-foreground ml-2">{API_BASE}</span>
             )}
           </div>
+          {(() => {
+            const recentErrors = apiLog.filter((e) => e.error !== null).slice(-3);
+            if (recentErrors.length === 0) return null;
+            return (
+              <div className="mt-2">
+                <p className="text-xs text-muted-foreground mb-1">Recent errors:</p>
+                {recentErrors.map((e, i) => (
+                  <p key={i} className="text-xs text-destructive">
+                    {e.method} {e.path} — {e.status ?? 'NET'} {e.error}
+                  </p>
+                ))}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
