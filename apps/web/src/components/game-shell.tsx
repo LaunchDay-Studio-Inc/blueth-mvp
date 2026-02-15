@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Map, Heart, Wallet, Receipt, Briefcase, UtensilsCrossed,
   Smile, TrendingUp, Building2, LayoutDashboard, LogOut, Menu, X, Settings,
+  Ellipsis,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ActionQueueDropdown } from './action-queue-dropdown';
@@ -185,15 +186,32 @@ export function GameShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-2 text-xs transition-colors',
+                'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-1 text-xs transition-colors',
                 pathname === item.href ? 'text-primary' : 'text-muted-foreground',
               )}
               style={pathname === item.href ? { textShadow: '0 0 8px hsl(192 91% 52% / 0.5)' } : undefined}
             >
               <item.icon className="h-4 w-4" />
-              <span>{item.label}</span>
+              <span className="text-[10px]">{item.label}</span>
             </Link>
           ))}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className={cn(
+              'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-1 text-xs transition-colors',
+              NAV_ITEMS.slice(5).some((item) => pathname === item.href) || mobileOpen
+                ? 'text-primary'
+                : 'text-muted-foreground',
+            )}
+            style={
+              NAV_ITEMS.slice(5).some((item) => pathname === item.href)
+                ? { textShadow: '0 0 8px hsl(192 91% 52% / 0.5)' }
+                : undefined
+            }
+          >
+            <Ellipsis className="h-4 w-4" />
+            <span className="text-[10px]">More</span>
+          </button>
         </div>
       </nav>
     </div>

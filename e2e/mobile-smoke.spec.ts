@@ -94,4 +94,50 @@ test.describe('Mobile smoke — 360 × 800', () => {
       }
     }
   });
+
+  test('manifest.json is accessible and has dark theme colors', async ({ page }) => {
+    const response = await page.goto('/manifest.json');
+    expect(response?.status()).toBe(200);
+
+    const manifest = await response?.json();
+    expect(manifest.name).toBe('Blueth City');
+    expect(manifest.display).toBe('standalone');
+    expect(manifest.orientation).toBe('portrait');
+    expect(manifest.background_color).toBe('#0d1117');
+    expect(manifest.theme_color).toBe('#0d1117');
+    expect(manifest.icons.length).toBeGreaterThanOrEqual(5);
+
+    // Verify maskable icon exists
+    const maskable = manifest.icons.find((i: { purpose: string }) => i.purpose === 'maskable');
+    expect(maskable).toBeDefined();
+    expect(maskable.sizes).toBe('512x512');
+  });
+
+  test('theme-color meta tag matches dark theme', async ({ page }) => {
+    await page.goto('/login');
+    await page.waitForTimeout(2000);
+
+    const themeColor = await page.locator('meta[name="theme-color"]').getAttribute('content');
+    expect(themeColor).toBe('#0d1117');
+  });
+
+  test('no horizontal overflow at 320px width (iPhone SE)', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto('/login');
+    await page.waitForTimeout(2000);
+
+    const overflows = await page.evaluate(() => {
+      return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+    });
+    expect(overflows).toBe(false);
+  });
+
+  test('viewport meta prevents double-tap zoom', async ({ page }) => {
+    await page.goto('/login');
+    await page.waitForTimeout(1000);
+
+    const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
+    expect(viewport).toContain('maximum-scale=1');
+    expect(viewport).toContain('width=device-width');
+  });
 });

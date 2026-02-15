@@ -6,7 +6,7 @@
  * No offline gameplay is promised; this is a cache-accelerator only.
  */
 
-const CACHE_NAME = 'blueth-v2';
+const CACHE_NAME = 'blueth-v3';
 const PRECACHE = ['/manifest.json', '/icons/icon-192.svg', '/icons/icon-512.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png'];
 
 // Install: precache a few small assets
