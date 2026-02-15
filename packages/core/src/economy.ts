@@ -240,6 +240,97 @@ export function applyShiftSkillXP(
 }
 
 // ════════════════════════════════════════════════════════════════
+// B1.5) GIGS — 10-minute active-play jobs
+// ════════════════════════════════════════════════════════════════
+
+export interface GigDefinition {
+  id: string;
+  label: string;
+  family: JobFamily;
+  baseWageDaily: number; // cents per full day (8h) — ~15% higher than standard jobs
+}
+
+export const GIGS_CATALOG: GigDefinition[] = [
+  { id: 'courier_run',      label: 'Courier Run',           family: 'physical',   baseWageDaily: 13800 },
+  { id: 'data_entry_burst', label: 'Data Entry Burst',      family: 'admin',      baseWageDaily: 16500 },
+  { id: 'cafe_rush',        label: 'Café Rush',             family: 'service',    baseWageDaily: 12600 },
+  { id: 'quick_inventory',  label: 'Quick Inventory Count', family: 'management', baseWageDaily: 20700 },
+];
+
+export const GIG_IDS = ['courier_run', 'data_entry_burst', 'cafe_rush', 'quick_inventory'] as const;
+export type GigId = (typeof GIG_IDS)[number];
+
+/** 10 real minutes. */
+export const GIG_DURATION_SECONDS = 600;
+/** As fraction of an hour. */
+export const GIG_DURATION_HOURS = 10 / 60;
+
+/** After this many gigs/day, pay starts decreasing. */
+export const GIG_DIMINISH_THRESHOLD = 12;
+/** Pay multiplier never drops below this. */
+export const GIG_PAY_FLOOR = 0.70;
+
+/**
+ * Per-gig vigor costs. Small in absolute terms but ~50% more intense
+ * per hour than standard short shifts (reflecting intense burst work).
+ */
+export const GIG_VIGOR_COSTS: Record<JobFamily, Partial<VigorDimension>> = {
+  physical:   { pv: 3, mv: 1 },
+  admin:      { mv: 3, cv: 1 },
+  service:    { pv: 1, mv: 1, sv: 2 },
+  management: { mv: 2, sv: 1, spv: 1 },
+};
+
+/**
+ * Diminishing returns multiplier for gig pay.
+ * 1.0 for the first 12 gigs/day, then -5% per extra gig, floor at 70%.
+ *
+ * @param gigsCompletedToday - number of gigs already completed today (before this one)
+ */
+export function gigPayMultiplier(gigsCompletedToday: number): number {
+  if (gigsCompletedToday < GIG_DIMINISH_THRESHOLD) return 1.0;
+  const overage = gigsCompletedToday - GIG_DIMINISH_THRESHOLD;
+  return Math.max(GIG_PAY_FLOOR, 1.0 - overage * 0.05);
+}
+
+/**
+ * Calculate gig pay in integer cents.
+ * Uses the same performance clamping as standard shifts (0.4–1.5).
+ */
+export function calculateGigPay(
+  baseWageDaily: number,
+  performance: number,
+  gigsCompletedToday: number,
+): number {
+  const hourlyFraction = GIG_DURATION_HOURS / 8;
+  const clampedPerf = Math.max(0.4, Math.min(1.5, performance));
+  const raw = baseWageDaily * clampedPerf * hourlyFraction;
+  return Math.round(raw * gigPayMultiplier(gigsCompletedToday));
+}
+
+/**
+ * Get vigor cost for a gig by job family.
+ */
+export function getGigVigorCost(family: JobFamily): Partial<VigorDimension> {
+  return { ...GIG_VIGOR_COSTS[family] };
+}
+
+/**
+ * Get skill XP from completing a gig (10 minutes of work).
+ */
+export function applyGigSkillXP(
+  family: JobFamily,
+  currentSkill: number,
+  intensity: number = 1.0,
+): { skill: SkillName; newValue: number } {
+  const config = JOB_FAMILY_CONFIGS[family];
+  return {
+    skill: config.primarySkill,
+    newValue: addSkillXP(currentSkill, 10, intensity),
+  };
+}
+
+// ════════════════════════════════════════════════════════════════
 // B2) JOB CATALOG (backwards-compatible plus extended)
 // ════════════════════════════════════════════════════════════════
 

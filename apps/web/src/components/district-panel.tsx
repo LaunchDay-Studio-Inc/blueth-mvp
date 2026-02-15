@@ -1,6 +1,7 @@
 'use client';
 
 import type { DistrictMeta } from '@/lib/districts';
+import { DISTRICT_ICONS } from '@/components/city-map';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, Briefcase, UtensilsCrossed, Home, Zap } from 'lucide-react';
@@ -42,14 +43,33 @@ export function DistrictPanel({ district }: DistrictPanelProps) {
   const vibe = VIBE_TEXT[district.code] || district.description;
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden animate-slide-up">
-      {/* Header with neon accent line */}
+    <div className="rounded-xl glass-elevated overflow-hidden animate-slide-up">
+      {/* Header with district-colored accent line */}
       <div className="relative px-5 pt-5 pb-3">
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        <div
+          className="absolute top-0 left-0 right-0 h-[2px]"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${district.gradient[0]}99, ${district.gradient[1]}99, transparent)`,
+          }}
+        />
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-1">District Dossier</p>
-            <h2 className="text-lg font-bold tracking-tight">{district.name}</h2>
+          <div className="flex items-center gap-3">
+            {/* District SVG icon */}
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{
+                background: `linear-gradient(135deg, ${district.gradient[0]}20, ${district.gradient[1]}30)`,
+                border: `1px solid ${district.gradient[0]}30`,
+              }}
+            >
+              <svg viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
+                {DISTRICT_ICONS[district.icon]?.(district.gradient[0])}
+              </svg>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-1">District Dossier</p>
+              <h2 className="text-lg font-bold tracking-tight">{district.name}</h2>
+            </div>
           </div>
           <Badge
             variant={district.modifier > 1.0 ? 'default' : district.modifier < 1.0 ? 'secondary' : 'outline'}
@@ -74,8 +94,11 @@ export function DistrictPanel({ district }: DistrictPanelProps) {
         </p>
         <div className="space-y-1.5">
           {district.locations.map((loc) => (
-            <div key={loc} className="flex items-center gap-2 text-sm group">
-              <MapPin className="h-3.5 w-3.5 text-primary/60 group-hover:text-primary transition-colors" />
+            <div key={loc} className="flex items-center gap-2 text-sm group cursor-default">
+              <MapPin
+                className="h-3.5 w-3.5 transition-colors"
+                style={{ color: `${district.gradient[0]}99` }}
+              />
               <span className="text-foreground/80 group-hover:text-foreground transition-colors">{loc}</span>
             </div>
           ))}

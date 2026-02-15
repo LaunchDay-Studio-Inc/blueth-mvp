@@ -59,9 +59,9 @@ export function RecoveryWidget({ player }: RecoveryWidgetProps) {
   suggestions.sort((a, b) => a.priority - b.priority);
 
   return (
-    <Card className="border-amber-200 bg-amber-50/50">
+    <Card className="border-amber-500/30 bg-amber-950/30">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-700">
+        <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-400">
           <AlertTriangle className="h-4 w-4" />
           Recovery Suggestions
         </CardTitle>
@@ -69,7 +69,7 @@ export function RecoveryWidget({ player }: RecoveryWidgetProps) {
       <CardContent className="px-4 pb-4">
         <ul className="space-y-1.5">
           {suggestions.map((s, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-amber-900">
+            <li key={i} className="flex items-center gap-2 text-sm text-amber-300/90">
               {s.icon}
               <span>{s.text}</span>
             </li>

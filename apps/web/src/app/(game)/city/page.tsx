@@ -24,7 +24,7 @@ export default function CityPage() {
           {selected ? (
             <DistrictPanel district={selected} />
           ) : (
-            <div className="rounded-xl border border-border/30 bg-card/40 backdrop-blur-sm p-6 text-center">
+            <div className="rounded-xl glass-surface p-6 text-center">
               <p className="text-sm text-muted-foreground">
                 Select a district on the board
               </p>

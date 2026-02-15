@@ -5,17 +5,22 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { VIGOR_KEYS } from '@blueth/core';
+import type { VigorKey } from '@blueth/core';
 import { VigorBar } from './vigor-bar';
 import { MoneyDisplay } from './money-display';
 import { DailyResetTimer } from './daily-reset-timer';
+import { StatDetailModal } from './stat-detail-modal';
+import { CashDetailModal } from './cash-detail-modal';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Map, Heart, Wallet, Receipt, Briefcase, UtensilsCrossed,
   Smile, TrendingUp, Building2, LayoutDashboard, LogOut, Menu, X, Settings,
+  Ellipsis, BookOpen,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ActionQueueDropdown } from './action-queue-dropdown';
+import { TutorialChecklist } from './tutorial-checklist';
 
 const NAV_ITEMS = [
   { href: '/city', label: 'City Map', icon: Map },
@@ -29,12 +34,15 @@ const NAV_ITEMS = [
   { href: '/business', label: 'Business', icon: Building2 },
   { href: '/summary', label: 'Summary', icon: LayoutDashboard },
   { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/almanac', label: 'Almanac', icon: BookOpen },
 ];
 
 export function GameShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openStat, setOpenStat] = useState<VigorKey | null>(null);
+  const [cashOpen, setCashOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -50,9 +58,9 @@ export function GameShell({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen game-gradient">
+    <div className="min-h-screen game-gradient vignette-bg">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-card/70 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border/40 bg-card/70 backdrop-blur-md glass-glow-cool">
         <div className="flex h-14 items-center px-4 gap-4">
           <button
             className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -74,13 +82,19 @@ export function GameShell({ children }: { children: React.ReactNode }) {
           {/* Mini vigor bars - desktop */}
           <div className="hidden md:flex items-center gap-2">
             {VIGOR_KEYS.map((key) => (
-              <VigorBar
+              <button
                 key={key}
-                dimension={key}
-                value={user.vigor[key]}
-                cap={user.caps[`${key}_cap` as keyof typeof user.caps]}
-                compact
-              />
+                onClick={() => setOpenStat(key)}
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+                aria-label={`View ${key.toUpperCase()} breakdown`}
+              >
+                <VigorBar
+                  dimension={key}
+                  value={user.vigor[key]}
+                  cap={user.caps[`${key}_cap` as keyof typeof user.caps]}
+                  compact
+                />
+              </button>
             ))}
           </div>
 
@@ -92,20 +106,31 @@ export function GameShell({ children }: { children: React.ReactNode }) {
               const pct = cap > 0 ? (val / cap) * 100 : 0;
               const dot = pct > 60 ? 'bg-green-500' : pct > 20 ? 'bg-yellow-500' : 'bg-red-500';
               return (
-                <span key={key} className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                <button
+                  key={key}
+                  onClick={() => setOpenStat(key)}
+                  className="flex items-center gap-0.5 text-[10px] text-muted-foreground min-h-[44px] min-w-[28px] justify-center"
+                  aria-label={`View ${key.toUpperCase()} breakdown`}
+                >
                   <span
                     className={cn('inline-block h-1.5 w-1.5 rounded-full', dot)}
                     style={{ boxShadow: pct <= 20 ? '0 0 4px hsl(0 80% 50%)' : 'none' }}
                   />
                   {val}
-                </span>
+                </button>
               );
             })}
           </div>
 
           <div className="hidden md:block h-4 w-px bg-border/40" />
 
-          <MoneyDisplay cents={user.balanceCents} size="sm" />
+          <button
+            onClick={() => setCashOpen(true)}
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+            aria-label="View cash breakdown"
+          >
+            <MoneyDisplay cents={user.balanceCents} size="sm" />
+          </button>
 
           <div className="hidden md:block h-4 w-px bg-border/40" />
 
@@ -124,7 +149,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex">
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex w-52 flex-col border-r border-border/30 min-h-[calc(100vh-3.5rem)] p-2 bg-card/30">
+        <aside className="hidden lg:flex w-52 flex-col border-r border-border/30 min-h-[calc(100vh-3.5rem)] p-2 bg-card/30 glass-inset">
           <nav className="space-y-0.5">
             {NAV_ITEMS.map((item) => (
               <Link
@@ -185,17 +210,41 @@ export function GameShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-2 text-xs transition-colors',
+                'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-1 text-xs transition-colors',
                 pathname === item.href ? 'text-primary' : 'text-muted-foreground',
               )}
               style={pathname === item.href ? { textShadow: '0 0 8px hsl(192 91% 52% / 0.5)' } : undefined}
             >
               <item.icon className="h-4 w-4" />
-              <span>{item.label}</span>
+              <span className="text-[10px]">{item.label}</span>
             </Link>
           ))}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className={cn(
+              'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-1 text-xs transition-colors',
+              NAV_ITEMS.slice(5).some((item) => pathname === item.href) || mobileOpen
+                ? 'text-primary'
+                : 'text-muted-foreground',
+            )}
+            style={
+              NAV_ITEMS.slice(5).some((item) => pathname === item.href)
+                ? { textShadow: '0 0 8px hsl(192 91% 52% / 0.5)' }
+                : undefined
+            }
+          >
+            <Ellipsis className="h-4 w-4" />
+            <span className="text-[10px]">More</span>
+          </button>
         </div>
       </nav>
+
+      {/* Stat breakdown modals */}
+      <StatDetailModal dimension={openStat} onClose={() => setOpenStat(null)} user={user} />
+      <CashDetailModal open={cashOpen} onClose={() => setCashOpen(false)} user={user} />
+
+      {/* First-run tutorial */}
+      <TutorialChecklist />
     </div>
   );
 }

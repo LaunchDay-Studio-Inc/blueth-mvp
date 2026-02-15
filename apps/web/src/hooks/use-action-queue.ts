@@ -14,11 +14,11 @@ export interface ActionQueueItem {
   finished_at: string | null;
 }
 
-export function useActionQueue() {
+export function useActionQueue(hasRunning?: boolean) {
   return useQuery({
     queryKey: queryKeys.actions.queue(),
     queryFn: () => api.get<ActionQueueItem[]>('/actions/queue'),
-    refetchInterval: 15_000,
-    staleTime: 10_000,
+    refetchInterval: hasRunning ? 5_000 : 15_000,
+    staleTime: hasRunning ? 3_000 : 10_000,
   });
 }

@@ -12,11 +12,14 @@ interface SubmitActionParams {
 interface ActionResult {
   actionId: string;
   status: string;
+  scheduledFor?: string;
+  durationSeconds?: number;
   result?: unknown;
 }
 
 const ACTION_LABELS: Record<string, string> = {
   WORK_SHIFT: 'Work shift',
+  GIG_JOB: 'Gig',
   EAT_MEAL: 'Eat meal',
   LEISURE: 'Leisure',
   SOCIAL_CALL: 'Social call',
@@ -48,8 +51,20 @@ export function useSubmitAction() {
         idempotencyKey: params.idempotencyKey || generateIdempotencyKey(),
       });
     },
-    onSuccess: async (_data, variables) => {
-      toast.success(`Queued: ${friendlyLabel(variables.type)}`);
+    onSuccess: async (data, variables) => {
+      const label = friendlyLabel(variables.type);
+      if (data.durationSeconds && data.durationSeconds > 0 && data.scheduledFor) {
+        const endsAt = new Date(
+          new Date(data.scheduledFor).getTime() + data.durationSeconds * 1000,
+        );
+        const endTime = endsAt.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        toast.success(`Queued: ${label} — ends at ${endTime}`);
+      } else {
+        toast.success(`${label} completed`);
+      }
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.player.all }),
