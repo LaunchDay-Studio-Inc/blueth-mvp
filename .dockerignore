@@ -7,5 +7,5 @@ node_modules
 !.env.example
 **/dist
 **/.next
-**/.tsbuildinfo
+**/*.tsbuildinfo
 **/coverage
