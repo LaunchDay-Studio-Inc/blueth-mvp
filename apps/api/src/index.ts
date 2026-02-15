@@ -12,6 +12,7 @@ import { playerRoutes } from './routes/player';
 import { actionRoutes } from './routes/actions';
 import { marketRoutes } from './routes/market';
 import { businessRoutes } from './routes/business';
+import { debugRoutes } from './routes/debug';
 import { authPlugin } from './plugins/auth';
 import { errorHandlerPlugin } from './plugins/error-handler';
 import { registerAllHandlers } from './handlers/register-all';
@@ -89,6 +90,11 @@ export async function buildServer() {
   await server.register(actionRoutes, { prefix: '/actions' });
   await server.register(marketRoutes, { prefix: '/market' });
   await server.register(businessRoutes, { prefix: '/business' });
+
+  // 5b. Debug routes (non-production only)
+  if (NODE_ENV !== 'production') {
+    await server.register(debugRoutes, { prefix: '/debug' });
+  }
 
   // 6. Register all action handlers
   registerAllHandlers();
