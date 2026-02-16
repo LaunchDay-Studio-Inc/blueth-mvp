@@ -259,7 +259,60 @@ function domeBox(
   );
 }
 
-// ── Per-district building scenes ──────────────────────
+// ── Small detail helpers ──────────────────────────────
+
+function miniTree(x: number, y: number, color: string, k: string): React.ReactNode {
+  return (
+    <g key={k}>
+      <rect x={x - 0.5} y={y} width={1} height={4} fill="#5D4037" opacity="0.4" rx="0.2" />
+      <circle cx={x} cy={y - 1} r={3.5} fill={color} opacity="0.35" />
+      <circle cx={x - 1} cy={y - 2} r={2.2} fill={color} opacity="0.25" />
+    </g>
+  );
+}
+
+function car(x: number, y: number, color: string, k: string): React.ReactNode {
+  return (
+    <g key={k} opacity="0.35">
+      <rect x={x} y={y} width={5} height={2} fill={color} rx="0.6" />
+      <rect x={x + 0.8} y={y - 1} width={3} height={1.2} fill={color} opacity="0.7" rx="0.4" />
+      <circle cx={x + 1} cy={y + 2} r="0.6" fill="#333" opacity="0.4" />
+      <circle cx={x + 4} cy={y + 2} r="0.6" fill="#333" opacity="0.4" />
+    </g>
+  );
+}
+
+function lampPost(x: number, y: number, color: string, k: string): React.ReactNode {
+  return (
+    <g key={k}>
+      <line x1={x} y1={y} x2={x} y2={y - 8} stroke={color} strokeWidth="0.5" opacity="0.3" />
+      <circle cx={x} cy={y - 8.5} r="1.2" fill={color} opacity="0.2" />
+      <circle cx={x} cy={y - 8.5} r="2.5" fill={color} opacity="0.06" />
+    </g>
+  );
+}
+
+function bench(x: number, y: number, color: string, k: string): React.ReactNode {
+  return (
+    <g key={k} opacity="0.25">
+      <rect x={x} y={y} width={5} height={0.8} fill={color} rx="0.2" />
+      <rect x={x + 0.3} y={y + 0.8} width={0.5} height={1.5} fill={color} />
+      <rect x={x + 4.2} y={y + 0.8} width={0.5} height={1.5} fill={color} />
+      <rect x={x} y={y - 1.5} width={5} height={0.5} fill={color} rx="0.1" />
+    </g>
+  );
+}
+
+function person(x: number, y: number, color: string, k: string): React.ReactNode {
+  return (
+    <g key={k} opacity="0.3">
+      <circle cx={x} cy={y} r="1" fill={color} />
+      <polygon points={`${x - 1},${y + 1.2} ${x + 1},${y + 1.2} ${x},${y + 4.5}`} fill={color} />
+    </g>
+  );
+}
+
+// ── Per-district building scenes (3x detail) ──────────────────────
 
 function renderDistrictScene(
   code: string, cx: number, cy: number, g: [string, string]
@@ -273,244 +326,601 @@ function renderDistrictScene(
     case 'CBD':
       return (
         <g>
-          {isoBox(cx - 40, gy, 13, 52, f, s, t, 'c1')}
-          {isoBox(cx - 22, gy, 16, 70, f, s, t, 'c2')}
-          {isoBox(cx + 0, gy, 12, 44, f, s, t, 'c3')}
-          {isoBox(cx + 16, gy, 15, 62, f, s, t, 'c4')}
-          {isoBox(cx + 35, gy, 11, 36, f, s, t, 'c5')}
+          {/* Skyline — 8 towers, staggered heights */}
+          {isoBox(cx - 58, gy, 9, 28, f, s, t, 'c0')}
+          {isoBox(cx - 46, gy, 11, 42, f, s, t, 'c1')}
+          {isoBox(cx - 32, gy, 13, 58, f, s, t, 'c2')}
+          {isoBox(cx - 16, gy, 16, 76, f, s, t, 'c3')}
+          {isoBox(cx + 3, gy, 12, 50, f, s, t, 'c4')}
+          {isoBox(cx + 18, gy, 15, 68, f, s, t, 'c5')}
+          {isoBox(cx + 36, gy, 11, 38, f, s, t, 'c6')}
+          {isoBox(cx + 50, gy, 10, 32, f, s, t, 'c7')}
           {/* Antennas */}
-          <line x1={cx - 14} y1={gy - 70} x2={cx - 14} y2={gy - 80} stroke={g[0]} strokeWidth="0.8" />
-          <circle cx={cx - 14} cy={gy - 81} r="1.2" fill={g[0]} opacity="0.8" />
-          <line x1={cx + 23} y1={gy - 62} x2={cx + 23} y2={gy - 70} stroke={g[0]} strokeWidth="0.6" />
-          <circle cx={cx + 23} cy={gy - 71} r="0.9" fill={g[0]} opacity="0.6" />
-          {/* Helipad circle on roof */}
-          <circle cx={cx + 6} cy={gy - 45} r="3" fill="none" stroke={g[0]} strokeWidth="0.4" opacity="0.3" />
+          <line x1={cx - 8} y1={gy - 76} x2={cx - 8} y2={gy - 86} stroke={g[0]} strokeWidth="0.8" />
+          <circle cx={cx - 8} cy={gy - 87} r="1.2" fill="#E53935" opacity="0.8" />
+          <line x1={cx + 25} y1={gy - 68} x2={cx + 25} y2={gy - 76} stroke={g[0]} strokeWidth="0.6" />
+          <circle cx={cx + 25} cy={gy - 77} r="0.9" fill="#E53935" opacity="0.6" />
+          {/* Helipad on tallest */}
+          <circle cx={cx - 8} cy={gy - 77} r="4" fill="none" stroke={g[0]} strokeWidth="0.5" opacity="0.25" />
+          <line x1={cx - 10} y1={gy - 77} x2={cx - 6} y2={gy - 77} stroke={g[0]} strokeWidth="0.3" opacity="0.2" />
+          {/* Rooftop gardens */}
+          <rect x={cx + 3.5} y={gy - 51.5} width={10} height={2} fill="#4CAF50" opacity="0.3" rx="0.5" />
+          <rect x={cx + 37} y={gy - 39.5} width={9} height={1.5} fill="#4CAF50" opacity="0.25" rx="0.5" />
+          {/* Sky bridge */}
+          <rect x={cx + 12} y={gy - 50} width={8} height={1.5} fill={s} opacity="0.4" rx="0.3" />
+          {/* Cars */}
+          {car(cx - 54, gy + 1, '#4A90D9', 'cc1')}
+          {car(cx - 10, gy + 1, '#E53935', 'cc2')}
+          {car(cx + 28, gy + 1, '#333', 'cc3')}
+          {/* Lamp posts */}
+          {lampPost(cx - 60, gy, g[0], 'cl1')}
+          {lampPost(cx - 26, gy, g[0], 'cl2')}
+          {lampPost(cx + 10, gy, g[0], 'cl3')}
+          {lampPost(cx + 46, gy, g[0], 'cl4')}
+          {/* People */}
+          {person(cx - 40, gy - 1, g[0], 'cp1')}
+          {person(cx + 0, gy - 1, g[0], 'cp2')}
+          {person(cx + 42, gy - 1, g[0], 'cp3')}
+          {/* Ground plaza */}
+          <rect x={cx - 62} y={gy} width={124} height={2} fill="rgba(0,0,0,0.05)" rx="0.3" />
         </g>
       );
 
     case 'OLD_TOWN':
       return (
         <g>
-          {pointedBox(cx - 36, gy, 14, 20, f, s, g[1], 'o1')}
+          {/* Buildings — varied pitched roofs, one tall church */}
+          {pointedBox(cx - 50, gy, 12, 16, f, s, g[1], 'o0')}
+          {pointedBox(cx - 34, gy, 14, 22, f, s, g[1], 'o1')}
           {pointedBox(cx - 16, gy, 13, 18, f, s, g[1], 'o2')}
-          {pointedBox(cx + 2, gy, 11, 34, f, s, g[1], 'o3', 16)}
-          {pointedBox(cx + 18, gy, 15, 22, f, s, g[1], 'o4')}
-          {pointedBox(cx + 36, gy, 12, 16, f, s, g[1], 'o5')}
+          {pointedBox(cx + 0, gy, 11, 38, f, s, g[1], 'o3', 16)}
+          {pointedBox(cx + 16, gy, 15, 24, f, s, g[1], 'o4')}
+          {pointedBox(cx + 34, gy, 12, 16, f, s, g[1], 'o5')}
+          {pointedBox(cx + 48, gy, 11, 14, f, s, g[1], 'o6')}
+          {pointedBox(cx - 60, gy, 10, 12, f, s, g[1], 'o7')}
           {/* Church cross */}
-          <line x1={cx + 7.5} y1={gy - 51} x2={cx + 7.5} y2={gy - 56} stroke={g[0]} strokeWidth="0.8" />
-          <line x1={cx + 5.5} y1={gy - 54} x2={cx + 9.5} y2={gy - 54} stroke={g[0]} strokeWidth="0.8" />
-          {/* Cobblestone hint */}
-          <line x1={cx - 40} y1={gy + 3} x2={cx + 50} y2={gy + 3} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="2 2" />
+          <line x1={cx + 5.5} y1={gy - 55} x2={cx + 5.5} y2={gy - 61} stroke={g[0]} strokeWidth="0.8" />
+          <line x1={cx + 3.5} y1={gy - 59} x2={cx + 7.5} y2={gy - 59} stroke={g[0]} strokeWidth="0.8" />
+          {/* Clock tower face */}
+          <circle cx={cx + 5.5} cy={gy - 30} r="2.5" fill="#000" opacity="0.15" />
+          <line x1={cx + 5.5} y1={gy - 31.5} x2={cx + 5.5} y2={gy - 30} stroke="#000" strokeWidth="0.4" opacity="0.3" />
+          <line x1={cx + 5.5} y1={gy - 30} x2={cx + 7} y2={gy - 29.5} stroke="#000" strokeWidth="0.4" opacity="0.3" />
+          {/* Flower boxes */}
+          <rect x={cx - 32} y={gy - 10} width={4} height={1.5} fill="#E74C8B" opacity="0.4" rx="0.3" />
+          <rect x={cx + 18} y={gy - 12} width={4} height={1.5} fill="#FF6B6B" opacity="0.4" rx="0.3" />
+          {/* Shop signs */}
+          <rect x={cx - 48} y={gy - 8} width={6} height={2} fill={g[0]} opacity="0.2" rx="0.3" />
+          <rect x={cx + 36} y={gy - 8} width={5} height={2} fill={g[1]} opacity="0.2" rx="0.3" />
+          {/* Lamp posts (antique) */}
+          {lampPost(cx - 56, gy, g[1], 'ol1')}
+          {lampPost(cx - 24, gy, g[1], 'ol2')}
+          {lampPost(cx + 28, gy, g[1], 'ol3')}
+          {/* Benches */}
+          {bench(cx - 42, gy - 1, g[1], 'ob1')}
+          {bench(cx + 10, gy - 1, g[1], 'ob2')}
+          {/* Trees */}
+          {miniTree(cx - 28, gy - 4, g[0], 'ot1')}
+          {miniTree(cx + 44, gy - 4, g[0], 'ot2')}
+          {/* People */}
+          {person(cx - 44, gy - 1, g[0], 'op1')}
+          {person(cx - 8, gy - 1, g[0], 'op2')}
+          {person(cx + 24, gy - 1, g[0], 'op3')}
+          {/* Cobblestone ground */}
+          <line x1={cx - 64} y1={gy + 3} x2={cx + 62} y2={gy + 3} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="2 2" />
+          <rect x={cx - 64} y={gy} width={126} height={2} fill="rgba(0,0,0,0.04)" rx="0.3" />
         </g>
       );
 
     case 'MARINA':
       return (
         <g>
-          {isoBox(cx - 32, gy, 18, 20, f, s, t, 'm1')}
-          {isoBox(cx - 8, gy, 15, 24, f, s, t, 'm2')}
-          {isoBox(cx + 14, gy, 20, 18, f, s, t, 'm3')}
-          {/* Pier/dock */}
-          <rect x={cx + 38} y={gy - 2} width={20} height={2} fill={g[0]} opacity="0.5" rx="0.3" />
-          <rect x={cx + 40} y={gy} width={1.5} height={5} fill={g[1]} opacity="0.4" />
-          <rect x={cx + 52} y={gy} width={1.5} height={5} fill={g[1]} opacity="0.4" />
-          {/* Yacht 1 */}
-          <polygon points={`${cx+42},${gy-4} ${cx+48},${gy-10} ${cx+48},${gy-4}`} fill={g[0]} opacity="0.5" />
-          <line x1={cx + 47} y1={gy - 10} x2={cx + 47} y2={gy - 1} stroke={g[0]} strokeWidth="0.6" opacity="0.4" />
-          <ellipse cx={cx + 46} cy={gy - 2} rx="4" ry="1.5" fill={g[0]} opacity="0.3" />
-          {/* Yacht 2 */}
-          <polygon points={`${cx+52},${gy-5} ${cx+56},${gy-8} ${cx+56},${gy-5}`} fill={g[0]} opacity="0.35" />
-          <ellipse cx={cx + 55} cy={gy - 3} rx="3" ry="1.2" fill={g[0]} opacity="0.25" />
+          {/* Buildings — coastal mix */}
+          {isoBox(cx - 40, gy, 16, 20, f, s, t, 'm0')}
+          {isoBox(cx - 20, gy, 14, 24, f, s, t, 'm1')}
+          {pointedBox(cx - 2, gy, 12, 16, f, s, g[1], 'm2')}
+          {isoBox(cx + 14, gy, 18, 18, f, s, t, 'm3')}
+          {pointedBox(cx + 36, gy, 10, 14, f, s, g[1], 'm4')}
+          {/* Lighthouse */}
+          <rect x={cx + 56} y={gy - 32} width="4" height="32" fill={g[0]} opacity="0.6" rx="1" />
+          <ellipse cx={cx + 58} cy={gy - 32} rx="3" ry="1.5" fill={g[0]} opacity="0.3" />
+          <circle cx={cx + 58} cy={gy - 34} r="2" fill="#FFD54F" opacity="0.5" />
+          <circle cx={cx + 58} cy={gy - 34} r="4" fill="#FFD54F" opacity="0.1" />
+          {/* Pier 1 */}
+          <rect x={cx + 36} y={gy - 2} width={22} height={2} fill={g[0]} opacity="0.5" rx="0.3" />
+          <rect x={cx + 38} y={gy} width={1.5} height={5} fill={g[1]} opacity="0.4" />
+          <rect x={cx + 50} y={gy} width={1.5} height={5} fill={g[1]} opacity="0.4" />
+          {/* Pier 2 */}
+          <rect x={cx + 36} y={gy + 8} width={18} height={1.5} fill={g[0]} opacity="0.35" rx="0.3" />
+          {/* Sailboat 1 */}
+          <polygon points={`${cx+40},${gy-5} ${cx+46},${gy-12} ${cx+46},${gy-5}`} fill="white" opacity="0.5" />
+          <line x1={cx + 45} y1={gy - 12} x2={cx + 45} y2={gy - 2} stroke={g[0]} strokeWidth="0.6" opacity="0.4" />
+          <ellipse cx={cx + 44} cy={gy - 3} rx="4" ry="1.5" fill={g[0]} opacity="0.25" />
+          {/* Sailboat 2 */}
+          <polygon points={`${cx+52},${gy-6} ${cx+56},${gy-10} ${cx+56},${gy-6}`} fill="white" opacity="0.4" />
+          <ellipse cx={cx + 55} cy={gy - 4} rx="3" ry="1.2" fill={g[0]} opacity="0.2" />
+          {/* Motorboat 1 */}
+          <ellipse cx={cx + 42} cy={gy + 6} rx="4" ry="1.3" fill={g[0]} opacity="0.3" />
+          <rect x={cx + 40} y={gy + 4} width={3} height={1.5} fill={g[1]} opacity="0.3" rx="0.3" />
+          {/* Motorboat 2 */}
+          <ellipse cx={cx + 50} cy={gy + 10} rx="3.5" ry="1.1" fill={g[0]} opacity="0.25" />
+          {/* Beach umbrellas */}
+          <path d={`M${cx-44},${gy-5} A4,4 0 0,1 ${cx-36},${gy-5}`} fill="#FF6B6B" opacity="0.35" />
+          <line x1={cx - 40} y1={gy - 5} x2={cx - 40} y2={gy + 2} stroke={g[1]} strokeWidth="0.5" opacity="0.3" />
+          <path d={`M${cx-36},${gy-4} A3.5,3.5 0 0,1 ${cx-29},${gy-4}`} fill="#FFD54F" opacity="0.3" />
+          <line x1={cx - 32.5} y1={gy - 4} x2={cx - 32.5} y2={gy + 2} stroke={g[1]} strokeWidth="0.5" opacity="0.3" />
+          <path d={`M${cx-28},${gy-5} A4,4 0 0,1 ${cx-20},${gy-5}`} fill="#4FC3F7" opacity="0.3" />
+          <line x1={cx - 24} y1={gy - 5} x2={cx - 24} y2={gy + 2} stroke={g[1]} strokeWidth="0.5" opacity="0.3" />
+          {/* Bollards */}
+          <rect x={cx + 42} y={gy - 3} width="1.5" height="2" fill={g[1]} opacity="0.3" rx="0.3" />
+          <rect x={cx + 48} y={gy - 3} width="1.5" height="2" fill={g[1]} opacity="0.3" rx="0.3" />
+          {/* Lamp posts */}
+          {lampPost(cx - 42, gy, g[0], 'ml1')}
+          {lampPost(cx + 8, gy, g[0], 'ml2')}
+          {/* People */}
+          {person(cx - 38, gy - 1, g[0], 'mp1')}
+          {person(cx + 22, gy - 1, g[0], 'mp2')}
           {/* Water ripples */}
-          <path d={`M${cx+36},${gy+5} Q${cx+46},${gy+3} ${cx+56},${gy+5}`} fill="none" stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
-          <path d={`M${cx+38},${gy+8} Q${cx+48},${gy+6} ${cx+58},${gy+8}`} fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.15" />
+          <path d={`M${cx+34},${gy+5} Q${cx+44},${gy+3} ${cx+54},${gy+5}`} fill="none" stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
+          <path d={`M${cx+36},${gy+8} Q${cx+46},${gy+6} ${cx+56},${gy+8}`} fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.15" />
+          <path d={`M${cx+38},${gy+12} Q${cx+48},${gy+10} ${cx+58},${gy+12}`} fill="none" stroke={g[0]} strokeWidth="0.25" opacity="0.1" />
         </g>
       );
 
     case 'TECH_PARK':
       return (
         <g>
-          {isoBox(cx - 34, gy, 15, 40, f, s, t, 't1')}
-          {isoBox(cx - 14, gy, 18, 52, f, s, t, 't2')}
-          {isoBox(cx + 10, gy, 13, 36, f, s, t, 't3')}
-          {isoBox(cx + 28, gy, 16, 46, f, s, t, 't4')}
-          {/* Satellite dish */}
-          <path d={`M${cx-6},${gy-52} Q${cx-2},${gy-58} ${cx+2},${gy-52}`} fill="none" stroke={g[0]} strokeWidth="1" opacity="0.5" />
-          <line x1={cx - 2} y1={gy - 52} x2={cx - 2} y2={gy - 55} stroke={g[0]} strokeWidth="0.6" opacity="0.5" />
+          {/* Buildings — tall glass towers */}
+          {isoBox(cx - 44, gy, 12, 34, f, s, t, 't0')}
+          {isoBox(cx - 28, gy, 15, 44, f, s, t, 't1')}
+          {isoBox(cx - 10, gy, 18, 56, f, s, t, 't2')}
+          {isoBox(cx + 12, gy, 13, 38, f, s, t, 't3')}
+          {isoBox(cx + 28, gy, 16, 50, f, s, t, 't4')}
+          {isoBox(cx + 48, gy, 11, 30, f, s, t, 't5')}
+          {isoBox(cx - 56, gy, 10, 24, f, s, t, 't6')}
+          {/* Satellite dish 1 */}
+          <path d={`M${cx-3},${gy-56} Q${cx+1},${gy-62} ${cx+5},${gy-56}`} fill="none" stroke={g[0]} strokeWidth="1" opacity="0.5" />
+          <line x1={cx + 1} y1={gy - 56} x2={cx + 1} y2={gy - 59} stroke={g[0]} strokeWidth="0.6" opacity="0.5" />
+          {/* Satellite dish 2 */}
+          <path d={`M${cx+30},${gy-50} Q${cx+33},${gy-54} ${cx+36},${gy-50}`} fill="none" stroke={g[0]} strokeWidth="0.8" opacity="0.4" />
+          <line x1={cx + 33} y1={gy - 50} x2={cx + 33} y2={gy - 52} stroke={g[0]} strokeWidth="0.5" opacity="0.4" />
+          {/* Solar panels */}
+          <rect x={cx - 9} y={gy - 58} width={14} height={2.5} fill="rgba(100,140,255,0.3)" rx="0.5" />
+          <line x1={cx - 2} y1={gy - 58} x2={cx - 2} y2={gy - 55.5} stroke={s} strokeWidth="0.3" opacity="0.3" />
           {/* LED display panels */}
-          <rect x={cx + 30} y={gy - 44} width={12} height={5} fill="rgba(120,160,255,0.3)" rx="0.5" />
-          <rect x={cx + 30} y={gy - 36} width={12} height={5} fill="rgba(120,160,255,0.2)" rx="0.5" />
-          {/* Data lines effect */}
-          <line x1={cx - 34} y1={gy - 10} x2={cx - 14} y2={gy - 10} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="1 2" />
-          <line x1={cx + 10} y1={gy - 15} x2={cx + 28} y2={gy - 15} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="1 2" />
+          <rect x={cx + 30} y={gy - 48} width={12} height={5} fill="rgba(120,160,255,0.3)" rx="0.5" />
+          <rect x={cx + 30} y={gy - 40} width={12} height={5} fill="rgba(120,160,255,0.2)" rx="0.5" />
+          {/* Data connection lines */}
+          <line x1={cx - 28} y1={gy - 12} x2={cx - 10} y2={gy - 12} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="1 2" />
+          <line x1={cx + 12} y1={gy - 16} x2={cx + 28} y2={gy - 16} stroke={g[0]} strokeWidth="0.4" opacity="0.15" strokeDasharray="1 2" />
+          <line x1={cx - 44} y1={gy - 8} x2={cx - 28} y2={gy - 8} stroke={g[0]} strokeWidth="0.3" opacity="0.1" strokeDasharray="1 2" />
+          {/* EV charging station */}
+          <rect x={cx + 20} y={gy - 4} width="2" height="4" fill={g[0]} opacity="0.25" rx="0.3" />
+          <circle cx={cx + 21} cy={gy - 5} r="0.8" fill="#4CAF50" opacity="0.4" />
+          {/* Cars */}
+          {car(cx - 52, gy + 1, '#4A90D9', 'tc1')}
+          {car(cx - 5, gy + 1, '#666', 'tc2')}
+          {car(cx + 38, gy + 1, '#E53935', 'tc3')}
+          {/* Lamp posts */}
+          {lampPost(cx - 58, gy, g[0], 'tl1')}
+          {lampPost(cx - 20, gy, g[0], 'tl2')}
+          {lampPost(cx + 22, gy, g[0], 'tl3')}
+          {/* People */}
+          {person(cx - 36, gy - 1, g[0], 'tp1')}
+          {person(cx + 6, gy - 1, g[0], 'tp2')}
+          {/* Ground plaza */}
+          <rect x={cx - 58} y={gy} width={120} height={2} fill="rgba(0,0,0,0.04)" rx="0.3" />
         </g>
       );
 
     case 'MARKET_SQ':
       return (
         <g>
-          {/* Market stalls with awnings */}
-          <rect x={cx - 38} y={gy - 12} width={14} height={12} fill={f} />
-          <path d={`M${cx-39},${gy-12} L${cx-31},${gy-19} L${cx-23},${gy-12}`} fill={g[1]} opacity="0.8" />
-          <rect x={cx - 36} y={gy - 8} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+          {/* 8 market stalls with colored awnings */}
+          <rect x={cx - 52} y={gy - 12} width={12} height={12} fill={f} />
+          <path d={`M${cx-53},${gy-12} L${cx-46},${gy-19} L${cx-39},${gy-12}`} fill="#E74C8B" opacity="0.7" />
+          <rect x={cx - 50} y={gy - 8} width={3} height={2.5} fill={WIN_COLOR} rx="0.2" />
 
-          <rect x={cx - 18} y={gy - 14} width={14} height={14} fill={f} />
-          <path d={`M${cx-19},${gy-14} L${cx-11},${gy-22} L${cx-3},${gy-14}`} fill={g[1]} opacity="0.9" />
-          <rect x={cx - 15} y={gy - 10} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+          <rect x={cx - 36} y={gy - 14} width={12} height={14} fill={f} />
+          <path d={`M${cx-37},${gy-14} L${cx-30},${gy-21} L${cx-23},${gy-14}`} fill="#FFD54F" opacity="0.8" />
+          <rect x={cx - 34} y={gy - 10} width={3} height={2.5} fill={WIN_COLOR} rx="0.2" />
 
-          <rect x={cx + 2} y={gy - 12} width={14} height={12} fill={f} />
-          <path d={`M${cx+1},${gy-12} L${cx+9},${gy-19} L${cx+17},${gy-12}`} fill={g[1]} opacity="0.8" />
-          <rect x={cx + 5} y={gy - 8} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+          <rect x={cx - 20} y={gy - 12} width={12} height={12} fill={f} />
+          <path d={`M${cx-21},${gy-12} L${cx-14},${gy-19} L${cx-7},${gy-12}`} fill="#4CAF50" opacity="0.7" />
+          <rect x={cx - 18} y={gy - 8} width={3} height={2.5} fill={WIN_COLOR} rx="0.2" />
 
-          <rect x={cx + 22} y={gy - 14} width={14} height={14} fill={f} />
-          <path d={`M${cx+21},${gy-14} L${cx+29},${gy-22} L${cx+37},${gy-14}`} fill={g[1]} opacity="0.85" />
-          <rect x={cx + 25} y={gy - 10} width={4} height={3} fill={WIN_COLOR} rx="0.2" />
+          <rect x={cx - 4} y={gy - 14} width={12} height={14} fill={f} />
+          <path d={`M${cx-5},${gy-14} L${cx+2},${gy-21} L${cx+9},${gy-14}`} fill="#4A90D9" opacity="0.7" />
+          <rect x={cx - 2} y={gy - 10} width={3} height={2.5} fill={WIN_COLOR} rx="0.2" />
 
-          {/* Goods/crates */}
-          <circle cx={cx - 32} cy={gy - 4} r="2" fill={g[0]} opacity="0.25" />
-          <circle cx={cx - 28} cy={gy - 4} r="1.5" fill={g[0]} opacity="0.2" />
-          <rect x={cx + 6} y={gy - 3} width="3" height="3" fill={g[0]} opacity="0.2" rx="0.3" />
-          <rect x={cx + 10} y={gy - 3} width="3" height="3" fill={g[1]} opacity="0.2" rx="0.3" />
-          {/* Ground line */}
-          <line x1={cx - 42} y1={gy + 2} x2={cx + 40} y2={gy + 2} stroke={g[0]} strokeWidth="0.3" opacity="0.1" />
+          <rect x={cx + 12} y={gy - 12} width={12} height={12} fill={f} />
+          <path d={`M${cx+11},${gy-12} L${cx+18},${gy-19} L${cx+25},${gy-12}`} fill="#FF9800" opacity="0.7" />
+          <rect x={cx + 14} y={gy - 8} width={3} height={2.5} fill={WIN_COLOR} rx="0.2" />
+
+          <rect x={cx + 28} y={gy - 14} width={12} height={14} fill={f} />
+          <path d={`M${cx+27},${gy-14} L${cx+34},${gy-21} L${cx+41},${gy-14}`} fill="#9C27B0" opacity="0.6" />
+          <rect x={cx + 30} y={gy - 10} width={3} height={2.5} fill={WIN_COLOR} rx="0.2" />
+
+          <rect x={cx + 44} y={gy - 12} width={11} height={12} fill={f} />
+          <path d={`M${cx+43},${gy-12} L${cx+49.5},${gy-19} L${cx+56},${gy-12}`} fill="#E74C8B" opacity="0.6" />
+
+          <rect x={cx - 64} y={gy - 12} width={10} height={12} fill={f} />
+          <path d={`M${cx-65},${gy-12} L${cx-59},${gy-18} L${cx-53},${gy-12}`} fill="#4CAF50" opacity="0.6" />
+          {/* Hanging lanterns */}
+          <circle cx={cx - 46} cy={gy - 16} r="1.2" fill="#FFD54F" opacity="0.5" />
+          <circle cx={cx - 14} cy={gy - 16} r="1.2" fill="#FFD54F" opacity="0.5" />
+          <circle cx={cx + 18} cy={gy - 16} r="1.2" fill="#FFD54F" opacity="0.5" />
+          {/* Central fountain */}
+          <circle cx={cx - 8} cy={gy + 6} r="5" fill="none" stroke={g[0]} strokeWidth="0.5" opacity="0.2" />
+          <circle cx={cx - 8} cy={gy + 6} r="3" fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.15" />
+          <line x1={cx - 8} y1={gy + 6} x2={cx - 8} y2={gy + 1} stroke={g[0]} strokeWidth="0.6" opacity="0.2" />
+          {/* Crates & barrels */}
+          <circle cx={cx - 58} cy={gy - 4} r="2" fill={g[0]} opacity="0.2" />
+          <circle cx={cx - 54} cy={gy - 4} r="1.5" fill={g[0]} opacity="0.18" />
+          <rect x={cx + 8} y={gy - 3} width="3" height="3" fill={g[0]} opacity="0.2" rx="0.3" />
+          <rect x={cx + 12} y={gy - 3} width="3" height="3" fill={g[1]} opacity="0.2" rx="0.3" />
+          <rect x={cx + 40} y={gy - 4} width="3" height="3" fill={g[0]} opacity="0.15" rx="0.3" />
+          {/* Cart with wheels */}
+          <rect x={cx + 48} y={gy - 2} width={6} height={3} fill={g[1]} opacity="0.2" rx="0.3" />
+          <circle cx={cx + 49.5} cy={gy + 1.5} r="0.8" fill={g[1]} opacity="0.2" />
+          <circle cx={cx + 52.5} cy={gy + 1.5} r="0.8" fill={g[1]} opacity="0.2" />
+          {/* People */}
+          {person(cx - 48, gy - 1, g[0], 'mqp1')}
+          {person(cx - 30, gy - 1, g[0], 'mqp2')}
+          {person(cx + 22, gy - 1, g[0], 'mqp3')}
+          {/* Benches */}
+          {bench(cx - 62, gy + 2, g[1], 'mqb1')}
+          {bench(cx + 38, gy + 2, g[1], 'mqb2')}
+          {/* Cobblestone ground */}
+          <line x1={cx - 68} y1={gy + 3} x2={cx + 58} y2={gy + 3} stroke={g[0]} strokeWidth="0.3" opacity="0.1" strokeDasharray="2 2" />
+          <rect x={cx - 68} y={gy} width={126} height={2} fill="rgba(0,0,0,0.03)" rx="0.3" />
         </g>
       );
 
     case 'ENTERTAINMENT':
       return (
         <g>
-          {isoBox(cx - 30, gy, 16, 30, f, s, t, 'e1')}
-          {domeBox(cx - 8, gy, 20, 38, f, s, `${g[0]}AA`, 'e2')}
-          {isoBox(cx + 18, gy, 14, 26, f, s, t, 'e3')}
-          {isoBox(cx + 36, gy, 12, 20, f, s, t, 'e4')}
-          {/* Marquee / theater sign */}
-          <rect x={cx - 6} y={gy - 42} width={16} height={4} fill={g[0]} opacity="0.5" rx="0.5" />
-          {/* Stars / spotlights */}
-          <circle cx={cx - 24} cy={gy - 38} r="1.5" fill={g[0]} opacity="0.4" />
-          <circle cx={cx - 24} cy={gy - 38} r="3" fill={g[0]} opacity="0.1" />
-          <circle cx={cx + 25} cy={gy - 32} r="1.2" fill={g[0]} opacity="0.35" />
-          <circle cx={cx + 25} cy={gy - 32} r="2.5" fill={g[0]} opacity="0.08" />
-          {/* Neon sign line */}
-          <line x1={cx - 28} y1={gy - 18} x2={cx - 16} y2={gy - 18} stroke={g[0]} strokeWidth="0.8" opacity="0.3" />
+          {/* Buildings */}
+          {isoBox(cx - 38, gy, 14, 28, f, s, t, 'e0')}
+          {isoBox(cx - 20, gy, 16, 32, f, s, t, 'e1')}
+          {domeBox(cx + 0, gy, 20, 40, f, s, `${g[0]}AA`, 'e2')}
+          {isoBox(cx + 24, gy, 14, 26, f, s, t, 'e3')}
+          {isoBox(cx + 42, gy, 12, 20, f, s, t, 'e4')}
+          {/* Ferris wheel */}
+          <circle cx={cx - 48} cy={gy - 22} r="16" fill="none" stroke={g[0]} strokeWidth="0.8" opacity="0.25" />
+          <circle cx={cx - 48} cy={gy - 22} r="2" fill={g[0]} opacity="0.3" />
+          <line x1={cx - 48} y1={gy - 38} x2={cx - 48} y2={gy - 6} stroke={g[0]} strokeWidth="0.5" opacity="0.2" />
+          <line x1={cx - 64} y1={gy - 22} x2={cx - 32} y2={gy - 22} stroke={g[0]} strokeWidth="0.5" opacity="0.2" />
+          <line x1={cx - 59.3} y1={gy - 33.3} x2={cx - 36.7} y2={gy - 10.7} stroke={g[0]} strokeWidth="0.4" opacity="0.15" />
+          <line x1={cx - 36.7} y1={gy - 33.3} x2={cx - 59.3} y2={gy - 10.7} stroke={g[0]} strokeWidth="0.4" opacity="0.15" />
+          {/* Ferris wheel support */}
+          <line x1={cx - 48} y1={gy - 6} x2={cx - 54} y2={gy} stroke={g[0]} strokeWidth="0.8" opacity="0.3" />
+          <line x1={cx - 48} y1={gy - 6} x2={cx - 42} y2={gy} stroke={g[0]} strokeWidth="0.8" opacity="0.3" />
+          {/* Marquee lights */}
+          <rect x={cx + 2} y={gy - 44} width={16} height={4} fill={g[0]} opacity="0.5" rx="0.5" />
+          <circle cx={cx + 4} cy={gy - 42} r="0.8" fill="#FFD54F" opacity="0.6" />
+          <circle cx={cx + 7} cy={gy - 42} r="0.8" fill="#E53935" opacity="0.6" />
+          <circle cx={cx + 10} cy={gy - 42} r="0.8" fill="#4FC3F7" opacity="0.6" />
+          <circle cx={cx + 13} cy={gy - 42} r="0.8" fill="#FFD54F" opacity="0.6" />
+          <circle cx={cx + 16} cy={gy - 42} r="0.8" fill="#E53935" opacity="0.6" />
+          {/* Spotlights */}
+          <circle cx={cx - 14} cy={gy - 38} r="1.5" fill={g[0]} opacity="0.4" />
+          <circle cx={cx - 14} cy={gy - 38} r="3" fill={g[0]} opacity="0.1" />
+          <circle cx={cx + 31} cy={gy - 32} r="1.2" fill={g[0]} opacity="0.35" />
+          <circle cx={cx + 31} cy={gy - 32} r="2.5" fill={g[0]} opacity="0.08" />
+          {/* Neon signs */}
+          <line x1={cx - 18} y1={gy - 20} x2={cx - 6} y2={gy - 20} stroke="#E74C8B" strokeWidth="0.8" opacity="0.3" />
+          <line x1={cx + 26} y1={gy - 16} x2={cx + 36} y2={gy - 16} stroke="#4FC3F7" strokeWidth="0.8" opacity="0.25" />
+          {/* Ticket booth */}
+          <rect x={cx + 54} y={gy - 8} width={6} height={8} fill={f} opacity="0.7" rx="0.3" />
+          <rect x={cx + 54} y={gy - 10} width={6} height={2} fill={g[1]} opacity="0.5" rx="0.3" />
+          {/* Stars */}
+          <circle cx={cx - 30} cy={gy - 42} r="0.6" fill="#FFD54F" opacity="0.5" />
+          <circle cx={cx + 45} cy={gy - 28} r="0.5" fill="#FFD54F" opacity="0.4" />
+          <circle cx={cx + 18} cy={gy - 50} r="0.7" fill="#FFD54F" opacity="0.45" />
+          {/* Lamp posts with glow */}
+          {lampPost(cx - 60, gy, g[0], 'el1')}
+          {lampPost(cx + 48, gy, g[0], 'el2')}
+          {/* People */}
+          {person(cx - 36, gy - 1, g[0], 'ep1')}
+          {person(cx + 16, gy - 1, g[0], 'ep2')}
+          {person(cx + 38, gy - 1, g[0], 'ep3')}
+          {/* Ground */}
+          <rect x={cx - 64} y={gy} width={126} height={2} fill="rgba(0,0,0,0.04)" rx="0.3" />
         </g>
       );
 
     case 'UNIVERSITY':
       return (
         <g>
-          {domeBox(cx - 22, gy, 22, 28, f, s, `${g[0]}BB`, 'u1')}
-          {pointedBox(cx + 6, gy, 14, 22, f, s, g[1], 'u2')}
-          {isoBox(cx + 26, gy, 14, 18, f, s, t, 'u3')}
-          {/* Grand columns on main building */}
-          <line x1={cx - 17} y1={gy} x2={cx - 17} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
-          <line x1={cx - 11} y1={gy} x2={cx - 11} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
-          <line x1={cx - 5} y1={gy} x2={cx - 5} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
-          {/* Book/scroll decorative element */}
-          <rect x={cx + 28} y={gy - 8} width={8} height={2} fill={g[0]} opacity="0.2" rx="0.3" />
-          <rect x={cx + 29} y={gy - 10} width={7} height={2} fill={g[0]} opacity="0.18" rx="0.3" />
-          <rect x={cx + 28} y={gy - 12} width={6} height={2} fill={g[0]} opacity="0.15" rx="0.3" />
+          {/* Buildings — main hall, chapel, dorms, library */}
+          {domeBox(cx - 26, gy, 24, 30, f, s, `${g[0]}BB`, 'u1')}
+          {pointedBox(cx + 4, gy, 14, 24, f, s, g[1], 'u2')}
+          {isoBox(cx + 24, gy, 14, 18, f, s, t, 'u3')}
+          {isoBox(cx - 50, gy, 16, 16, f, s, t, 'u4')}
+          {pointedBox(cx + 42, gy, 12, 14, f, s, g[1], 'u5')}
+          {/* Grand columns */}
+          <line x1={cx - 21} y1={gy} x2={cx - 21} y2={gy - 26} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
+          <line x1={cx - 15} y1={gy} x2={cx - 15} y2={gy - 26} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
+          <line x1={cx - 9} y1={gy} x2={cx - 9} y2={gy - 26} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
+          <line x1={cx - 3} y1={gy} x2={cx - 3} y2={gy - 26} stroke={g[0]} strokeWidth="1.2" opacity="0.4" />
+          {/* Flag on pole */}
+          <rect x={cx + 10} y={gy - 44} width="1" height="20" fill={g[1]} opacity="0.5" />
+          <polygon points={`${cx+11},${gy-44} ${cx+18},${gy-41} ${cx+11},${gy-38}`} fill={g[0]} opacity="0.4" />
+          {/* Sports field outline */}
+          <rect x={cx - 56} y={gy + 6} width={28} height={16} fill="none" stroke={g[0]} strokeWidth="0.4" opacity="0.15" rx="0.5" />
+          <line x1={cx - 42} y1={gy + 6} x2={cx - 42} y2={gy + 22} stroke={g[0]} strokeWidth="0.3" opacity="0.12" />
+          <circle cx={cx - 42} cy={gy + 14} r="3" fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.1" />
+          {/* Statue on pedestal */}
+          <rect x={cx - 34} y={gy - 4} width="3" height="3" fill={g[0]} opacity="0.2" rx="0.3" />
+          {person(cx - 32.5, gy - 9, g[0], 'us1')}
+          {/* Book stack */}
+          <rect x={cx + 26} y={gy - 8} width={8} height={2} fill={g[0]} opacity="0.2" rx="0.3" />
+          <rect x={cx + 27} y={gy - 10} width={7} height={2} fill={g[0]} opacity="0.18" rx="0.3" />
+          <rect x={cx + 26} y={gy - 12} width={6} height={2} fill={g[0]} opacity="0.15" rx="0.3" />
+          {/* Lamppost + bench */}
+          {lampPost(cx - 38, gy, g[0], 'ul1')}
+          {bench(cx - 44, gy - 1, g[1], 'ub1')}
+          {/* Bicycle rack */}
+          <line x1={cx + 36} y1={gy - 2} x2={cx + 36} y2={gy - 4} stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
+          <line x1={cx + 38} y1={gy - 2} x2={cx + 38} y2={gy - 4} stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
+          <line x1={cx + 40} y1={gy - 2} x2={cx + 40} y2={gy - 4} stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
+          <line x1={cx + 35} y1={gy - 3} x2={cx + 41} y2={gy - 3} stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
+          {/* People (students) */}
+          {person(cx - 30, gy - 1, g[0], 'up1')}
+          {person(cx + 16, gy - 1, g[0], 'up2')}
+          {person(cx + 36, gy - 1, g[0], 'up3')}
+          {/* Trees */}
+          {miniTree(cx + 50, gy - 4, g[0], 'ut1')}
+          {miniTree(cx - 56, gy - 4, g[0], 'ut2')}
+          {/* Ground */}
+          <rect x={cx - 58} y={gy} width={116} height={2} fill="rgba(0,0,0,0.04)" rx="0.3" />
         </g>
       );
 
     case 'HARBOR':
       return (
         <g>
-          {isoBox(cx - 34, gy, 20, 18, f, s, t, 'h1')}
-          {isoBox(cx - 8, gy, 18, 16, f, s, t, 'h2')}
-          {/* Crane */}
-          <rect x={cx + 14} y={gy - 42} width="2.5" height="42" fill={g[0]} opacity="0.8" />
-          <line x1={cx + 15} y1={gy - 42} x2={cx + 38} y2={gy - 36} stroke={g[0]} strokeWidth="1.5" opacity="0.7" />
-          <line x1={cx + 15} y1={gy - 42} x2={cx + 8} y2={gy - 38} stroke={g[0]} strokeWidth="1" opacity="0.5" />
-          <line x1={cx + 33} y1={gy - 37} x2={cx + 33} y2={gy - 22} stroke={g[0]} strokeWidth="0.6" opacity="0.5" />
-          <rect x={cx + 31} y={gy - 22} width={4} height={3} fill={g[0]} opacity="0.5" />
-          {/* Shipping containers */}
-          <rect x={cx + 22} y={gy - 6} width={9} height={6} fill={g[0]} opacity="0.5" rx="0.3" />
-          <rect x={cx + 33} y={gy - 6} width={9} height={6} fill={g[1]} opacity="0.6" rx="0.3" />
-          <rect x={cx + 25} y={gy - 12} width={9} height={6} fill={g[0]} opacity="0.35" rx="0.3" />
-          <rect x={cx + 36} y={gy - 12} width={9} height={6} fill={g[1]} opacity="0.45" rx="0.3" />
-          {/* Crane base */}
-          <rect x={cx + 10} y={gy - 2} width={10} height={2} fill={g[0]} opacity="0.4" rx="0.3" />
+          {/* Warehouse buildings */}
+          {isoBox(cx - 46, gy, 22, 18, f, s, t, 'h1')}
+          {isoBox(cx - 20, gy, 18, 16, f, s, t, 'h2')}
+          {isoBox(cx + 2, gy, 20, 14, f, s, t, 'h3')}
+          {isoBox(cx - 58, gy, 10, 12, f, s, t, 'h4')}
+          {/* Crane 1 */}
+          <rect x={cx + 24} y={gy - 46} width="2.5" height="46" fill={g[0]} opacity="0.8" />
+          <line x1={cx + 25} y1={gy - 46} x2={cx + 48} y2={gy - 40} stroke={g[0]} strokeWidth="1.5" opacity="0.7" />
+          <line x1={cx + 25} y1={gy - 46} x2={cx + 18} y2={gy - 42} stroke={g[0]} strokeWidth="1" opacity="0.5" />
+          <line x1={cx + 43} y1={gy - 41} x2={cx + 43} y2={gy - 26} stroke={g[0]} strokeWidth="0.6" opacity="0.5" />
+          <rect x={cx + 41} y={gy - 26} width={4} height={3} fill={g[0]} opacity="0.5" />
+          {/* Crane 2 */}
+          <rect x={cx + 54} y={gy - 38} width="2" height="38" fill={g[0]} opacity="0.6" />
+          <line x1={cx + 55} y1={gy - 38} x2={cx + 68} y2={gy - 34} stroke={g[0]} strokeWidth="1.2" opacity="0.5" />
+          <line x1={cx + 64} y1={gy - 35} x2={cx + 64} y2={gy - 20} stroke={g[0]} strokeWidth="0.5" opacity="0.4" />
+          <rect x={cx + 62} y={gy - 20} width={4} height={3} fill={g[0]} opacity="0.4" />
+          {/* Cargo ship */}
+          <polygon points={`${cx+26},${gy+10} ${cx+30},${gy+6} ${cx+56},${gy+6} ${cx+60},${gy+10}`} fill={g[1]} opacity="0.4" />
+          <rect x={cx + 32} y={gy + 2} width={20} height={4} fill={g[0]} opacity="0.3" rx="0.3" />
+          <rect x={cx + 36} y={gy - 1} width={6} height={3} fill={g[1]} opacity="0.25" rx="0.3" />
+          {/* Containers — 2 rows */}
+          <rect x={cx + 24} y={gy - 6} width={8} height={6} fill="#E53935" opacity="0.5" rx="0.3" />
+          <rect x={cx + 34} y={gy - 6} width={8} height={6} fill="#4A90D9" opacity="0.5" rx="0.3" />
+          <rect x={cx + 44} y={gy - 6} width={8} height={6} fill="#4CAF50" opacity="0.45" rx="0.3" />
+          <rect x={cx + 54} y={gy - 6} width={8} height={6} fill="#FF9800" opacity="0.5" rx="0.3" />
+          <rect x={cx + 27} y={gy - 12} width={8} height={6} fill="#9C27B0" opacity="0.4" rx="0.3" />
+          <rect x={cx + 37} y={gy - 12} width={8} height={6} fill="#E53935" opacity="0.35" rx="0.3" />
+          <rect x={cx + 47} y={gy - 12} width={8} height={6} fill="#4A90D9" opacity="0.4" rx="0.3" />
+          <rect x={cx + 57} y={gy - 12} width={8} height={6} fill="#4CAF50" opacity="0.35" rx="0.3" />
+          {/* Dock platforms */}
+          <rect x={cx + 20} y={gy - 2} width={50} height={2} fill={g[0]} opacity="0.4" rx="0.3" />
+          <rect x={cx + 24} y={gy + 4} width={40} height={1.5} fill={g[0]} opacity="0.3" rx="0.3" />
+          {/* Bollards */}
+          <rect x={cx + 22} y={gy - 4} width="1.5" height="3" fill={g[1]} opacity="0.3" rx="0.3" />
+          <rect x={cx + 40} y={gy - 4} width="1.5" height="3" fill={g[1]} opacity="0.3" rx="0.3" />
+          <rect x={cx + 58} y={gy - 4} width="1.5" height="3" fill={g[1]} opacity="0.3" rx="0.3" />
+          {/* Forklift */}
+          <rect x={cx + 4} y={gy - 4} width={4} height={3} fill={g[0]} opacity="0.25" rx="0.3" />
+          <rect x={cx + 3} y={gy - 6} width={2} height={5} fill={g[0]} opacity="0.2" />
+          <circle cx={cx + 5} cy={gy - 0.5} r="0.6" fill="#333" opacity="0.3" />
+          <circle cx={cx + 7} cy={gy - 0.5} r="0.6" fill="#333" opacity="0.3" />
+          {/* People (workers) */}
+          {person(cx - 10, gy - 1, g[0], 'hp1')}
+          {person(cx + 14, gy - 1, g[0], 'hp2')}
+          {/* Crane bases */}
+          <rect x={cx + 20} y={gy - 2} width={10} height={2} fill={g[0]} opacity="0.4" rx="0.3" />
+          <rect x={cx + 50} y={gy - 2} width={8} height={2} fill={g[0]} opacity="0.3" rx="0.3" />
         </g>
       );
 
     case 'INDUSTRIAL':
       return (
         <g>
-          {isoBox(cx - 32, gy, 22, 22, f, s, t, 'i1')}
-          {isoBox(cx - 4, gy, 20, 20, f, s, t, 'i2')}
-          {isoBox(cx + 22, gy, 24, 18, f, s, t, 'i3')}
-          {/* Smokestacks on building 1 */}
-          <rect x={cx - 28} y={gy - 36} width="3" height="14" fill={g[1]} opacity="0.8" />
-          <rect x={cx - 20} y={gy - 32} width="3" height="10" fill={g[1]} opacity="0.7" />
-          {/* Smokestacks on building 2 */}
-          <rect x={cx + 2} y={gy - 34} width="3" height="14" fill={g[1]} opacity="0.75" />
+          {/* Factory buildings */}
+          {isoBox(cx - 42, gy, 22, 24, f, s, t, 'i1')}
+          {isoBox(cx - 14, gy, 20, 22, f, s, t, 'i2')}
+          {isoBox(cx + 12, gy, 24, 18, f, s, t, 'i3')}
+          {isoBox(cx + 40, gy, 18, 20, f, s, t, 'i4')}
+          {isoBox(cx - 56, gy, 12, 14, f, s, t, 'i5')}
+          {/* Smokestacks */}
+          <rect x={cx - 38} y={gy - 40} width="3" height="16" fill={g[1]} opacity="0.8" />
+          <rect x={cx - 30} y={gy - 36} width="3" height="12" fill={g[1]} opacity="0.7" />
+          <rect x={cx - 8} y={gy - 38} width="3" height="16" fill={g[1]} opacity="0.75" />
           {/* Smoke puffs */}
-          <ellipse cx={cx - 26.5} cy={gy - 39} rx="5" ry="2.5" fill={g[0]} opacity="0.08" />
-          <ellipse cx={cx - 24} cy={gy - 42} rx="4" ry="2" fill={g[0]} opacity="0.05" />
-          <ellipse cx={cx + 3.5} cy={gy - 37} rx="4.5" ry="2.2" fill={g[0]} opacity="0.07" />
+          <ellipse cx={cx - 36.5} cy={gy - 43} rx="5" ry="2.5" fill={g[0]} opacity="0.08" />
+          <ellipse cx={cx - 34} cy={gy - 46} rx="4" ry="2" fill={g[0]} opacity="0.05" />
+          <ellipse cx={cx - 28.5} cy={gy - 39} rx="4" ry="2" fill={g[0]} opacity="0.06" />
+          <ellipse cx={cx - 6.5} cy={gy - 41} rx="4.5" ry="2.2" fill={g[0]} opacity="0.07" />
+          <ellipse cx={cx - 4} cy={gy - 44} rx="3.5" ry="1.8" fill={g[0]} opacity="0.04" />
+          {/* Cooling tower */}
+          <rect x={cx + 62} y={gy - 20} width="10" height="20" fill={g[0]} opacity="0.3" rx="3" />
+          <ellipse cx={cx + 67} cy={gy - 20} rx="5" ry="2.5" fill={g[0]} opacity="0.2" />
+          <ellipse cx={cx + 67} cy={gy - 22} rx="3" ry="1.5" fill={g[0]} opacity="0.08" />
           {/* Pipes connecting buildings */}
-          <line x1={cx - 10} y1={gy - 16} x2={cx - 4} y2={gy - 14} stroke={g[0]} strokeWidth="1.2" opacity="0.3" />
-          <line x1={cx + 16} y1={gy - 14} x2={cx + 22} y2={gy - 12} stroke={g[0]} strokeWidth="1.2" opacity="0.3" />
-          {/* Garage door */}
-          <rect x={cx + 28} y={gy - 8} width={8} height={8} fill="rgba(0,0,0,0.12)" rx="0.3" />
+          <line x1={cx - 20} y1={gy - 16} x2={cx - 14} y2={gy - 14} stroke={g[0]} strokeWidth="1.2" opacity="0.3" />
+          <line x1={cx + 6} y1={gy - 14} x2={cx + 12} y2={gy - 12} stroke={g[0]} strokeWidth="1.2" opacity="0.3" />
+          <line x1={cx + 36} y1={gy - 12} x2={cx + 40} y2={gy - 10} stroke={g[0]} strokeWidth="1" opacity="0.25" />
+          {/* Power lines */}
+          <rect x={cx + 74} y={gy - 28} width="1.5" height="28" fill={g[1]} opacity="0.3" />
+          <rect x={cx + 84} y={gy - 28} width="1.5" height="28" fill={g[1]} opacity="0.3" />
+          <line x1={cx + 75} y1={gy - 25} x2={cx + 85} y2={gy - 25} stroke={g[1]} strokeWidth="0.5" opacity="0.25" />
+          <line x1={cx + 75} y1={gy - 22} x2={cx + 85} y2={gy - 22} stroke={g[1]} strokeWidth="0.5" opacity="0.2" />
+          {/* Garage doors */}
+          <rect x={cx + 18} y={gy - 8} width={8} height={8} fill="rgba(0,0,0,0.12)" rx="0.3" />
+          <rect x={cx + 44} y={gy - 7} width={7} height={7} fill="rgba(0,0,0,0.10)" rx="0.3" />
+          {/* Storage tanks */}
+          <rect x={cx - 50} y={gy - 10} width="6" height="10" fill={g[0]} opacity="0.25" rx="3" />
+          <ellipse cx={cx - 47} cy={gy - 10} rx="3" ry="1.5" fill={g[0]} opacity="0.15" />
+          {/* Chain-link fence */}
+          <line x1={cx - 60} y1={gy + 3} x2={cx + 78} y2={gy + 3} stroke={g[0]} strokeWidth="0.4" opacity="0.12" strokeDasharray="1 1.5" />
+          {/* Truck */}
+          {car(cx + 30, gy + 1, '#5D4037', 'it1')}
+          <rect x={cx + 25} y={gy} width={5} height={3} fill={g[0]} opacity="0.2" rx="0.3" />
+          {/* People (workers) */}
+          {person(cx - 10, gy - 1, g[0], 'ip1')}
+          {person(cx + 50, gy - 1, g[0], 'ip2')}
         </g>
       );
 
     case 'SUBURBS_N':
       return (
         <g>
-          {pointedBox(cx - 34, gy, 14, 14, f, s, g[1], 's1')}
+          {/* Houses — 6 varied */}
+          {pointedBox(cx - 50, gy, 13, 14, f, s, g[1], 's0')}
+          {pointedBox(cx - 34, gy, 14, 16, f, s, g[1], 's1')}
           {pointedBox(cx - 14, gy, 12, 12, f, s, g[1], 's2')}
-          {pointedBox(cx + 4, gy, 15, 16, f, s, g[1], 's3')}
-          {pointedBox(cx + 26, gy, 12, 13, f, s, g[1], 's4')}
-          {/* Trees */}
-          <circle cx={cx - 24} cy={gy - 11} r="6" fill={g[0]} opacity="0.35" />
-          <circle cx={cx - 22} cy={gy - 9} r="4" fill={g[0]} opacity="0.25" />
-          <rect x={cx - 23} y={gy - 5} width="1.2" height="5" fill={g[1]} opacity="0.4" />
-          <circle cx={cx + 20} cy={gy - 13} r="7" fill={g[0]} opacity="0.3" />
-          <circle cx={cx + 22} cy={gy - 11} r="5" fill={g[0]} opacity="0.2" />
-          <rect x={cx + 20.5} y={gy - 6} width="1.2" height="6" fill={g[1]} opacity="0.4" />
-          {/* Fence */}
-          <line x1={cx - 40} y1={gy + 3} x2={cx + 42} y2={gy + 3} stroke={g[0]} strokeWidth="0.3" opacity="0.12" />
+          {pointedBox(cx + 2, gy, 15, 18, f, s, g[1], 's3')}
+          {pointedBox(cx + 22, gy, 12, 13, f, s, g[1], 's4')}
+          {pointedBox(cx + 38, gy, 13, 14, f, s, g[1], 's5')}
+          {/* Trees near houses */}
+          {miniTree(cx - 26, gy - 4, '#4CAF50', 'st1')}
+          {miniTree(cx - 6, gy - 4, '#66BB6A', 'st2')}
+          {miniTree(cx + 34, gy - 4, '#4CAF50', 'st3')}
+          {miniTree(cx + 54, gy - 4, '#43A047', 'st4')}
+          {/* Fences between properties */}
+          <line x1={cx - 36} y1={gy + 1} x2={cx - 36} y2={gy - 3} stroke={g[1]} strokeWidth="0.4" opacity="0.2" />
+          <line x1={cx - 36} y1={gy - 1} x2={cx - 16} y2={gy - 1} stroke={g[1]} strokeWidth="0.3" opacity="0.15" />
+          <line x1={cx + 19} y1={gy + 1} x2={cx + 19} y2={gy - 3} stroke={g[1]} strokeWidth="0.4" opacity="0.2" />
+          <line x1={cx + 19} y1={gy - 1} x2={cx + 36} y2={gy - 1} stroke={g[1]} strokeWidth="0.3" opacity="0.15" />
+          <line x1={cx - 2} y1={gy + 1} x2={cx - 2} y2={gy - 3} stroke={g[1]} strokeWidth="0.4" opacity="0.2" />
+          {/* Mailboxes */}
+          <rect x={cx - 44} y={gy - 4} width="1.5" height="4" fill={g[1]} opacity="0.3" />
+          <rect x={cx - 45} y={gy - 5} width="3.5" height="2" fill="#3B82F6" opacity="0.3" rx="0.3" />
+          <rect x={cx + 14} y={gy - 4} width="1.5" height="4" fill={g[1]} opacity="0.3" />
+          <rect x={cx + 13} y={gy - 5} width="3.5" height="2" fill="#E53935" opacity="0.3" rx="0.3" />
+          {/* Playground — swing set */}
+          <line x1={cx - 58} y1={gy - 8} x2={cx - 58} y2={gy} stroke={g[0]} strokeWidth="0.6" opacity="0.25" />
+          <line x1={cx - 52} y1={gy - 8} x2={cx - 52} y2={gy} stroke={g[0]} strokeWidth="0.6" opacity="0.25" />
+          <line x1={cx - 59} y1={gy - 8} x2={cx - 51} y2={gy - 8} stroke={g[0]} strokeWidth="0.6" opacity="0.25" />
+          <line x1={cx - 56} y1={gy - 7.5} x2={cx - 55} y2={gy - 3} stroke={g[0]} strokeWidth="0.3" opacity="0.2" />
+          <line x1={cx - 54} y1={gy - 7.5} x2={cx - 55} y2={gy - 3} stroke={g[0]} strokeWidth="0.3" opacity="0.2" />
+          {/* Driveways */}
+          <rect x={cx - 32} y={gy} width={8} height={3} fill={g[0]} opacity="0.06" rx="0.3" />
+          <rect x={cx + 4} y={gy} width={8} height={3} fill={g[0]} opacity="0.06" rx="0.3" />
+          {/* Car in driveway */}
+          {car(cx + 5, gy + 1, '#4A90D9', 'sc1')}
+          {/* Lamp posts */}
+          {lampPost(cx - 42, gy, g[0], 'sl1')}
+          {lampPost(cx + 18, gy, g[0], 'sl2')}
+          {/* Person walking dog */}
+          {person(cx - 46, gy - 1, g[0], 'sp1')}
+          <circle cx={cx - 43} cy={gy + 1} r="0.8" fill={g[0]} opacity="0.25" />
+          <circle cx={cx - 43.5} cy={gy + 2} r="0.5" fill={g[0]} opacity="0.2" />
+          {/* Dog park outline */}
+          <rect x={cx + 52} y={gy + 2} width={12} height={8} fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.1" rx="0.5" />
+          {/* Ground */}
+          <line x1={cx - 60} y1={gy + 4} x2={cx + 56} y2={gy + 4} stroke={g[0]} strokeWidth="0.3" opacity="0.1" />
         </g>
       );
 
     case 'SUBURBS_S':
       return (
         <g>
-          {pointedBox(cx - 30, gy, 12, 12, f, s, g[1], 'ss1')}
-          {pointedBox(cx - 12, gy, 14, 16, f, s, g[1], 'ss2')}
-          {isoBox(cx + 8, gy, 18, 16, f, s, t, 'ss3')}
-          {pointedBox(cx + 30, gy, 12, 14, f, s, g[1], 'ss4')}
+          {/* Houses + community center */}
+          {pointedBox(cx - 40, gy, 12, 12, f, s, g[1], 'ss0')}
+          {pointedBox(cx - 24, gy, 14, 16, f, s, g[1], 'ss1')}
+          {pointedBox(cx - 6, gy, 12, 14, f, s, g[1], 'ss2')}
+          {isoBox(cx + 10, gy, 18, 18, f, s, t, 'ss3')}
+          {pointedBox(cx + 32, gy, 12, 14, f, s, g[1], 'ss4')}
           {/* Community center sign */}
-          <rect x={cx + 10} y={gy - 20} width={14} height={3} fill={g[0]} opacity="0.3" rx="0.5" />
+          <rect x={cx + 12} y={gy - 22} width={14} height={3} fill={g[0]} opacity="0.3" rx="0.5" />
+          {/* Basketball hoop */}
+          <line x1={cx + 48} y1={gy} x2={cx + 48} y2={gy - 10} stroke={g[0]} strokeWidth="0.6" opacity="0.25" />
+          <rect x={cx + 47} y={gy - 11} width="3" height="2" fill={g[0]} opacity="0.2" rx="0.2" />
+          <circle cx={cx + 48.5} cy={gy - 8} r="1.5" fill="none" stroke={g[0]} strokeWidth="0.4" opacity="0.2" />
+          {/* Trees */}
+          {miniTree(cx - 44, gy - 4, '#4CAF50', 'sst1')}
+          {miniTree(cx - 16, gy - 4, '#66BB6A', 'sst2')}
+          {miniTree(cx + 44, gy - 4, '#43A047', 'sst3')}
           {/* Bushes */}
-          <circle cx={cx - 40} cy={gy - 3} r="3.5" fill={g[0]} opacity="0.25" />
-          <circle cx={cx + 44} cy={gy - 3} r="4" fill={g[0]} opacity="0.2" />
-          {/* Path */}
-          <line x1={cx - 30} y1={gy + 2} x2={cx + 42} y2={gy + 2} stroke={g[0]} strokeWidth="0.4" opacity="0.1" strokeDasharray="3 2" />
+          <circle cx={cx - 50} cy={gy - 3} r="3.5" fill={g[0]} opacity="0.25" />
+          <circle cx={cx - 46} cy={gy - 2} r="2.5" fill={g[0]} opacity="0.18" />
+          <circle cx={cx + 52} cy={gy - 3} r="4" fill={g[0]} opacity="0.2" />
+          {/* Park bench */}
+          {bench(cx + 38, gy - 1, g[1], 'ssb1')}
+          {/* Walking path */}
+          <line x1={cx - 40} y1={gy + 3} x2={cx + 52} y2={gy + 3} stroke={g[0]} strokeWidth="0.4" opacity="0.1" strokeDasharray="3 2" />
+          {/* People */}
+          {person(cx - 30, gy - 1, g[0], 'ssp1')}
+          {person(cx + 22, gy - 1, g[0], 'ssp2')}
+          {/* Bicycle */}
+          <circle cx={cx + 6} cy={gy + 1} r="1.2" fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.2" />
+          <circle cx={cx + 9} cy={gy + 1} r="1.2" fill="none" stroke={g[0]} strokeWidth="0.3" opacity="0.2" />
+          <line x1={cx + 6} y1={gy + 1} x2={cx + 7.5} y2={gy - 1} stroke={g[0]} strokeWidth="0.3" opacity="0.2" />
+          <line x1={cx + 7.5} y1={gy - 1} x2={cx + 9} y2={gy + 1} stroke={g[0]} strokeWidth="0.3" opacity="0.2" />
+          {/* Ground */}
+          <rect x={cx - 52} y={gy} width={108} height={2} fill="rgba(0,0,0,0.03)" rx="0.3" />
         </g>
       );
 
     case 'OUTSKIRTS':
       return (
         <g>
-          {pointedBox(cx - 24, gy, 16, 16, f, s, g[1], 'out1')}
-          {isoBox(cx, gy, 12, 10, f, s, t, 'out2')}
+          {/* Farmhouse */}
+          {pointedBox(cx - 28, gy, 16, 18, f, s, g[1], 'out1')}
+          {/* Barn */}
+          {isoBox(cx - 6, gy, 16, 14, f, s, t, 'out2')}
+          <rect x={cx - 2} y={gy - 6} width={8} height={6} fill="rgba(0,0,0,0.1)" rx="0.3" />
           {/* Windmill */}
-          <rect x={cx + 20} y={gy - 26} width="4" height="26" fill={g[0]} opacity="0.7" />
-          <circle cx={cx + 22} cy={gy - 26} r="1.8" fill={g[1]} opacity="0.6" />
-          <line x1={cx + 22} y1={gy - 26} x2={cx + 22} y2={gy - 38} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
-          <line x1={cx + 22} y1={gy - 26} x2={cx + 32} y2={gy - 22} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
-          <line x1={cx + 22} y1={gy - 26} x2={cx + 12} y2={gy - 22} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
-          <line x1={cx + 22} y1={gy - 26} x2={cx + 26} y2={gy - 16} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
-          {/* Field lines */}
-          <line x1={cx - 36} y1={gy + 3} x2={cx - 10} y2={gy + 3} stroke={g[0]} strokeWidth="0.3" opacity="0.1" />
-          <line x1={cx - 34} y1={gy + 6} x2={cx - 12} y2={gy + 6} stroke={g[0]} strokeWidth="0.3" opacity="0.08" />
-          <line x1={cx - 32} y1={gy + 9} x2={cx - 14} y2={gy + 9} stroke={g[0]} strokeWidth="0.3" opacity="0.06" />
+          <rect x={cx + 26} y={gy - 30} width="4" height="30" fill={g[0]} opacity="0.7" />
+          <circle cx={cx + 28} cy={gy - 30} r="1.8" fill={g[1]} opacity="0.6" />
+          <line x1={cx + 28} y1={gy - 30} x2={cx + 28} y2={gy - 42} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+          <line x1={cx + 28} y1={gy - 30} x2={cx + 38} y2={gy - 26} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+          <line x1={cx + 28} y1={gy - 30} x2={cx + 18} y2={gy - 26} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+          <line x1={cx + 28} y1={gy - 30} x2={cx + 32} y2={gy - 20} stroke={g[0]} strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
           {/* Silo */}
-          <rect x={cx - 8} y={gy - 14} width="5" height="14" fill={g[0]} opacity="0.3" rx="2.5" />
-          <ellipse cx={cx - 5.5} cy={gy - 14} rx="2.5" ry="1.5" fill={g[0]} opacity="0.2" />
+          <rect x={cx + 14} y={gy - 18} width="5" height="18" fill={g[0]} opacity="0.3" rx="2.5" />
+          <ellipse cx={cx + 16.5} cy={gy - 18} rx="2.5" ry="1.5" fill={g[0]} opacity="0.2" />
+          {/* Farm field lines */}
+          <line x1={cx - 48} y1={gy + 4} x2={cx - 16} y2={gy + 4} stroke={g[0]} strokeWidth="0.3" opacity="0.12" />
+          <line x1={cx - 46} y1={gy + 7} x2={cx - 18} y2={gy + 7} stroke={g[0]} strokeWidth="0.3" opacity="0.10" />
+          <line x1={cx - 44} y1={gy + 10} x2={cx - 20} y2={gy + 10} stroke={g[0]} strokeWidth="0.3" opacity="0.08" />
+          <line x1={cx - 42} y1={gy + 13} x2={cx - 22} y2={gy + 13} stroke={g[0]} strokeWidth="0.3" opacity="0.06" />
+          <line x1={cx - 40} y1={gy + 16} x2={cx - 24} y2={gy + 16} stroke={g[0]} strokeWidth="0.3" opacity="0.05" />
+          <line x1={cx - 38} y1={gy + 19} x2={cx - 26} y2={gy + 19} stroke={g[0]} strokeWidth="0.3" opacity="0.04" />
+          {/* Hay bales */}
+          <ellipse cx={cx + 38} cy={gy - 2} rx="4" ry="3" fill="#C8956A" opacity="0.3" />
+          <ellipse cx={cx + 46} cy={gy - 2} rx="3.5" ry="2.5" fill="#D4A574" opacity="0.25" />
+          <ellipse cx={cx + 42} cy={gy - 5} rx="3" ry="2" fill="#C8956A" opacity="0.2" />
+          {/* Fence posts */}
+          <rect x={cx - 52} y={gy - 3} width="1" height="3" fill="#5D4037" opacity="0.2" />
+          <rect x={cx - 45} y={gy - 3} width="1" height="3" fill="#5D4037" opacity="0.2" />
+          <rect x={cx - 38} y={gy - 3} width="1" height="3" fill="#5D4037" opacity="0.2" />
+          <line x1={cx - 52} y1={gy - 1.5} x2={cx - 38} y2={gy - 1.5} stroke="#5D4037" strokeWidth="0.4" opacity="0.18" />
+          <line x1={cx - 52} y1={gy - 0.5} x2={cx - 38} y2={gy - 0.5} stroke="#5D4037" strokeWidth="0.4" opacity="0.15" />
+          {/* Farm animals */}
+          <ellipse cx={cx - 36} cy={gy + 8} rx="1.5" ry="1" fill={g[0]} opacity="0.18" />
+          <circle cx={cx - 34.5} cy={gy + 7.2} r="0.6" fill={g[0]} opacity="0.15" />
+          <ellipse cx={cx - 30} cy={gy + 10} rx="1.2" ry="0.8" fill={g[0]} opacity="0.15" />
+          <ellipse cx={cx - 26} cy={gy + 7} rx="1.3" ry="0.9" fill={g[0]} opacity="0.16" />
+          {/* Tractor */}
+          <rect x={cx + 4} y={gy + 4} width={6} height={3.5} fill="#E53935" opacity="0.25" rx="0.5" />
+          <rect x={cx + 1} y={gy + 4.5} width={3} height={2.5} fill="#333" opacity="0.15" rx="0.3" />
+          <circle cx={cx + 3} cy={gy + 8} r="1.5" fill="#333" opacity="0.2" />
+          <circle cx={cx + 8} cy={gy + 8} r="1" fill="#333" opacity="0.2" />
+          {/* Pond */}
+          <ellipse cx={cx + 50} cy={gy + 12} rx="8" ry="5" fill="#4FC3F7" opacity="0.15" />
+          <ellipse cx={cx + 50} cy={gy + 12} rx="6" ry="3.5" fill="#81D4FA" opacity="0.08" />
+          {/* Trees */}
+          {miniTree(cx - 16, gy - 4, '#4CAF50', 'outt1')}
+          {miniTree(cx + 42, gy - 4, '#66BB6A', 'outt2')}
         </g>
       );
 
