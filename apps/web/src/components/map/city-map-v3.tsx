@@ -18,8 +18,28 @@ const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const ZOOM_STEP = 0.3;
 const WHEEL_ZOOM_STEP = 0.08;
-const POI_VISIBLE_ZOOM = 1.8;
+const POI_VISIBLE_ZOOM = 1.5;
 const POI_HIT_RADIUS = 22;
+
+// ── Water body labels ──
+const WATER_LABELS = [
+  { id: 'ocean', label: 'OCEAN', x: 1050, y: 450, size: 14, angle: -10, opacity: 0.20 },
+  { id: 'lake', label: 'Lake', x: 250, y: 460, size: 9, angle: 0, opacity: 0.25 },
+  { id: 'river', label: 'River', x: 640, y: 585, size: 8, angle: -25, opacity: 0.20 },
+] as const;
+
+// ── POI icon color by icon type ──
+const POI_ICON_COLORS: Record<string, string> = {
+  building: '#3B82F6',
+  shop: '#E74C8B',
+  leisure: '#22C55E',
+  food: '#FFD54F',
+  transport: '#6B7280',
+  education: '#8B5CF6',
+  health: '#EF4444',
+  culture: '#F59E0B',
+  default: '#9CA3AF',
+};
 
 // ── Color Palette (split-complementary: 37° / 187° / 257°) ──
 
@@ -1516,6 +1536,48 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <path d="M0,6 Q15,2 30,6 Q45,10 60,6" fill="none" stroke={COLORS.water} strokeWidth="0.4" opacity="0.18" />
           </pattern>
 
+          {/* ── Diagonal hatch (construction/WIP) ── */}
+          <pattern id="v3-hatch-diag" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="8" stroke={COLORS.lockGray} strokeWidth="1" opacity="0.08" />
+          </pattern>
+
+          {/* ── Lock metallic gradient ── */}
+          <linearGradient id="v3-lock-metal" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#D1D5DB" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#9CA3AF" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#6B7280" stopOpacity="0.8" />
+          </linearGradient>
+
+          {/* ── Edge vignette gradients ── */}
+          <linearGradient id="v3-vig-top" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1a1208" stopOpacity="0.04" />
+            <stop offset="100%" stopColor="#1a1208" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="v3-vig-bottom" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#1a1208" stopOpacity="0.04" />
+            <stop offset="100%" stopColor="#1a1208" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="v3-vig-left" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#1a1208" stopOpacity="0.04" />
+            <stop offset="100%" stopColor="#1a1208" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="v3-vig-right" x1="1" y1="0" x2="0" y2="0">
+            <stop offset="0%" stopColor="#1a1208" stopOpacity="0.04" />
+            <stop offset="100%" stopColor="#1a1208" stopOpacity="0" />
+          </linearGradient>
+
+          {/* ── Bottom fog band gradient ── */}
+          <linearGradient id="v3-fog-band-bottom" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor={COLORS.fogWarm} stopOpacity="0.06" />
+            <stop offset="100%" stopColor={COLORS.fogWarm} stopOpacity="0" />
+          </linearGradient>
+
+          {/* ── Top sky glow gradient ── */}
+          <linearGradient id="v3-sky-glow-top" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={COLORS.skyWarm} stopOpacity="0.04" />
+            <stop offset="100%" stopColor={COLORS.skyWarm} stopOpacity="0" />
+          </linearGradient>
+
           {/* ── River gradient ── */}
           <linearGradient id="v3-river" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor={COLORS.water} stopOpacity="0.30" />
@@ -2815,13 +2877,26 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               const pts = polygonToPoints(zone.polygon);
               return (
                 <g key={`locked-${zone.code}`} filter="url(#v3-locked-desat)">
-                  {/* Desaturated fill */}
+                  {/* Base: gradient fill at reduced opacity */}
                   <polygon
                     points={pts}
                     fill={`url(#v3-lz-grad-${zone.code})`}
-                    opacity="0.6"
+                    opacity="0.4"
                   />
-                  {/* Dashed border */}
+                  {/* Overlay: diagonal hatch pattern (construction/WIP) */}
+                  <polygon
+                    points={pts}
+                    fill="url(#v3-hatch-diag)"
+                    opacity="1"
+                  />
+                  {/* Top: fog/mist overlay at center */}
+                  <ellipse
+                    cx={zone.center[0]} cy={zone.center[1]}
+                    rx="60" ry="40"
+                    fill="white" opacity="0.15"
+                    filter="url(#v3-fog)"
+                  />
+                  {/* Double border: outer dashed + inner dotted, animated march */}
                   <polygon
                     points={pts}
                     fill="none"
@@ -2829,30 +2904,79 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                     strokeWidth="2"
                     strokeDasharray="8 6"
                     opacity="0.5"
-                  />
-                  {/* Lock icon */}
-                  <g transform={`translate(${zone.center[0] - 8}, ${zone.center[1] - 12})`}>
-                    <rect x="2" y="8" width="12" height="10" rx="2" fill={COLORS.lockGray} opacity="0.6" />
-                    <path d="M5,8 V5 A3,3 0 0,1 11,5 V8" fill="none" stroke={COLORS.lockGray} strokeWidth="1.5" opacity="0.6" />
+                  >
+                    <animate attributeName="stroke-dashoffset" from="0" to="28" dur="12s" repeatCount="indefinite" />
+                  </polygon>
+                  <polygon
+                    points={pts}
+                    fill="none"
+                    stroke={COLORS.lockGray}
+                    strokeWidth="0.8"
+                    strokeDasharray="2 4"
+                    opacity="0.25"
+                  >
+                    <animate attributeName="stroke-dashoffset" from="0" to="12" dur="12s" repeatCount="indefinite" />
+                  </polygon>
+                  {/* Lock icon — 1.5x larger with keyhole, metallic gradient, shine */}
+                  <g transform={`translate(${zone.center[0] - 12}, ${zone.center[1] - 18})`}>
+                    {/* Lock body — metallic gradient */}
+                    <rect x="3" y="12" width="18" height="15" rx="3" fill="url(#v3-lock-metal)" opacity="0.7" />
+                    {/* Shackle */}
+                    <path d="M7.5,12 V7.5 A4.5,4.5 0 0,1 16.5,7.5 V12" fill="none" stroke={COLORS.lockGray} strokeWidth="2.2" opacity="0.65" />
+                    {/* Keyhole — circle + triangle */}
+                    <circle cx="12" cy="18.5" r="2" fill="#374151" opacity="0.5" />
+                    <polygon points="11,19.5 12,24 13,19.5" fill="#374151" opacity="0.4" />
+                    {/* Shine highlight */}
+                    <circle cx="6.5" cy="14.5" r="2" fill="white" opacity="0.30" />
+                    {/* Shackle bounce animation */}
+                    <animateTransform attributeName="transform"
+                      type="translate"
+                      values={`${zone.center[0] - 12},${zone.center[1] - 18};${zone.center[0] - 12},${zone.center[1] - 18.5};${zone.center[0] - 12},${zone.center[1] - 18}`}
+                      dur="3s" repeatCount="indefinite"
+                    />
                   </g>
-                  {/* Zone name */}
+                  {/* Zone name with backdrop */}
+                  <rect
+                    x={zone.center[0] - 36} y={zone.center[1] + 10}
+                    width={72} height={22}
+                    fill="rgba(0,0,0,0.40)" rx="4"
+                  />
                   <text
                     x={zone.center[0]}
-                    y={zone.center[1] + 16}
+                    y={zone.center[1] + 19}
                     textAnchor="middle"
                     dominantBaseline="central"
                     className="select-none"
                     style={{
-                      fill: COLORS.lockGray,
+                      fill: '#E5E7EB',
                       fontSize: '9px',
                       fontFamily: 'monospace',
                       fontWeight: 600,
                       letterSpacing: '0.08em',
                       textTransform: 'uppercase' as const,
-                      opacity: 0.6,
+                      opacity: 0.9,
                     }}
                   >
                     {zone.name}
+                  </text>
+                  {/* "COMING SOON" subtitle */}
+                  <text
+                    x={zone.center[0]}
+                    y={zone.center[1] + 28}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    className="select-none"
+                    style={{
+                      fill: COLORS.lockDash,
+                      fontSize: '7px',
+                      fontFamily: 'monospace',
+                      fontWeight: 400,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase' as const,
+                      opacity: 0.4,
+                    }}
+                  >
+                    COMING SOON
                   </text>
                 </g>
               );
@@ -2861,101 +2985,223 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
 
           {/* ═══ LAYER 12: Labels ═══ */}
           <g id="layer-labels" style={{ pointerEvents: 'none' }}>
+            {/* District labels with backdrop + active underline */}
             {DISTRICTS_GEO.map((d) => {
               const isActive = selectedCode === d.code || hoveredCode === d.code;
+              const label = d.name.length > 16 ? d.code.replace(/_/g, ' ') : d.name;
+              const fSize = isActive ? 13 : 11;
+              const bw = label.length * (fSize * 0.62);
+              const bh = fSize + 6;
               return (
-                <text
-                  key={`label-${d.code}`}
-                  x={d.center[0]}
-                  y={d.center[1] + 12}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  className="select-none"
-                  style={{
-                    fill: isActive ? '#2D1A0E' : 'hsl(30 20% 30%)',
-                    fontSize: isActive ? '13px' : '11px',
-                    fontWeight: isActive ? 700 : 500,
-                    fontFamily: 'monospace',
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase' as const,
-                    textShadow: isActive
-                      ? '0 1px 3px rgba(255,255,255,0.6)'
-                      : '0 1px 2px rgba(255,255,255,0.4)',
-                    transition: 'fill 300ms ease, font-size 300ms ease',
-                  }}
-                >
-                  {d.name.length > 16 ? d.code.replace(/_/g, ' ') : d.name}
-                </text>
+                <g key={`label-${d.code}`}>
+                  {/* Text backdrop pill */}
+                  <rect
+                    x={d.center[0] - bw / 2} y={d.center[1] + 12 - bh / 2}
+                    width={bw} height={bh}
+                    fill={d.gradient[0]} opacity="0.15" rx="4"
+                    filter="url(#v3-fog)"
+                  />
+                  {/* Active gold underline */}
+                  {isActive && (
+                    <line
+                      x1={d.center[0] - bw / 2 + 4} y1={d.center[1] + 12 + bh / 2 - 2}
+                      x2={d.center[0] + bw / 2 - 4} y2={d.center[1] + 12 + bh / 2 - 2}
+                      stroke={COLORS.gold} strokeWidth="1.5" opacity="0.6"
+                    />
+                  )}
+                  {/* Text stroke layer for readability */}
+                  <text
+                    x={d.center[0]} y={d.center[1] + 12}
+                    textAnchor="middle" dominantBaseline="central"
+                    className="select-none"
+                    style={{
+                      fill: 'none',
+                      stroke: 'rgba(255,255,255,0.55)',
+                      strokeWidth: '3px',
+                      fontSize: `${fSize}px`,
+                      fontWeight: isActive ? 700 : 500,
+                      fontFamily: 'monospace',
+                      letterSpacing: isActive ? '0.08em' : '0.05em',
+                      textTransform: 'uppercase' as const,
+                    }}
+                  >{label}</text>
+                  {/* Main text */}
+                  <text
+                    x={d.center[0]} y={d.center[1] + 12}
+                    textAnchor="middle" dominantBaseline="central"
+                    className="select-none"
+                    style={{
+                      fill: isActive ? '#2D1A0E' : 'hsl(30 20% 30%)',
+                      fontSize: `${fSize}px`,
+                      fontWeight: isActive ? 700 : 500,
+                      fontFamily: 'monospace',
+                      letterSpacing: isActive ? '0.08em' : '0.05em',
+                      textTransform: 'uppercase' as const,
+                      transition: 'fill 300ms ease, font-size 300ms ease',
+                    }}
+                  >{label}</text>
+                </g>
               );
             })}
 
-            {/* Road labels at zoom */}
-            {viewState.scale >= 1.4 && ROAD_LABELS.map((rl) => (
-              <text
-                key={`road-label-${rl.roadId}`}
-                x={rl.position[0]}
-                y={rl.position[1]}
-                textAnchor="middle"
-                dominantBaseline="central"
-                className="select-none"
-                style={{
-                  fill: 'hsl(30 15% 35%)',
-                  fontSize: '7px',
-                  fontFamily: 'monospace',
-                  fontWeight: 600,
-                  letterSpacing: '0.12em',
-                  textShadow: '0 1px 2px rgba(255,255,255,0.5)',
-                  transform: `rotate(${rl.angle}deg)`,
-                  transformOrigin: `${rl.position[0]}px ${rl.position[1]}px`,
-                }}
+            {/* Road labels with shield — visible at zoom ≥ 1.2 */}
+            {viewState.scale >= 1.2 && ROAD_LABELS.map((rl) => (
+              <g key={`road-label-${rl.roadId}`}
+                transform={`rotate(${rl.angle}, ${rl.position[0]}, ${rl.position[1]})`}
               >
-                {rl.label}
-              </text>
+                {/* Road shield capsule */}
+                <rect
+                  x={rl.position[0] - 28} y={rl.position[1] - 6}
+                  width={56} height={12} rx="6"
+                  fill="rgba(255,255,255,0.45)" stroke="hsl(30 15% 55%)" strokeWidth="0.5"
+                />
+                <text
+                  x={rl.position[0]} y={rl.position[1]}
+                  textAnchor="middle" dominantBaseline="central"
+                  className="select-none"
+                  style={{
+                    fill: 'hsl(30 20% 30%)',
+                    fontSize: '7px',
+                    fontFamily: 'monospace',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                  }}
+                >
+                  {rl.label}
+                </text>
+              </g>
             ))}
 
-            {/* POI labels at zoom */}
-            {viewState.scale >= POI_VISIBLE_ZOOM && POIS.map((poi) => (
+            {/* POI labels with category icon + connecting line */}
+            {viewState.scale >= POI_VISIBLE_ZOOM && POIS.map((poi) => {
+              const col = POI_ICON_COLORS[poi.icon] || POI_ICON_COLORS.default;
+              return (
+                <g key={`poi-label-${poi.id}`}>
+                  {/* Thin connector from icon to label */}
+                  <line
+                    x1={poi.position[0]} y1={poi.position[1] + 6}
+                    x2={poi.position[0]} y2={poi.position[1] + 13}
+                    stroke={col} strokeWidth="0.5" opacity="0.3"
+                  />
+                  {/* Category icon dot */}
+                  <circle
+                    cx={poi.position[0] - 16} cy={poi.position[1] + 17}
+                    r="3" fill={col} opacity="0.6"
+                  />
+                  {/* Label text */}
+                  <text
+                    x={poi.position[0] + 4} y={poi.position[1] + 18}
+                    textAnchor="middle" dominantBaseline="central"
+                    style={{
+                      fill: 'hsl(30 15% 28%)',
+                      fontSize: '8px',
+                      fontFamily: 'monospace',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {poi.name}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Water body labels */}
+            {WATER_LABELS.map((wl) => (
               <text
-                key={`poi-label-${poi.id}`}
-                x={poi.position[0]}
-                y={poi.position[1] + 16}
-                textAnchor="middle"
-                dominantBaseline="central"
+                key={`water-label-${wl.id}`}
+                x={wl.x} y={wl.y}
+                textAnchor="middle" dominantBaseline="central"
+                className="select-none"
                 style={{
-                  fill: 'hsl(30 15% 30%)',
-                  fontSize: '8px',
+                  fill: COLORS.waterDeep,
+                  fontSize: `${wl.size}px`,
                   fontFamily: 'monospace',
-                  textShadow: '0 1px 2px rgba(255,255,255,0.5)',
+                  fontWeight: 500,
+                  fontStyle: 'italic',
+                  letterSpacing: '0.15em',
+                  opacity: wl.opacity,
+                  transform: `rotate(${wl.angle}deg)`,
+                  transformOrigin: `${wl.x}px ${wl.y}px`,
                 }}
               >
-                {poi.name}
+                {wl.label}
               </text>
             ))}
           </g>
 
           {/* ═══ LAYER 13: Atmospheric Effects ═══ */}
           <g id="layer-effects" style={{ pointerEvents: 'none' }}>
-            {/* Atmospheric haze */}
-            <circle cx="500" cy="400" r="120" fill="hsl(40 20% 90%)" opacity="0.015" filter="url(#v3-fog)" />
-            <circle cx="250" cy="350" r="80" fill="hsl(40 20% 90%)" opacity="0.012" filter="url(#v3-fog)" />
-            <circle cx="800" cy="300" r="60" fill={COLORS.sky} opacity="0.015" filter="url(#v3-fog)" />
+            {/* Fog patches — warm and cool, scattered */}
+            <ellipse cx="180" cy="700" rx="100" ry="35" fill={COLORS.fogWarm} opacity="0.04" filter="url(#v3-fog-warm)" />
+            <ellipse cx="500" cy="400" rx="130" ry="50" fill={COLORS.fogWarm} opacity="0.035" filter="url(#v3-fog-warm)" />
+            <ellipse cx="850" cy="250" rx="90" ry="30" fill={COLORS.fogCool} opacity="0.03" filter="url(#v3-fog-cool)" />
+            <ellipse cx="350" cy="200" rx="110" ry="40" fill={COLORS.fogWarm} opacity="0.025" filter="url(#v3-fog-warm)" />
+            <ellipse cx="700" cy="600" rx="80" ry="28" fill={COLORS.fogCool} opacity="0.03" filter="url(#v3-fog-cool)" />
+            <ellipse cx="1050" cy="350" rx="70" ry="25" fill={COLORS.fogWarm} opacity="0.02" filter="url(#v3-fog-warm)" />
+            <ellipse cx="250" cy="460" rx="50" ry="20" fill={COLORS.fogCool} opacity="0.025" filter="url(#v3-mist)" />
+            <ellipse cx="950" cy="700" rx="90" ry="32" fill={COLORS.fogWarm} opacity="0.03" filter="url(#v3-fog-warm)" />
 
-            {/* Vignette */}
-            <rect
-              x="0" y="0" width={VIEW_W} height={VIEW_H}
-              fill="url(#v3-bg-radial)" opacity="0.12"
+            {/* Golden-hour overlay — sunset warmth */}
+            <rect x="0" y="0" width={VIEW_W} height={VIEW_H}
+              fill="url(#v3-sunset-overlay)" opacity="0.04"
+              style={{ mixBlendMode: 'multiply' }}
+            />
+
+            {/* Warm radial glow centered slightly above middle */}
+            <rect x="0" y="0" width={VIEW_W} height={VIEW_H}
+              fill="url(#v3-bg-radial)" opacity="0.10"
               style={{ mixBlendMode: 'screen' }}
             />
 
-            {/* Outer frame */}
-            <rect
-              x="0" y="0" width={VIEW_W} height={VIEW_H}
-              fill="none" stroke={COLORS.earthLight} strokeWidth="1" opacity="0.3" rx="4"
+            {/* Light rays from top-left (god rays) */}
+            <polygon points="0,0 180,0 350,900 120,900" fill="rgba(255,240,200,0.012)" />
+            <polygon points="60,0 240,0 420,900 200,900" fill="rgba(255,240,200,0.009)" />
+            <polygon points="200,0 340,0 550,900 380,900" fill="rgba(255,240,200,0.007)" />
+            <polygon points="400,0 500,0 700,900 580,900" fill="rgba(255,240,200,0.005)" />
+
+            {/* Depth-of-field: bottom fog band + top sky glow */}
+            <rect x="0" y={VIEW_H - 30} width={VIEW_W} height={30}
+              fill="url(#v3-fog-band-bottom)"
+            />
+            <rect x="0" y="0" width={VIEW_W} height={20}
+              fill="url(#v3-sky-glow-top)"
+            />
+
+            {/* 4-edge vignette */}
+            <rect x="0" y="0" width={VIEW_W} height={80} fill="url(#v3-vig-top)" />
+            <rect x="0" y={VIEW_H - 80} width={VIEW_W} height={80} fill="url(#v3-vig-bottom)" />
+            <rect x="0" y="0" width={80} height={VIEW_H} fill="url(#v3-vig-left)" />
+            <rect x={VIEW_W - 80} y="0" width={80} height={VIEW_H} fill="url(#v3-vig-right)" />
+
+            {/* Double frame with corner ornaments */}
+            <rect x="2" y="2" width={VIEW_W - 4} height={VIEW_H - 4}
+              fill="none" stroke={COLORS.earthLight} strokeWidth="1" opacity="0.25" rx="6"
+            />
+            <rect x="6" y="6" width={VIEW_W - 12} height={VIEW_H - 12}
+              fill="none" stroke={COLORS.earthLight} strokeWidth="0.5" opacity="0.15" rx="4"
+            />
+            {/* Corner ornaments — small L-shapes */}
+            {([
+              [8, 8, 1, 1],
+              [VIEW_W - 8, 8, -1, 1],
+              [8, VIEW_H - 8, 1, -1],
+              [VIEW_W - 8, VIEW_H - 8, -1, -1],
+            ] as [number, number, number, number][]).map(([cx, cy, dx, dy2], i) => (
+              <path key={`corner-${i}`}
+                d={`M${cx},${cy + dy2 * 12} L${cx},${cy} L${cx + dx * 12},${cy}`}
+                fill="none" stroke={COLORS.gold} strokeWidth="0.8" opacity="0.25"
+              />
+            ))}
+
+            {/* Paper texture — very subtle grain */}
+            <rect x="0" y="0" width={VIEW_W} height={VIEW_H}
+              filter="url(#v3-paper-texture)" opacity="0.025"
+              fill="transparent"
             />
           </g>
 
           {/* ═══ LAYER 14: Hit Targets (INTERACTIVE) ═══ */}
-          <g id="layer-hit-targets" style={{ pointerEvents: 'all' }}>
+          <g id="layer-hit-targets" style={{ pointerEvents: 'all', willChange: 'opacity' }}>
             {/* District hit polygons */}
             {DISTRICTS_GEO.map((d) => (
               <polygon
@@ -3014,14 +3260,26 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
           {/* ═══ LAYER 15: Debug (dev only) ═══ */}
           {isDebug && (
             <g id="layer-debug" style={{ pointerEvents: 'none' }}>
+              {/* District outlines */}
               {DISTRICTS_GEO.map((d) => (
-                <polygon
-                  key={`debug-${d.code}`}
-                  points={polygonToPoints(d.polygon)}
-                  fill="rgba(255,0,0,0.15)" stroke="red"
-                  strokeWidth="2" strokeDasharray="8 4"
-                />
+                <g key={`debug-${d.code}`}>
+                  <polygon
+                    points={polygonToPoints(d.polygon)}
+                    fill="rgba(255,0,0,0.15)" stroke="red"
+                    strokeWidth="2" strokeDasharray="8 4"
+                  />
+                  {/* Center dot */}
+                  <circle cx={d.center[0]} cy={d.center[1]} r="4" fill="yellow" opacity="0.8" />
+                  {/* Coordinate label */}
+                  <text
+                    x={d.center[0] + 6} y={d.center[1] - 4}
+                    style={{ fill: 'yellow', fontSize: '6px', fontFamily: 'monospace', opacity: 0.7 }}
+                  >
+                    {`${Math.round(d.center[0])},${Math.round(d.center[1])}`}
+                  </text>
+                </g>
               ))}
+              {/* Locked zone outlines */}
               {LOCKED_ZONES.map((z) => (
                 <polygon
                   key={`debug-lz-${z.code}`}
@@ -3030,6 +3288,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                   strokeWidth="2" strokeDasharray="6 4"
                 />
               ))}
+              {/* POI hit circles */}
               {POIS.map((poi) => (
                 <circle
                   key={`debug-poi-${poi.id}`}
@@ -3038,13 +3297,23 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                   fill="rgba(0,255,0,0.2)" stroke="lime" strokeWidth="1.5"
                 />
               ))}
-              {DISTRICTS_GEO.map((d) => (
-                <circle
-                  key={`debug-center-${d.code}`}
-                  cx={d.center[0]} cy={d.center[1]}
-                  r="4" fill="yellow" opacity="0.8"
-                />
+              {/* Road ID labels at midpoints */}
+              {ROAD_LABELS.map((rl) => (
+                <text
+                  key={`debug-road-${rl.roadId}`}
+                  x={rl.position[0]} y={rl.position[1] - 10}
+                  textAnchor="middle"
+                  style={{ fill: 'cyan', fontSize: '6px', fontFamily: 'monospace', opacity: 0.7 }}
+                >
+                  {rl.roadId}
+                </text>
               ))}
+              {/* Debug legend */}
+              <rect x={VIEW_W - 110} y={8} width={102} height={52} rx="4" fill="rgba(0,0,0,0.55)" />
+              <text x={VIEW_W - 104} y={22} style={{ fill: 'red', fontSize: '7px', fontFamily: 'monospace' }}>■ Districts</text>
+              <text x={VIEW_W - 104} y={32} style={{ fill: 'orange', fontSize: '7px', fontFamily: 'monospace' }}>■ Locked Zones</text>
+              <text x={VIEW_W - 104} y={42} style={{ fill: 'lime', fontSize: '7px', fontFamily: 'monospace' }}>● POI Hits</text>
+              <text x={VIEW_W - 104} y={52} style={{ fill: 'cyan', fontSize: '7px', fontFamily: 'monospace' }}>↑ Road IDs</text>
             </g>
           )}
         </g>
@@ -3085,6 +3354,69 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
       </div>
+
+      {/* ═══ Mini-map — visible at higher zoom ═══ */}
+      {viewState.scale > 1.3 && (
+        <div
+          className="absolute bottom-3 left-3 rounded-lg glass-surface overflow-hidden border border-foreground/10"
+          style={{ width: 120, height: 90, pointerEvents: 'none', opacity: 0.7 }}
+        >
+          <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width={120} height={90}>
+            {/* Simplified district fills */}
+            {DISTRICTS_GEO.map((d) => (
+              <polygon
+                key={`mm-${d.code}`}
+                points={polygonToPoints(d.polygon)}
+                fill={d.gradient[0]} stroke={d.stroke} strokeWidth="3" opacity="0.5"
+              />
+            ))}
+            {/* Viewport indicator */}
+            <rect
+              x={-viewState.x / viewState.scale}
+              y={-viewState.y / viewState.scale}
+              width={VIEW_W / viewState.scale}
+              height={VIEW_H / viewState.scale}
+              fill="none" stroke="white" strokeWidth="4" opacity="0.8"
+            />
+          </svg>
+        </div>
+      )}
+
+      {/* ═══ Compass Rose — visible at zoom > 1.1 ═══ */}
+      {viewState.scale > 1.1 && (
+        <div
+          className="absolute top-3 left-3 flex items-center justify-center"
+          style={{ width: 28, height: 28, pointerEvents: 'none', opacity: 0.5 }}
+        >
+          <svg viewBox="0 0 28 28" width={28} height={28}>
+            <circle cx="14" cy="14" r="12" fill="rgba(0,0,0,0.25)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
+            {/* N arrow */}
+            <polygon points="14,3 12,11 14,9 16,11" fill="rgba(239,68,68,0.7)" />
+            {/* S arrow */}
+            <polygon points="14,25 12,17 14,19 16,17" fill="rgba(255,255,255,0.4)" />
+            {/* E arrow */}
+            <polygon points="25,14 17,12 19,14 17,16" fill="rgba(255,255,255,0.3)" />
+            {/* W arrow */}
+            <polygon points="3,14 11,12 9,14 11,16" fill="rgba(255,255,255,0.3)" />
+            <text x="14" y="6" textAnchor="middle" style={{ fill: 'rgba(239,68,68,0.8)', fontSize: '4px', fontFamily: 'monospace', fontWeight: 700 }}>N</text>
+          </svg>
+        </div>
+      )}
+
+      {/* ═══ Scale Bar — bottom center ═══ */}
+      {viewState.scale > 1.2 && (
+        <div
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center"
+          style={{ pointerEvents: 'none', opacity: 0.45 }}
+        >
+          <div className="flex items-end gap-0">
+            <div style={{ width: 60, height: 4, borderLeft: '1px solid currentColor', borderRight: '1px solid currentColor', borderBottom: '1px solid currentColor' }} className="text-foreground/60" />
+          </div>
+          <span className="text-[8px] font-mono text-foreground/50 mt-0.5">
+            {Math.round(100 / viewState.scale)}m
+          </span>
+        </div>
+      )}
 
       {/* Debug toggle (dev only) */}
       {process.env.NODE_ENV === 'development' && (
