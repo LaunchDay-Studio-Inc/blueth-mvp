@@ -2479,7 +2479,6 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             {/* Highway lane markings — offset dashed stripes */}
             {ROADS.map((road) => {
               if (road.type !== 'highway') return null;
-              const style = ROAD_STYLES.highway;
               return (
                 <g key={`lanes-${road.id}`}>
                   <path d={road.path} fill="none"
@@ -2500,7 +2499,6 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             {/* Junction intersections + crosswalks + signs + streetlamps */}
             {ROAD_JUNCTIONS.map(([jx, jy], i) => {
               const isActive = selectedCode != null || hoveredCode != null;
-              const jRng = seededRandom(i * 7919 + 31);
               const hasSign = i < 6;
               const hasLamp = i % 2 === 0;
               const signColors = ['#22C55E', '#3B82F6', '#EAB308', '#22C55E', '#3B82F6', '#EAB308'];
