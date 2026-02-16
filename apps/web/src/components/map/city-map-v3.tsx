@@ -21,26 +21,44 @@ const WHEEL_ZOOM_STEP = 0.08;
 const POI_VISIBLE_ZOOM = 1.8;
 const POI_HIT_RADIUS = 22;
 
-// ── Warm Color Palette ──────────────────────────────
+// ── Color Palette (split-complementary: 37° / 187° / 257°) ──
 
 const COLORS = {
-  grass: '#4A7C59',
-  grassLight: '#6B9F7A',
-  water: '#3B7CB8',
-  waterDeep: '#1E5A8E',
-  waterShallow: '#78B4E8',
-  sand: '#D4A574',
-  sandDark: '#C8956A',
-  earth: '#8B7355',
-  earthLight: '#A89078',
-  mountain: '#7A8B6F',
-  mountainSnow: '#E8E4DF',
-  sky: '#B8D4E8',
-  skyWarm: '#E8D4B8',
+  // Warm greens — yellow-green undertone (~88° hue)
+  grass: '#5B8C2A',
+  grassLight: '#7DAF42',
+  // Cool blues — 3 depth levels (~198-210° hue)
+  water: '#2685B8',
+  waterDeep: '#164F7E',
+  waterShallow: '#6BBCE8',
+  // Warm earth tones (30-42° hue, 25-35% sat)
+  sand: '#DBA45C',
+  sandDark: '#C48B42',
+  earth: '#8B6B40',
+  earthLight: '#AC8A5A',
+  // Mountain & sky
+  mountain: '#6E8B52',
+  mountainSnow: '#F0EBE2',
+  sky: '#A0C8E4',
+  skyWarm: '#F0D0A0',
+  // UI selection — UNCHANGED
   gold: '#FFD54F',
   goldGlow: '#FFC107',
+  // Locked zones
   lockGray: '#6B7280',
   lockDash: '#9CA3AF',
+  // Atmospheric & accent
+  fogWarm: '#E8DBC6',
+  fogCool: '#C4D6E8',
+  glowWarm: '#FFE0A0',
+  glowCool: '#A0D4FF',
+  nightAccent: '#7B68EE',
+  buildingShadow: '#3D3226',
+  roofTerracotta: '#C85A3A',
+  roofSlate: '#5E7182',
+  neonPink: '#FF4D8B',
+  neonBlue: '#3DC8FF',
+  marketAwning: '#D4533B',
 };
 
 // ── Road styles ──────────────────────────────────────
@@ -57,39 +75,89 @@ const ROAD_STYLES: Record<string, {
   highway: {
     casingWidth: 8,
     fillWidth: 6,
-    casingColor: '#7A6B5C',
-    fillColor: '#A89078',
-    opacity: 0.6,
-    centerLine: { color: '#FFD54F', width: 0.8, dash: '10 6', opacity: 0.5 },
+    casingColor: '#7A6850',
+    fillColor: '#B8A48C',
+    opacity: 0.7,
+    centerLine: { color: '#FFD54F', width: 0.8, dash: '10 6', opacity: 0.6 },
   },
   primary: {
     casingWidth: 5,
     fillWidth: 3.5,
-    casingColor: '#8B7355',
-    fillColor: '#B8A08A',
-    opacity: 0.55,
+    casingColor: '#8B6B40',
+    fillColor: '#C8A878',
+    opacity: 0.65,
   },
   secondary: {
     casingWidth: 3.5,
     fillWidth: 2.5,
-    casingColor: '#9C8C7C',
-    fillColor: '#C8B8A8',
-    opacity: 0.45,
+    casingColor: '#9A887A',
+    fillColor: '#C4B4A4',
+    opacity: 0.55,
   },
   tertiary: {
     casingWidth: 2,
     fillWidth: 1.5,
-    casingColor: '#A89C90',
-    fillColor: '#D4C8BC',
-    opacity: 0.35,
-    dash: '5 3',
+    casingColor: '#A8988A',
+    fillColor: '#D4C4B4',
+    opacity: 0.45,
+    dash: '3 4',
   },
 };
+
+// ── HSL color helpers ───────────────────────────────
+
+function hexToHsl(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const gr = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, gr, b);
+  const min = Math.min(r, gr, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:  h = ((gr - b) / d + (gr < b ? 6 : 0)) / 6; break;
+      case gr: h = ((b - r) / d + 2) / 6; break;
+      case b:  h = ((r - gr) / d + 4) / 6; break;
+    }
+  }
+  return [h * 360, s * 100, l * 100];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  l = Math.max(0, Math.min(100, l)) / 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * c).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function districtColors(gradient: [string, string]) {
+  const [h0, s0, l0] = hexToHsl(gradient[0]);
+  const [h1, s1, l1] = hexToHsl(gradient[1]);
+  return {
+    front: hslToHex(h0, s0, 85),
+    side: hslToHex(h1, s1, Math.max(0, l1 - 15)),
+    top: hslToHex(h0, s0, Math.min(100, l0 + 10)),
+    window: 'rgba(180,220,255,0.35)',
+    windowWarm: 'rgba(255,210,140,0.25)',
+    shadow: `${hslToHex(h1, s1, Math.max(0, l1 - 30))}33`,
+    accent: `${hslToHex((h0 + 180) % 360, s0 * 0.7, 55)}66`,
+  };
+}
 
 // ── Isometric 3D building helpers ──────────────────
 
 const WIN_COLOR = 'rgba(180,220,255,0.35)';
-const WARM_WIN = 'rgba(255,220,150,0.25)';
+const WARM_WIN = 'rgba(255,210,140,0.25)';
 
 function isoBox(
   bx: number, gy: number, w: number, h: number,
@@ -213,20 +281,21 @@ function flatBox(
 function renderDistrictScene(
   code: string, cx: number, cy: number, g: [string, string],
 ) {
-  const f = `${g[0]}DD`;
-  const s = `${g[1]}CC`;
-  const t = `${g[0]}88`;
+  const dc = districtColors(g);
+  const f = dc.front;
+  const s = dc.side;
+  const t = dc.top;
   const gy = cy + 20;
 
   switch (code) {
     case 'CBD':
       return (
         <g>
-          {isoBox(cx - 42, gy, 13, 56, f, s, t, 'c1', WARM_WIN)}
-          {isoBox(cx - 24, gy, 16, 74, f, s, t, 'c2', WARM_WIN)}
-          {isoBox(cx - 2, gy, 12, 48, f, s, t, 'c3', WARM_WIN)}
-          {isoBox(cx + 16, gy, 15, 66, f, s, t, 'c4', WARM_WIN)}
-          {isoBox(cx + 36, gy, 11, 40, f, s, t, 'c5', WARM_WIN)}
+          {isoBox(cx - 42, gy, 13, 56, f, s, t, 'c1', dc.windowWarm)}
+          {isoBox(cx - 24, gy, 16, 74, f, s, t, 'c2', dc.windowWarm)}
+          {isoBox(cx - 2, gy, 12, 48, f, s, t, 'c3', dc.windowWarm)}
+          {isoBox(cx + 16, gy, 15, 66, f, s, t, 'c4', dc.windowWarm)}
+          {isoBox(cx + 36, gy, 11, 40, f, s, t, 'c5', dc.windowWarm)}
           {/* Antenna on tallest building */}
           <line x1={cx - 14} y1={gy - 74} x2={cx - 14} y2={gy - 86} stroke={g[0]} strokeWidth="0.8" />
           <circle cx={cx - 14} cy={gy - 87} r="1.2" fill="#FF4444" opacity="0.8" />
@@ -279,9 +348,9 @@ function renderDistrictScene(
     case 'TECH_PARK':
       return (
         <g>
-          {isoBox(cx - 30, gy, 14, 42, f, s, t, 't1', WARM_WIN)}
-          {isoBox(cx - 10, gy, 16, 52, f, s, t, 't2', WARM_WIN)}
-          {isoBox(cx + 12, gy, 13, 38, f, s, t, 't3', WARM_WIN)}
+          {isoBox(cx - 30, gy, 14, 42, f, s, t, 't1', dc.windowWarm)}
+          {isoBox(cx - 10, gy, 16, 52, f, s, t, 't2', dc.windowWarm)}
+          {isoBox(cx + 12, gy, 13, 38, f, s, t, 't3', dc.windowWarm)}
           {/* Satellite dish on roof */}
           <ellipse cx={cx + 18} cy={gy - 38} rx="4" ry="2" fill={s} opacity="0.5" />
           <rect x={cx + 17.5} y={gy - 40} width="1" height="4" fill={s} opacity="0.4" />
