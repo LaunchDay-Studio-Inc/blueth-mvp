@@ -16,6 +16,10 @@ RUN pnpm install --frozen-lockfile
 # Copy source
 COPY . .
 
+# Build core + web for production
+RUN pnpm run --filter @blueth/core build
+RUN pnpm run --filter @blueth/web build
+
 EXPOSE 3000
 
-CMD ["pnpm", "--filter", "@blueth/web", "dev"]
+CMD ["pnpm", "--filter", "@blueth/web", "start"]
