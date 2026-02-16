@@ -177,3 +177,101 @@ export const DISTRICTS: DistrictMeta[] = [
 export function getDistrict(code: string): DistrictMeta | undefined {
   return DISTRICTS.find((d) => d.code === code);
 }
+
+// ── Locked Future Expansion Zones ──────────────────
+
+export interface LockedZoneMeta {
+  code: string;
+  name: string;
+  teaser: string;
+  unlockCost: number;
+  unlockLevel: number;
+  polygon: [number, number][];
+  center: [number, number];
+  gradient: [string, string];
+}
+
+export const LOCKED_ZONES: LockedZoneMeta[] = [
+  {
+    code: 'CRYSTAL_HEIGHTS',
+    name: 'Crystal Heights',
+    teaser: 'Gleaming spires rise above the clouds. Only the elite can afford a view from up here.',
+    unlockCost: 500_000,
+    unlockLevel: 15,
+    polygon: [
+      [480, 100], [580, 80], [640, 120], [640, 190],
+      [580, 220], [480, 190],
+    ],
+    center: [560, 150],
+    gradient: ['#A78BFA', '#7C3AED'],
+  },
+  {
+    code: 'SUNSET_BEACH',
+    name: 'Sunset Beach',
+    teaser: 'Golden sands and turquoise waters. A resort paradise waiting to be developed.',
+    unlockCost: 350_000,
+    unlockLevel: 10,
+    polygon: [
+      [880, 100], [960, 120], [980, 200], [960, 300],
+      [880, 280], [860, 180],
+    ],
+    center: [920, 200],
+    gradient: ['#FBBF24', '#F59E0B'],
+  },
+  {
+    code: 'THE_UNDERGROUND',
+    name: 'The Underground',
+    teaser: 'Abandoned tunnels and forgotten bunkers. Who knows what secrets lie beneath?',
+    unlockCost: 250_000,
+    unlockLevel: 8,
+    polygon: [
+      [420, 700], [540, 690], [580, 740], [560, 810],
+      [460, 820], [400, 770],
+    ],
+    center: [490, 755],
+    gradient: ['#6B7280', '#374151'],
+  },
+  {
+    code: 'SKYPORT',
+    name: 'Skyport',
+    teaser: 'A gleaming aerodrome on the horizon. The gateway to cities beyond.',
+    unlockCost: 750_000,
+    unlockLevel: 20,
+    polygon: [
+      [100, 100], [220, 80], [260, 140], [240, 200],
+      [140, 200], [80, 160],
+    ],
+    center: [170, 145],
+    gradient: ['#38BDF8', '#0284C7'],
+  },
+  {
+    code: 'FOREST_HAVEN',
+    name: 'Forest Haven',
+    teaser: 'Ancient woods untouched by progress. Rare resources hide in the canopy.',
+    unlockCost: 180_000,
+    unlockLevel: 5,
+    polygon: [
+      [60, 680], [160, 700], [180, 780], [140, 840],
+      [60, 830], [30, 760],
+    ],
+    center: [110, 765],
+    gradient: ['#22C55E', '#15803D'],
+  },
+];
+
+// ── District Stats (crime, traffic, rent as 0-100) ──
+
+export const DISTRICT_STATS: Record<string, { crime: number; traffic: number; rent: number }> = {
+  CBD:           { crime: 25, traffic: 85, rent: 95 },
+  OLD_TOWN:      { crime: 20, traffic: 40, rent: 65 },
+  MARINA:        { crime: 10, traffic: 30, rent: 90 },
+  TECH_PARK:     { crime: 15, traffic: 60, rent: 75 },
+  MARKET_SQ:     { crime: 35, traffic: 70, rent: 50 },
+  ENTERTAINMENT: { crime: 55, traffic: 75, rent: 60 },
+  UNIVERSITY:    { crime: 12, traffic: 45, rent: 40 },
+  HARBOR:        { crime: 40, traffic: 55, rent: 35 },
+  INDUSTRIAL:    { crime: 50, traffic: 65, rent: 25 },
+  SUBURBS_N:     { crime: 8,  traffic: 20, rent: 55 },
+  SUBURBS_S:     { crime: 18, traffic: 25, rent: 30 },
+  OUTSKIRTS:     { crime: 30, traffic: 10, rent: 15 },
+};

@@ -3,18 +3,23 @@
 import { useState } from 'react';
 import { CityMapV3 } from '@/components/map/city-map-v3';
 import { DistrictPanel } from '@/components/district-panel';
-import type { DistrictMeta } from '@/lib/districts';
+import { LockedZonePopup } from '@/components/locked-zone-popup';
+import type { DistrictMeta, LockedZoneMeta } from '@/lib/districts';
 
 export default function CityPage() {
   const [selected, setSelected] = useState<DistrictMeta | null>(null);
+  const [lockedZone, setLockedZone] = useState<LockedZoneMeta | null>(null);
 
   const handleSelect = (district: DistrictMeta | null) => {
-    // Toggle: clicking same district deselects
     if (district && selected?.code === district.code) {
       setSelected(null);
     } else {
       setSelected(district);
     }
+  };
+
+  const handleLockedZoneSelect = (zone: LockedZoneMeta) => {
+    setLockedZone(zone);
   };
 
   return (
@@ -26,7 +31,11 @@ export default function CityPage() {
         </p>
       </div>
       <div className="relative w-full">
-        <CityMapV3 onDistrictSelect={handleSelect} selectedCode={selected?.code} />
+        <CityMapV3
+          onDistrictSelect={handleSelect}
+          onLockedZoneSelect={handleLockedZoneSelect}
+          selectedCode={selected?.code}
+        />
         {/* Dossier overlay */}
         <div className="absolute top-3 right-14 z-10 w-[320px] max-h-[calc(100%-1.5rem)] overflow-y-auto hidden lg:block pointer-events-auto">
           {selected ? (
@@ -58,6 +67,11 @@ export default function CityPage() {
           )}
         </div>
       </div>
+
+      {/* Locked zone popup */}
+      {lockedZone && (
+        <LockedZonePopup zone={lockedZone} onClose={() => setLockedZone(null)} />
+      )}
     </div>
   );
 }
