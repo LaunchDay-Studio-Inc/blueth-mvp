@@ -129,10 +129,11 @@ export function RoadNetwork({ centers }: RoadNetworkProps) {
             key={`road-base-${i}`}
             d={d}
             fill="none"
-            stroke="#8D6E63"
-            strokeWidth={3}
-            opacity={0.6}
+            stroke="#795548"
+            strokeWidth={2.5}
+            opacity={0.5}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
         );
       })}
@@ -149,9 +150,10 @@ export function RoadNetwork({ centers }: RoadNetworkProps) {
             d={d}
             fill="none"
             stroke="#D7CCC8"
-            strokeWidth={1.5}
-            opacity={0.4}
+            strokeWidth={1}
+            opacity={0.35}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
         );
       })}
@@ -184,7 +186,7 @@ export function RoadNetwork({ centers }: RoadNetworkProps) {
           cx={cr.x}
           cy={cr.y}
           r={4}
-          fill="#8D6E63"
+          fill="#795548"
           opacity={0.5}
         />
       ))}

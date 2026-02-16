@@ -57,12 +57,12 @@ export function MapDecorations() {
 
       {/* 4. Map title cartouche */}
       <g id="cartouche" transform="translate(400,30)">
-        <rect x={-80} y={-15} width={160} height={30} rx={8} fill="#5D4037" opacity={0.8} />
-        <rect x={-76} y={-12} width={152} height={24} rx={6} fill="none" stroke="#FFF8E1" strokeWidth={0.5} opacity={0.4} />
+        <rect x={-80} y={-15} width={160} height={30} rx={8} fill="#D7CCC8" opacity={0.9} />
+        <rect x={-76} y={-12} width={152} height={24} rx={6} fill="none" stroke="#5D4037" strokeWidth={0.5} opacity={0.4} />
         <text
           textAnchor="middle"
           dominantBaseline="central"
-          fill="#FFF8E1"
+          fill="#3E2723"
           fontSize={14}
           fontWeight="bold"
           letterSpacing={3}

@@ -3,180 +3,164 @@ import React from "react";
 export function TerrainBackground() {
   return (
     <g id="terrain-background">
-      {/* --- Gradient Definitions --- */}
+      {/* --- Definitions --- */}
       <defs>
-        <radialGradient id="bg-land" cx="50%" cy="50%" r="70%">
+        <radialGradient id="bg-land" cx="50%" cy="50%" r="65%">
           <stop offset="0%" stopColor="#8BC34A" />
+          <stop offset="50%" stopColor="#7CB342" />
           <stop offset="100%" stopColor="#558B2F" />
         </radialGradient>
 
-        <linearGradient id="water-grad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="water-grad" x1="0" y1="0" x2="1" y2="0.5">
           <stop offset="0%" stopColor="#4FC3F7" />
-          <stop offset="100%" stopColor="#01579B" />
+          <stop offset="100%" stopColor="#0277BD" />
         </linearGradient>
 
-        <radialGradient id="sunlight" cx="10%" cy="10%" r="90%">
-          <stop offset="0%" stopColor="#FFF9C4" stopOpacity={0.08} />
-          <stop offset="100%" stopColor="#FFF9C4" stopOpacity={0} />
-        </radialGradient>
-
-        {/* Small tree symbol */}
-        <symbol id="tree-sm" viewBox="-5 -11 10 17">
-          <rect x={-0.75} y={-2} width={1.5} height={6} fill="#5D4037" />
-          <circle cx={0} cy={-6} r={5} fill="#43A047" />
-        </symbol>
+        {/* Noise texture filter */}
+        <filter id="terrain-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves={3} stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+          <feBlend in="SourceGraphic" mode="multiply" />
+        </filter>
       </defs>
 
-      {/* 1. Full-canvas background */}
+      {/* === Layer 1: Green grass base === */}
       <rect x={0} y={0} width={800} height={600} fill="url(#bg-land)" />
+      {/* Subtle noise overlay */}
+      <rect x={0} y={0} width={800} height={600} fill="url(#bg-land)" filter="url(#terrain-noise)" opacity={0.03} />
 
-      {/* 8. Rolling hills (behind districts) */}
-      <ellipse cx={200} cy={320} rx={180} ry={60} fill="#7CB342" opacity={0.3} />
-      <ellipse cx={500} cy={280} rx={200} ry={50} fill="#7CB342" opacity={0.3} />
-      <ellipse cx={350} cy={420} rx={160} ry={45} fill="#7CB342" opacity={0.3} />
-      <ellipse cx={120} cy={480} rx={140} ry={40} fill="#7CB342" opacity={0.3} />
+      {/* === Layer 6: Rolling hills (behind everything) === */}
+      <ellipse cx={160} cy={350} rx={80} ry={25} fill="#66BB6A" opacity={0.18} />
+      <ellipse cx={320} cy={280} rx={60} ry={20} fill="#66BB6A" opacity={0.15} />
+      <ellipse cx={480} cy={380} rx={70} ry={22} fill="#66BB6A" opacity={0.12} />
+      <ellipse cx={250} cy={460} rx={50} ry={18} fill="#66BB6A" opacity={0.2} />
+      <ellipse cx={550} cy={300} rx={45} ry={15} fill="#66BB6A" opacity={0.14} />
+      <ellipse cx={100} cy={500} rx={60} ry={20} fill="#66BB6A" opacity={0.16} />
 
-      {/* 5. Mountain range across the top */}
+      {/* === Layer 5: Mountains along the top === */}
       {/* Back row — taller */}
-      <polygon points="40,160 100,40 160,160" fill="#78909C" />
-      <polygon points="120,160 190,30 260,160" fill="#78909C" />
-      <polygon points="220,160 300,25 380,160" fill="#78909C" />
-      <polygon points="340,160 420,35 500,160" fill="#78909C" />
-      <polygon points="440,160 520,45 600,160" fill="#78909C" />
-      {/* Front row — shorter */}
-      <polygon points="80,160 140,80 200,160" fill="#90A4AE" />
-      <polygon points="200,160 270,70 340,160" fill="#90A4AE" />
-      <polygon points="360,160 440,75 520,160" fill="#90A4AE" />
-      {/* Snow caps on top 4 peaks */}
-      <polygon points="100,40 85,70 115,70" fill="#ECEFF1" />
-      <polygon points="190,30 173,62 207,62" fill="#ECEFF1" />
-      <polygon points="300,25 282,58 318,58" fill="#ECEFF1" />
-      <polygon points="420,35 403,65 437,65" fill="#ECEFF1" />
+      <polygon points="50,130 110,40 170,130" fill="#78909C" />
+      <polygon points="140,130 210,50 280,130" fill="#78909C" />
+      <polygon points="250,130 330,30 410,130" fill="#78909C" />
+      <polygon points="380,130 450,45 520,130" fill="#78909C" />
+      <polygon points="490,130 560,55 630,130" fill="#78909C" />
+      <polygon points="580,130 650,40 720,130" fill="#78909C" />
+      <polygon points="660,130 730,60 800,130" fill="#78909C" />
+      {/* Front row — shorter, lighter */}
+      <polygon points="80,130 140,80 200,130" fill="#90A4AE" />
+      <polygon points="200,130 270,70 340,130" fill="#90A4AE" />
+      <polygon points="360,130 440,75 520,130" fill="#90A4AE" />
+      <polygon points="520,130 590,85 660,130" fill="#90A4AE" />
+      {/* Snow caps on tallest peaks */}
+      <polygon points="110,40 95,65 125,65" fill="#ECEFF1" />
+      <polygon points="210,50 195,72 225,72" fill="#ECEFF1" />
+      <polygon points="330,30 313,58 347,58" fill="#ECEFF1" />
+      <polygon points="450,45 435,67 465,67" fill="#ECEFF1" />
+      <polygon points="650,40 635,63 665,63" fill="#ECEFF1" />
 
-      {/* 4. River curving from top-center down to the east coast */}
-      {/* Bank details — thinner parallel paths */}
+      {/* === Layer 4: River curving from top-center to bottom-right === */}
       <path
-        d="M400,0 Q380,120 420,220 Q460,320 500,400 Q540,480 620,520"
+        d="M400,0 Q380,100 410,200 Q440,300 480,380 Q520,460 620,540"
+        fill="none"
+        stroke="#29B6F6"
+        strokeWidth={5}
+        opacity={0.6}
+        strokeLinecap="round"
+      />
+      {/* Parallel depth stroke */}
+      <path
+        d="M401,0 Q381,100 411,200 Q441,300 481,380 Q521,460 621,540"
         fill="none"
         stroke="#81D4FA"
-        strokeWidth={9}
-        opacity={0.4}
-      />
-      <path
-        d="M400,0 Q380,120 420,220 Q460,320 500,400 Q540,480 620,520"
-        fill="none"
-        stroke="#4FC3F7"
-        strokeWidth={6}
-      />
-      <path
-        d="M400,0 Q380,120 420,220 Q460,320 500,400 Q540,480 620,520"
-        fill="none"
-        stroke="#B3E5FC"
         strokeWidth={2}
-        opacity={0.5}
+        opacity={0.35}
+        strokeLinecap="round"
       />
 
-      {/* 2. Large blue water body — east coast */}
+      {/* === Layer 2: Ocean on the east side === */}
       <path
-        d="M680,0 Q640,80 650,160 Q660,260 640,340 Q620,440 650,520 Q670,570 680,600 L800,600 L800,0 Z"
+        d="M620,0 Q640,60 630,130 Q620,220 635,300 Q650,380 630,460 Q615,530 630,600 L800,600 L800,0 Z"
         fill="url(#water-grad)"
+        opacity={0.7}
       />
       {/* Wave ripples */}
+      <path d="M660,80 Q675,85 690,80 Q705,75 720,80" fill="none" stroke="#81D4FA" strokeWidth={0.5} opacity={0.2} />
+      <path d="M650,180 Q665,185 680,180 Q695,175 710,180" fill="none" stroke="#81D4FA" strokeWidth={0.5} opacity={0.2} />
+      <path d="M640,300 Q658,306 675,300 Q692,294 710,300" fill="none" stroke="#81D4FA" strokeWidth={0.5} opacity={0.2} />
+      <path d="M635,420 Q652,425 670,420 Q688,415 705,420" fill="none" stroke="#81D4FA" strokeWidth={0.5} opacity={0.2} />
+      <path d="M640,530 Q655,535 670,530 Q685,525 700,530" fill="none" stroke="#81D4FA" strokeWidth={0.5} opacity={0.2} />
+
+      {/* === Layer 3: Sandy coastline === */}
       <path
-        d="M660,80 Q670,85 680,80 Q690,75 700,80"
+        d="M620,0 Q640,60 630,130 Q620,220 635,300 Q650,380 630,460 Q615,530 630,600"
         fill="none"
-        stroke="#B3E5FC"
-        strokeWidth={1.5}
-        opacity={0.4}
-      />
-      <path
-        d="M650,200 Q665,205 680,200 Q695,195 710,200"
-        fill="none"
-        stroke="#B3E5FC"
-        strokeWidth={1.2}
-        opacity={0.3}
-      />
-      <path
-        d="M640,320 Q655,326 670,320 Q685,314 700,320"
-        fill="none"
-        stroke="#B3E5FC"
-        strokeWidth={1.5}
-        opacity={0.35}
-      />
-      <path
-        d="M655,440 Q670,445 685,440 Q700,435 715,440"
-        fill="none"
-        stroke="#B3E5FC"
-        strokeWidth={1}
-        opacity={0.2}
-      />
-      <path
-        d="M665,540 Q678,545 690,540 Q703,535 716,540"
-        fill="none"
-        stroke="#B3E5FC"
-        strokeWidth={1.3}
-        opacity={0.3}
+        stroke="#D7CCC8"
+        strokeWidth={4}
+        opacity={0.5}
+        strokeLinecap="round"
       />
 
-      {/* 3. Sandy beach strip between land and water */}
-      <path
-        d="M675,0 Q635,80 645,160 Q655,260 635,340 Q615,440 645,520 Q665,570 675,600 L680,600 Q670,570 650,520 Q620,440 640,340 Q660,260 650,160 Q640,80 680,0 Z"
-        fill="#FFE0B2"
+      {/* === Layer 7: Trees scattered between districts === */}
+      <g id="scattered-trees">
+        {/* Cluster top-left */}
+        <circle cx={80} cy={180} r={4} fill="#43A047" opacity={0.4} />
+        <rect x={79} y={184} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={92} cy={175} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={91} y={178} width={1} height={3} fill="#5D4037" opacity={0.3} />
+
+        {/* Cluster mid-left */}
+        <circle cx={60} cy={320} r={5} fill="#43A047" opacity={0.4} />
+        <rect x={59} y={325} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={75} cy={315} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={74} y={318} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={50} cy={330} r={4} fill="#43A047" opacity={0.4} />
+        <rect x={49} y={334} width={1} height={3} fill="#5D4037" opacity={0.3} />
+
+        {/* Cluster bottom-left */}
+        <circle cx={70} cy={500} r={5} fill="#2E7D32" opacity={0.4} />
+        <rect x={69} y={505} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={90} cy={495} r={4} fill="#388E3C" opacity={0.4} />
+        <rect x={89} y={499} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={55} cy={510} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={54} y={513} width={1} height={3} fill="#5D4037" opacity={0.3} />
+
+        {/* Individual scattered */}
+        <circle cx={180} cy={200} r={4} fill="#43A047" opacity={0.4} />
+        <rect x={179} y={204} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={300} cy={250} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={299} y={253} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={250} cy={400} r={4} fill="#2E7D32" opacity={0.4} />
+        <rect x={249} y={404} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={350} cy={480} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={349} y={483} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={150} cy={450} r={5} fill="#388E3C" opacity={0.4} />
+        <rect x={149} y={455} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={500} cy={200} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={499} y={203} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={540} cy={350} r={4} fill="#2E7D32" opacity={0.4} />
+        <rect x={539} y={354} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={200} cy={550} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={199} y={553} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={450} cy={480} r={4} fill="#388E3C" opacity={0.4} />
+        <rect x={449} y={484} width={1} height={3} fill="#5D4037" opacity={0.3} />
+        <circle cx={130} cy={300} r={3} fill="#43A047" opacity={0.4} />
+        <rect x={129} y={303} width={1} height={3} fill="#5D4037" opacity={0.3} />
+      </g>
+
+      {/* === Layer 8: Sunlight glow === */}
+      <circle cx={100} cy={80} r={120} fill="#FFF9C4" opacity={0.15} />
+
+      {/* === Layer 9: Map border frame === */}
+      <rect
+        x={0}
+        y={0}
+        width={800}
+        height={600}
+        rx={8}
+        fill="none"
+        stroke="#5D4037"
+        strokeWidth={3}
       />
-
-      {/* 6. Forest area bottom-left */}
-      {/* Trunks */}
-      <rect x={58} y={510} width={3} height={12} fill="#5D4037" />
-      <rect x={88} y={505} width={3} height={14} fill="#5D4037" />
-      <rect x={118} y={515} width={3} height={10} fill="#5D4037" />
-      <rect x={43} y={520} width={3} height={12} fill="#5D4037" />
-      <rect x={138} y={518} width={3} height={11} fill="#5D4037" />
-      {/* Canopy circles */}
-      <circle cx={40} cy={500} r={14} fill="#2E7D32" />
-      <circle cx={60} cy={495} r={16} fill="#388E3C" />
-      <circle cx={80} cy={500} r={12} fill="#43A047" />
-      <circle cx={95} cy={492} r={18} fill="#2E7D32" />
-      <circle cx={115} cy={498} r={14} fill="#388E3C" />
-      <circle cx={130} cy={505} r={10} fill="#43A047" />
-      <circle cx={50} cy={510} r={15} fill="#388E3C" />
-      <circle cx={70} cy={512} r={12} fill="#2E7D32" />
-      <circle cx={105} cy={508} r={20} fill="#43A047" />
-      <circle cx={140} cy={512} r={13} fill="#2E7D32" />
-      <circle cx={25} cy={515} r={10} fill="#43A047" />
-      <circle cx={155} cy={500} r={8} fill="#388E3C" />
-      <circle cx={35} cy={490} r={11} fill="#2E7D32" />
-      <circle cx={75} cy={488} r={9} fill="#43A047" />
-      <circle cx={120} cy={490} r={15} fill="#388E3C" />
-
-      {/* 7. Scattered individual trees */}
-      <use href="#tree-sm" x={100} y={200} width={10} height={17} transform="translate(100,200) scale(0.9) translate(-100,-200)" />
-      <use href="#tree-sm" x={680} y={150} width={10} height={17} transform="translate(680,150) scale(0.7) translate(-680,-150)" />
-      <use href="#tree-sm" x={150} y={450} width={10} height={17} transform="translate(150,450) scale(1.1) translate(-150,-450)" />
-      <use href="#tree-sm" x={250} y={350} width={10} height={17} transform="translate(250,350) scale(0.8) translate(-250,-350)" />
-      <use href="#tree-sm" x={320} y={190} width={10} height={17} transform="translate(320,190) scale(1.0) translate(-320,-190)" />
-      <use href="#tree-sm" x={550} y={250} width={10} height={17} transform="translate(550,250) scale(1.2) translate(-550,-250)" />
-      <use href="#tree-sm" x={480} y={450} width={10} height={17} transform="translate(480,450) scale(0.7) translate(-480,-450)" />
-      <use href="#tree-sm" x={200} y={280} width={10} height={17} transform="translate(200,280) scale(1.3) translate(-200,-280)" />
-      <use href="#tree-sm" x={600} y={350} width={10} height={17} transform="translate(600,350) scale(0.9) translate(-600,-350)" />
-      <use href="#tree-sm" x={350} y={480} width={10} height={17} transform="translate(350,480) scale(1.0) translate(-350,-480)" />
-      <use href="#tree-sm" x={70} y={300} width={10} height={17} transform="translate(70,300) scale(0.8) translate(-70,-300)" />
-      <use href="#tree-sm" x={500} y={180} width={10} height={17} transform="translate(500,180) scale(0.6) translate(-500,-180)" />
-      <use href="#tree-sm" x={280} y={500} width={10} height={17} transform="translate(280,500) scale(1.1) translate(-280,-500)" />
-      <use href="#tree-sm" x={420} y={320} width={10} height={17} transform="translate(420,320) scale(0.7) translate(-420,-320)" />
-      <use href="#tree-sm" x={160} y={350} width={10} height={17} transform="translate(160,350) scale(1.2) translate(-160,-350)" />
-      <use href="#tree-sm" x={570} y={480} width={10} height={17} transform="translate(570,480) scale(0.8) translate(-570,-480)" />
-      <use href="#tree-sm" x={90} y={400} width={10} height={17} transform="translate(90,400) scale(1.0) translate(-90,-400)" />
-      <use href="#tree-sm" x={450} y={150} width={10} height={17} transform="translate(450,150) scale(0.9) translate(-450,-150)" />
-      <use href="#tree-sm" x={300} y={250} width={10} height={17} transform="translate(300,250) scale(0.6) translate(-300,-250)" />
-      <use href="#tree-sm" x={620} y={450} width={10} height={17} transform="translate(620,450) scale(1.0) translate(-620,-450)" />
-      <use href="#tree-sm" x={180} y={180} width={10} height={17} transform="translate(180,180) scale(0.8) translate(-180,-180)" />
-      <use href="#tree-sm" x={530} y={380} width={10} height={17} transform="translate(530,380) scale(1.3) translate(-530,-380)" />
-      <use href="#tree-sm" x={380} y={400} width={10} height={17} transform="translate(380,400) scale(0.7) translate(-380,-400)" />
-      <use href="#tree-sm" x={230} y={430} width={10} height={17} transform="translate(230,430) scale(1.1) translate(-230,-430)" />
-      <use href="#tree-sm" x={470} y={550} width={10} height={17} transform="translate(470,550) scale(0.9) translate(-470,-550)" />
-
-      {/* 9. Warm sunlight overlay */}
-      <rect x={0} y={0} width={800} height={600} fill="url(#sunlight)" />
     </g>
   );
 }
