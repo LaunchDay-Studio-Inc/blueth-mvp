@@ -580,6 +580,9 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
           <filter id="fog" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="20" />
           </filter>
+          <filter id="building-shadow" x="-10%" y="-10%" width="130%" height="140%">
+            <feDropShadow dx="2" dy="3" stdDeviation="2" floodColor="#33691E" floodOpacity="0.3" />
+          </filter>
 
           {/* ── Per-district gradients ── */}
           {DISTRICTS.map((d) => (
@@ -588,20 +591,6 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
               <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.85" />
             </linearGradient>
           ))}
-
-          {/* ── Per-district clip paths ── */}
-          {DISTRICTS.map((d) => (
-            <clipPath key={`clip-${d.code}`} id={`clip-${d.code}`}>
-              <polygon points={d.points} />
-            </clipPath>
-          ))}
-
-          {/* ── Glass overlay gradient ── */}
-          <linearGradient id="glass-overlay" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#fff" stopOpacity="0.1" />
-            <stop offset="50%" stopColor="#fff" stopOpacity="0.02" />
-            <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
-          </linearGradient>
 
           {/* ── Background gradient ── */}
           <radialGradient id="bg-radial" cx="50%" cy="50%" r="65%">
@@ -784,27 +773,20 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                 />
               )}
 
-              {/* Clipped content: gradient background + 3D buildings + glass overlay */}
-              <g clipPath={`url(#clip-${d.code})`} className="pointer-events-none">
-                {/* Background gradient fill */}
-                <polygon
-                  points={d.points}
-                  fill={`url(#grad-${d.code})`}
-                  opacity={isActive ? 0.9 : 0.6}
-                  style={{ transition: 'opacity 300ms ease' }}
-                />
+              {/* Faint gradient tint behind buildings */}
+              <polygon
+                points={d.points}
+                fill={`url(#grad-${d.code})`}
+                opacity={0.15}
+                className="pointer-events-none"
+              />
 
-                {/* 3D isometric building scene */}
-                {center && renderDistrictScene(d.code, center.x, center.y, d.gradient)}
-
-                {/* Glass overlay for depth */}
-                <polygon
-                  points={d.points}
-                  fill="url(#glass-overlay)"
-                  opacity={isActive ? 0.6 : 0.35}
-                  style={{ transition: 'opacity 300ms ease' }}
-                />
-              </g>
+              {/* 3D isometric building scene — no clip, with shadow */}
+              {center && (
+                <g className="pointer-events-none" filter="url(#building-shadow)">
+                  {renderDistrictScene(d.code, center.x, center.y, d.gradient)}
+                </g>
+              )}
 
               {/* Border */}
               <polygon
@@ -818,8 +800,9 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                       : d.stroke
                 }
                 strokeWidth={isSelected ? 2.5 : isHovered ? 1.8 : 0.4}
+                opacity={isSelected ? 1 : isHovered ? 0.6 : 0}
                 className="pointer-events-none"
-                style={{ transition: 'stroke 300ms ease, stroke-width 300ms ease' }}
+                style={{ transition: 'stroke 300ms ease, stroke-width 300ms ease, opacity 300ms ease' }}
               />
 
               {/* Clickable transparent overlay — catches all mouse/touch events */}
