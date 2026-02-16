@@ -4,11 +4,12 @@ import type { DistrictMeta } from '@/lib/districts';
 import { DISTRICT_ICONS } from '@/components/city-map';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Briefcase, UtensilsCrossed, Home, Zap } from 'lucide-react';
+import { MapPin, Briefcase, UtensilsCrossed, Home, Zap, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface DistrictPanelProps {
   district: DistrictMeta;
+  onClose?: () => void;
 }
 
 const VIBE_TEXT: Record<string, string> = {
@@ -32,7 +33,7 @@ const QUICK_ACTIONS: { label: string; href: string; icon: typeof Briefcase }[] =
   { label: 'Housing', href: '/bills', icon: Home },
 ];
 
-export function DistrictPanel({ district }: DistrictPanelProps) {
+export function DistrictPanel({ district, onClose }: DistrictPanelProps) {
   const modifierLabel =
     district.modifier === 1.0
       ? 'Base'
@@ -43,7 +44,15 @@ export function DistrictPanel({ district }: DistrictPanelProps) {
   const vibe = VIBE_TEXT[district.code] || district.description;
 
   return (
-    <div className="rounded-xl glass-elevated overflow-hidden animate-slide-up">
+    <div className="rounded-xl overflow-hidden animate-slide-up"
+      style={{
+        background: 'rgba(255, 255, 255, 0.40)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)',
+      }}
+    >
       {/* Header with district-colored accent line */}
       <div className="relative px-5 pt-5 pb-3">
         <div
@@ -71,12 +80,23 @@ export function DistrictPanel({ district }: DistrictPanelProps) {
               <h2 className="text-lg font-bold tracking-tight">{district.name}</h2>
             </div>
           </div>
-          <Badge
-            variant={district.modifier > 1.0 ? 'default' : district.modifier < 1.0 ? 'secondary' : 'outline'}
-            className="text-[10px] font-mono"
-          >
-            {modifierLabel}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={district.modifier > 1.0 ? 'default' : district.modifier < 1.0 ? 'secondary' : 'outline'}
+              className="text-[10px] font-mono"
+            >
+              {modifierLabel}
+            </Badge>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 transition-colors"
+                aria-label="Close panel"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -106,7 +126,7 @@ export function DistrictPanel({ district }: DistrictPanelProps) {
       </div>
 
       {/* Quick Actions */}
-      <div className="px-5 pb-5 pt-2 border-t border-border/30">
+      <div className="px-5 pb-5 pt-2 border-t border-black/5">
         <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-3">Quick Actions</p>
         <div className="flex gap-2">
           {QUICK_ACTIONS.map((action) => (
@@ -127,7 +147,7 @@ export function DistrictPanel({ district }: DistrictPanelProps) {
       </div>
 
       {/* Price modifier footer */}
-      <div className="px-5 py-2.5 bg-muted/30 border-t border-border/20">
+      <div className="px-5 py-2.5 border-t border-black/5" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
         <p className="text-[10px] text-muted-foreground font-mono">
           Price modifier: {district.modifier}x base
         </p>

@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DistrictMeta } from '@/lib/districts';
 import type { DistrictGeo, MapViewState } from '@/lib/map/types';
 import { DISTRICTS_GEO, polygonToPoints } from '@/lib/map/districts';
 import { ROADS, ROAD_LABELS } from '@/lib/map/roads';
 import { POIS } from '@/lib/map/pois';
 import { DISTRICT_ICONS } from '@/components/city-map';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 // ── Constants ──────────────────────────────────────
 
@@ -14,7 +15,8 @@ const VIEW_W = 1200;
 const VIEW_H = 900;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
-const ZOOM_STEP = 0.3;
+const ZOOM_STEP = 0.3;          // For +/- buttons (meaningful step)
+const WHEEL_ZOOM_STEP = 0.08;   // For scroll wheel (fine-grained)
 const POI_VISIBLE_ZOOM = 1.8;
 const POI_HIT_RADIUS = 22;
 
@@ -270,9 +272,12 @@ interface CityMapV3Props {
 
 export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
   const [viewState, setViewState] = useState<MapViewState>({ x: 0, y: 0, scale: 1 });
   const [showDebug, setShowDebug] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Drag state refs (avoid re-renders during drag)
   const dragRef = useRef<{ active: boolean; startX: number; startY: number; startVX: number; startVY: number }>({
@@ -319,6 +324,25 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
     setViewState({ x: 0, y: 0, scale: 1 });
   }, []);
 
+  // ── Fullscreen toggle ──
+  const toggleFullscreen = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      el.requestFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleChange);
+    return () => document.removeEventListener('fullscreenchange', handleChange);
+  }, []);
+
   // ── Event handlers ──
 
   const handleWheel = useCallback((e: React.WheelEvent<SVGSVGElement>) => {
@@ -329,7 +353,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
     // Convert screen coords to SVG viewBox coords
     const svgX = ((e.clientX - rect.left) / rect.width) * VIEW_W;
     const svgY = ((e.clientY - rect.top) / rect.height) * VIEW_H;
-    const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+    const delta = e.deltaY < 0 ? WHEEL_ZOOM_STEP : -WHEEL_ZOOM_STEP;
     zoomAt(svgX, svgY, delta);
   }, [zoomAt]);
 
@@ -340,6 +364,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
     // If clicking on a hit-target, don't start pan
     if (target.dataset?.hitTarget) return;
 
+    setIsDragging(true);
     dragRef.current = {
       active: true,
       startX: e.clientX,
@@ -368,6 +393,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
 
   const handlePointerUp = useCallback(() => {
     dragRef.current.active = false;
+    setIsDragging(false);
   }, []);
 
   const handleTouchStart = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
@@ -426,7 +452,9 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
   const transform = `translate(${viewState.x}, ${viewState.y}) scale(${viewState.scale})`;
 
   return (
-    <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden"
+    <div
+      ref={containerRef}
+      className={`relative w-full rounded-xl overflow-hidden ${isFullscreen ? 'h-full' : 'aspect-[4/3] lg:aspect-auto lg:min-h-[600px] lg:h-[calc(100vh-12rem)]'}`}
       style={{
         touchAction: 'none',
         boxShadow: '0 2px 12px hsl(220 15% 15% / 0.1), 0 1px 4px hsl(220 15% 15% / 0.06)',
@@ -557,7 +585,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
         </defs>
 
         {/* ── Pan/Zoom root ── */}
-        <g id="pan-zoom-root" transform={transform} style={{ transformOrigin: '0 0' }}>
+        <g id="pan-zoom-root" transform={transform} style={{ transformOrigin: '0 0', transition: isDragging ? 'none' : 'transform 120ms ease-out' }}>
 
           {/* ═══ LAYER 1: Terrain ═══ */}
           <g id="layer-terrain" style={{ pointerEvents: 'none' }}>
@@ -1041,6 +1069,14 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
           data-testid="zoom-reset"
         >
           1:1
+        </button>
+        <button
+          onClick={toggleFullscreen}
+          className="w-9 h-9 rounded-lg glass-surface flex items-center justify-center text-foreground/80 hover:text-foreground hover:neon-border transition-all"
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          data-testid="fullscreen-toggle"
+        >
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
       </div>
 
