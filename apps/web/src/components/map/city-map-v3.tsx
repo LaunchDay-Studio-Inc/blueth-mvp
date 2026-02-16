@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DistrictMeta, LockedZoneMeta } from '@/lib/districts';
 import { LOCKED_ZONES } from '@/lib/districts';
 import type { DistrictGeo, MapViewState } from '@/lib/map/types';
@@ -468,10 +468,10 @@ function renderDistrictScene(
           <rect x={cx - 30} y={gy - 30} width={10} height={5} fill="none" stroke={COLORS.neonBlue} strokeWidth="0.5" opacity="0.25" rx="0.5" />
           {/* Drone/satellite floating above */}
           <rect x={cx - 4} y={gy - 64} width={3} height={1.5} fill={s} opacity="0.25" rx="0.3">
-            <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="4s" repeatCount="indefinite" />
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1" />
           </rect>
           <line x1={cx - 5} y1={gy - 63} x2={cx} y2={gy - 63} stroke={s} strokeWidth="0.3" opacity="0.2">
-            <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="4s" repeatCount="indefinite" />
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="4.7s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1" />
           </line>
           {/* EV charging stations */}
           <rect x={cx + 46} y={gy - 4} width={1} height={4} fill="#6B7280" opacity="0.2" />
@@ -786,7 +786,7 @@ function renderDistrictScene(
             <line x1={cx + 21.5} y1={gy - 28} x2={cx + 32} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
             <line x1={cx + 21.5} y1={gy - 28} x2={cx + 11} y2={gy - 24} stroke={g[0]} strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
             <line x1={cx + 21.5} y1={gy - 28} x2={cx + 21.5} y2={gy - 16} stroke={g[0]} strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-            <animateTransform attributeName="transform" type="rotate" from={`0 ${cx+21.5} ${gy-28}`} to={`360 ${cx+21.5} ${gy-28}`} dur="20s" repeatCount="indefinite" />
+            <animateTransform attributeName="transform" type="rotate" from={`0 ${cx+21.5} ${gy-28}`} to={`360 ${cx+21.5} ${gy-28}`} dur="18s" repeatCount="indefinite" />
           </g>
           {/* Silo */}
           <rect x={cx + 28} y={gy - 20} width={6} height={20} fill={s} opacity="0.4" rx="0.5" />
@@ -980,6 +980,8 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [clickFlash, setClickFlash] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [debugFromUrl, setDebugFromUrl] = useState(false);
 
   const dragRef = useRef<{ active: boolean; startX: number; startY: number; startVX: number; startVY: number }>({
     active: false, startX: 0, startY: 0, startVX: 0, startVY: 0,
@@ -1030,6 +1032,14 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
     const handleChange = () => { setIsFullscreen(!!document.fullscreenElement); };
     document.addEventListener('fullscreenchange', handleChange);
     return () => document.removeEventListener('fullscreenchange', handleChange);
+  }, []);
+
+  // Mount fade-in + URL debug check (hydration-safe)
+  useEffect(() => {
+    setMounted(true);
+    if (new URLSearchParams(window.location.search).has('debug')) {
+      setDebugFromUrl(true);
+    }
   }, []);
 
   // ── Event handlers ──
@@ -1121,7 +1131,25 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
     onLockedZoneSelect?.(zone);
   }, [onLockedZoneSelect]);
 
-  const isDebug = showDebug || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug'));
+  const isDebug = showDebug || debugFromUrl;
+
+  // ── Memoize heavy static computations ──
+  const buildingScenes = useMemo(() => {
+    const scenes: Record<string, React.ReactNode> = {};
+    for (const d of DISTRICTS_GEO) {
+      scenes[d.code] = renderDistrictScene(d.code, d.center[0], d.center[1], d.gradient);
+    }
+    return scenes;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const districtDescriptions = useMemo(() =>
+    DISTRICTS_GEO.map((d) => (
+      <desc key={`desc-${d.code}`} id={`v3-desc-${d.code}`}>
+        {`${d.name} district — click to view details`}
+      </desc>
+    )),
+  []);
 
   const transform = `translate(${viewState.x}, ${viewState.y}) scale(${viewState.scale})`;
 
@@ -1132,6 +1160,8 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
       style={{
         touchAction: 'none',
         boxShadow: '0 2px 12px hsl(220 15% 15% / 0.1), 0 1px 4px hsl(220 15% 15% / 0.06)',
+        opacity: mounted ? 1 : 0,
+        transition: 'opacity 500ms ease-in',
       }}
     >
       <svg
@@ -1139,6 +1169,9 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
         className="w-full h-full"
         xmlns="http://www.w3.org/2000/svg"
+        shapeRendering="geometricPrecision"
+        role="img"
+        aria-label="Blueth City Map"
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1149,6 +1182,8 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
         onTouchEnd={handleTouchEnd}
         onClick={handleSvgClick}
       >
+        <title>Blueth City Map</title>
+        <desc>Interactive map of Blueth city showing districts, roads, and points of interest</desc>
         <defs>
           {/* ══════════════════════════════════════
               FILTERS
@@ -1677,6 +1712,9 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
           </symbol>
         </defs>
 
+        {/* Hidden district descriptions for accessibility */}
+        {districtDescriptions}
+
         {/* ── Pan/Zoom root ── */}
         <g id="pan-zoom-root" transform={transform} style={{ transformOrigin: '0 0', transition: isDragging ? 'none' : 'transform 120ms ease-out' }}>
 
@@ -1905,13 +1943,13 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <ellipse cx="810" cy="530" rx="50" ry="35" fill="#57534E" opacity="0.06" />
             {/* Drifting smoke wisps */}
             <path d="M770,530 Q780,518 790,522 Q800,526 810,518" fill="none" stroke="#9CA3AF" strokeWidth="1.2" opacity="0.06">
-              <animateTransform attributeName="transform" type="translate" from="0,0" to="15,-8" dur="18s" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="15,-8" dur="18s" repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1" />
             </path>
             <path d="M800,545 Q812,535 820,540 Q830,545 840,535" fill="none" stroke="#9CA3AF" strokeWidth="1" opacity="0.04">
-              <animateTransform attributeName="transform" type="translate" from="0,0" to="12,-6" dur="22s" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="12,-6" dur="22s" repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1" />
             </path>
             <path d="M780,560 Q790,550 800,555 Q810,560 818,550" fill="none" stroke="#78716C" strokeWidth="0.8" opacity="0.05">
-              <animateTransform attributeName="transform" type="translate" from="0,0" to="10,-10" dur="25s" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="10,-10" dur="25s" repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1" />
             </path>
           </g>
 
@@ -1967,10 +2005,10 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               <g key={`cloud-${i}`}>
                 {/* Cloud shadow on ground */}
                 <ellipse cx={c.x + c.w / 2} cy={c.y + c.h + 5} rx={c.w * 0.4} ry={c.h * 0.15} fill="#888" opacity="0.03">
-                  <animateTransform attributeName="transform" type="translate" from="0,0" to={`${c.dx},0`} dur={`${c.dur}s`} repeatCount="indefinite" />
+                  <animateTransform attributeName="transform" type="translate" from="0,0" to={`${c.dx},0`} dur={`${c.dur}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1" />
                 </ellipse>
                 <use href="#v3-cloud" x={c.x} y={c.y} width={c.w} height={c.h} opacity={c.o}>
-                  <animateTransform attributeName="transform" type="translate" from="0,0" to={`${c.dx},0`} dur={`${c.dur}s`} repeatCount="indefinite" />
+                  <animateTransform attributeName="transform" type="translate" from="0,0" to={`${c.dx},0`} dur={`${c.dur}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1" />
                 </use>
               </g>
             ))}
@@ -1985,7 +2023,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               { x: 750, y: 30, s: 8,  dx: -14, dur: 45 },
             ].map((b, i) => (
               <use key={`gull-${i}`} href="#v3-seagull" x={b.x} y={b.y} width={b.s} height={b.s * 0.5} opacity="0.20">
-                <animateTransform attributeName="transform" type="translate" from="0,0" to={`${b.dx},${Math.abs(b.dx) * 0.2}`} dur={`${b.dur}s`} repeatCount="indefinite" />
+                <animateTransform attributeName="transform" type="translate" from="0,0" to={`${b.dx},${Math.abs(b.dx) * 0.2}`} dur={`${b.dur}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1" />
               </use>
             ))}
           </g>
@@ -2061,7 +2099,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               { x: 1060, y: 150, w: 8,  h: 10, o: 0.18, dx: -4, dur: 45 },
             ].map((sb, i) => (
               <use key={`osail-${i}`} href="#v3-sailboat" x={sb.x} y={sb.y} width={sb.w} height={sb.h} opacity={sb.o}>
-                <animateTransform attributeName="transform" type="translate" from="0,0" to={`${sb.dx},${Math.abs(sb.dx) * 0.3}`} dur={`${sb.dur}s`} repeatCount="indefinite" />
+                <animateTransform attributeName="transform" type="translate" from="0,0" to={`${sb.dx},${Math.abs(sb.dx) * 0.3}`} dur={`${sb.dur}s`} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1" />
               </use>
             ))}
 
@@ -2214,7 +2252,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
           </g>
 
           {/* ═══ LAYER 5: Environmental Scatter ═══ */}
-          <g id="layer-env-scatter" style={{ pointerEvents: 'none' }}>
+          <g id="layer-env-scatter" style={{ pointerEvents: 'none', visibility: viewState.scale >= 1.1 ? 'visible' : 'hidden' }}>
             {DISTRICTS_GEO.map((d, idx) => {
               {/* ── GREEN terrain ── */}
               if (d.terrain === 'green') {
@@ -2599,7 +2637,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
           </g>
 
           {/* ═══ LAYER 7: Forest Trees (between districts) ═══ */}
-          <g id="layer-forests" style={{ pointerEvents: 'none' }}>
+          <g id="layer-forests" style={{ pointerEvents: 'none', visibility: viewState.scale >= 1.1 ? 'visible' : 'hidden' }}>
             {/* Ground cover undergrowth — below tree layer */}
             {(() => {
               const ugRng = seededRandom(77777);
@@ -2804,7 +2842,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                     transition: 'transform 300ms ease',
                   }}
                 >
-                  {renderDistrictScene(d.code, d.center[0], d.center[1], d.gradient)}
+                  {buildingScenes[d.code]}
                 </g>
               );
             })}
@@ -2915,7 +2953,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                     strokeDasharray="2 4"
                     opacity="0.25"
                   >
-                    <animate attributeName="stroke-dashoffset" from="0" to="12" dur="12s" repeatCount="indefinite" />
+                    <animate attributeName="stroke-dashoffset" from="0" to="12" dur="15s" repeatCount="indefinite" />
                   </polygon>
                   {/* Lock icon — 1.5x larger with keyhole, metallic gradient, shine */}
                   <g transform={`translate(${zone.center[0] - 12}, ${zone.center[1] - 18})`}>
@@ -3214,6 +3252,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                 data-testid={`district-${d.code}`}
                 role="button"
                 aria-label={`Select ${d.name} district`}
+                aria-describedby={`v3-desc-${d.code}`}
                 tabIndex={0}
                 onMouseEnter={() => setHoveredCode(d.code)}
                 onMouseLeave={() => setHoveredCode(null)}
