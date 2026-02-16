@@ -21,10 +21,10 @@ const POI_HIT_RADIUS = 22;
 // ── Road styles ──────────────────────────────────────
 
 const ROAD_STYLES: Record<string, { width: number; dash?: string; opacity: number }> = {
-  highway:   { width: 5, opacity: 0.18 },
-  primary:   { width: 2.5, opacity: 0.14 },
-  secondary: { width: 1.8, opacity: 0.10 },
-  tertiary:  { width: 1.2, dash: '6 4', opacity: 0.08 },
+  highway:   { width: 5, opacity: 0.35 },
+  primary:   { width: 2.5, opacity: 0.28 },
+  secondary: { width: 1.8, opacity: 0.22 },
+  tertiary:  { width: 1.2, dash: '6 4', opacity: 0.16 },
 };
 
 // ── Isometric building helpers (from V2, preserved) ──
@@ -429,7 +429,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
     <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden"
       style={{
         touchAction: 'none',
-        boxShadow: '0 0 20px hsl(192 91% 52% / 0.3), 0 0 60px hsl(192 91% 52% / 0.1)',
+        boxShadow: '0 2px 12px hsl(220 15% 15% / 0.1), 0 1px 4px hsl(220 15% 15% / 0.06)',
       }}
     >
       <svg
@@ -468,7 +468,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
           </filter>
           <filter id="v3-coast-shadow" x="-5%" y="-5%" width="110%" height="110%">
             <feGaussianBlur stdDeviation="6" result="shadow" />
-            <feFlood floodColor="#000" floodOpacity="0.25" result="color" />
+            <feFlood floodColor="#8B7355" floodOpacity="0.12" result="color" />
             <feComposite in="color" in2="shadow" operator="in" result="darkShadow" />
             <feMerge>
               <feMergeNode in="darkShadow" />
@@ -489,8 +489,8 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
           {/* ── Per-district gradients + clips ── */}
           {DISTRICTS_GEO.map((d) => (
             <linearGradient key={`grad-${d.code}`} id={`v3-grad-${d.code}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={d.gradient[0]} stopOpacity="0.7" />
-              <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.85" />
+              <stop offset="0%" stopColor={d.gradient[0]} stopOpacity="0.55" />
+              <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.70" />
             </linearGradient>
           ))}
           {DISTRICTS_GEO.map((d) => (
@@ -501,30 +501,30 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
 
           {/* ── Background gradient ── */}
           <radialGradient id="v3-bg-radial" cx="50%" cy="45%" r="55%">
-            <stop offset="0%" stopColor="hsl(222 47% 10%)" />
-            <stop offset="60%" stopColor="hsl(222 47% 7%)" />
-            <stop offset="100%" stopColor="hsl(222 47% 4%)" />
+            <stop offset="0%" stopColor="hsl(40 20% 94%)" />
+            <stop offset="60%" stopColor="hsl(40 18% 92%)" />
+            <stop offset="100%" stopColor="hsl(35 15% 90%)" />
           </radialGradient>
 
           {/* ── Ocean: deep to shallow gradient ── */}
           <linearGradient id="v3-sea-deep" x1="0.7" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#083344" stopOpacity="0.6" />
-            <stop offset="40%" stopColor="#0C4A6E" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#0E7490" stopOpacity="0.2" />
+            <stop offset="0%" stopColor="#3B7CB8" stopOpacity="0.45" />
+            <stop offset="40%" stopColor="#5A9BD5" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#78B4E8" stopOpacity="0.25" />
           </linearGradient>
 
           {/* ── Beach/sand edge gradient ── */}
           <linearGradient id="v3-beach" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#D4A574" stopOpacity="0" />
-            <stop offset="40%" stopColor="#D4A574" stopOpacity="0.06" />
-            <stop offset="100%" stopColor="#B8956A" stopOpacity="0.12" />
+            <stop offset="40%" stopColor="#D4A574" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#C8956A" stopOpacity="0.30" />
           </linearGradient>
 
           {/* ── Park gradient ── */}
           <radialGradient id="v3-park-grad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#15803D" stopOpacity="0.12" />
-            <stop offset="70%" stopColor="#166534" stopOpacity="0.06" />
-            <stop offset="100%" stopColor="#166534" stopOpacity="0" />
+            <stop offset="0%" stopColor="#4CAF50" stopOpacity="0.25" />
+            <stop offset="70%" stopColor="#388E3C" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#388E3C" stopOpacity="0.03" />
           </radialGradient>
 
           {/* ── Glass overlay ── */}
@@ -536,23 +536,23 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
 
           {/* ── Grid pattern ── */}
           <pattern id="v3-grid" width="30" height="30" patternUnits="userSpaceOnUse">
-            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="hsl(192 50% 30%)" strokeWidth="0.3" opacity="0.06" />
+            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="hsl(220 10% 75%)" strokeWidth="0.3" opacity="0.15" />
           </pattern>
 
           {/* ── Hatching pattern for industrial zone ── */}
           <pattern id="v3-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="8" stroke="#78716C" strokeWidth="0.5" opacity="0.06" />
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#78716C" strokeWidth="0.5" opacity="0.12" />
           </pattern>
 
           {/* ── Wave pattern for water ── */}
           <pattern id="v3-wave-pat" width="60" height="12" patternUnits="userSpaceOnUse">
-            <path d="M0,6 Q15,2 30,6 Q45,10 60,6" fill="none" stroke="#22D3EE" strokeWidth="0.4" opacity="0.08" />
+            <path d="M0,6 Q15,2 30,6 Q45,10 60,6" fill="none" stroke="#4A90C4" strokeWidth="0.4" opacity="0.15" />
           </pattern>
 
           {/* ── Canal/river gradient ── */}
           <linearGradient id="v3-canal" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0E7490" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#164E63" stopOpacity="0.08" />
+            <stop offset="0%" stopColor="#2E86AB" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="#1A6C8B" stopOpacity="0.18" />
           </linearGradient>
         </defs>
 
@@ -598,17 +598,17 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
             <path
               d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
               fill="none"
-              stroke="#0E7490"
+              stroke="#2E86AB"
               strokeWidth="6"
-              opacity="0.1"
+              opacity="0.25"
               strokeLinecap="round"
             />
             <path
               d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
               fill="none"
-              stroke="#22D3EE"
+              stroke="#4A90C4"
               strokeWidth="1"
-              opacity="0.06"
+              opacity="0.15"
               strokeLinecap="round"
               strokeDasharray="4 8"
             />
@@ -616,41 +616,41 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
             {/* ── Park areas (shaped, not just ellipses) ── */}
             {/* University campus green */}
             <ellipse cx="295" cy="370" rx="75" ry="55" fill="url(#v3-park-grad)" />
-            <ellipse cx="280" cy="350" rx="30" ry="20" fill="#15803D" opacity="0.06" />
+            <ellipse cx="280" cy="350" rx="30" ry="20" fill="#4CAF50" opacity="0.15" />
             {/* North Suburbs parks */}
             <ellipse cx="385" cy="220" rx="65" ry="45" fill="url(#v3-park-grad)" />
-            <ellipse cx="350" cy="200" rx="25" ry="18" fill="#15803D" opacity="0.05" />
-            <ellipse cx="420" cy="240" rx="20" ry="15" fill="#15803D" opacity="0.04" />
+            <ellipse cx="350" cy="200" rx="25" ry="18" fill="#4CAF50" opacity="0.12" />
+            <ellipse cx="420" cy="240" rx="20" ry="15" fill="#4CAF50" opacity="0.10" />
             {/* South Suburbs parks */}
             <ellipse cx="355" cy="635" rx="60" ry="45" fill="url(#v3-park-grad)" />
-            <ellipse cx="330" cy="650" rx="22" ry="16" fill="#047857" opacity="0.05" />
+            <ellipse cx="330" cy="650" rx="22" ry="16" fill="#388E3C" opacity="0.12" />
             {/* Outskirts fields */}
-            <ellipse cx="180" cy="440" rx="45" ry="90" fill="#4D7C0F" opacity="0.04" />
-            <ellipse cx="165" cy="350" rx="25" ry="30" fill="#4D7C0F" opacity="0.03" />
-            <ellipse cx="170" cy="550" rx="20" ry="35" fill="#4D7C0F" opacity="0.03" />
+            <ellipse cx="180" cy="440" rx="45" ry="90" fill="#6B8E23" opacity="0.10" />
+            <ellipse cx="165" cy="350" rx="25" ry="30" fill="#6B8E23" opacity="0.08" />
+            <ellipse cx="170" cy="550" rx="20" ry="35" fill="#6B8E23" opacity="0.08" />
 
             {/* ── Industrial haze + hatching ── */}
-            <ellipse cx="790" cy="550" rx="80" ry="60" fill="#78716C" opacity="0.04" />
+            <ellipse cx="790" cy="550" rx="80" ry="60" fill="#78716C" opacity="0.10" />
             <ellipse cx="790" cy="550" rx="80" ry="60" fill="url(#v3-hatch)" />
             {/* Industrial smog gradient */}
-            <ellipse cx="810" cy="530" rx="50" ry="35" fill="#57534E" opacity="0.03" />
+            <ellipse cx="810" cy="530" rx="50" ry="35" fill="#57534E" opacity="0.06" />
           </g>
 
           {/* ═══ LAYER 2: Water detail ═══ */}
           <g id="layer-water" style={{ pointerEvents: 'none' }}>
             {/* Animated wave lines along coastline (multiple depths) */}
             {[
-              { y: 120, w: 0.6, o: 0.12, dur: 4 },
-              { y: 200, w: 0.5, o: 0.10, dur: 5.2 },
-              { y: 300, w: 0.5, o: 0.10, dur: 6 },
-              { y: 400, w: 0.5, o: 0.09, dur: 4.8 },
-              { y: 500, w: 0.4, o: 0.08, dur: 5.5 },
-              { y: 620, w: 0.4, o: 0.07, dur: 4.3 },
-              { y: 740, w: 0.4, o: 0.06, dur: 5.8 },
+              { y: 120, w: 0.6, o: 0.20, dur: 4 },
+              { y: 200, w: 0.5, o: 0.18, dur: 5.2 },
+              { y: 300, w: 0.5, o: 0.18, dur: 6 },
+              { y: 400, w: 0.5, o: 0.16, dur: 4.8 },
+              { y: 500, w: 0.4, o: 0.14, dur: 5.5 },
+              { y: 620, w: 0.4, o: 0.12, dur: 4.3 },
+              { y: 740, w: 0.4, o: 0.10, dur: 5.8 },
             ].map(({ y, w, o, dur }) => (
               <path key={`wave-${y}`}
                 d={`M${850 + Math.sin(y * 0.01) * 20},${y} Q${910 + Math.cos(y * 0.02) * 10},${y - 5} ${960 + Math.sin(y * 0.015) * 15},${y}`}
-                fill="none" stroke="#22D3EE" strokeWidth={w} opacity={o}
+                fill="none" stroke="#4A90C4" strokeWidth={w} opacity={o}
                 strokeDasharray="8 6"
               >
                 <animate attributeName="stroke-dashoffset" from="0" to="28" dur={`${dur}s`} repeatCount="indefinite" />
@@ -661,9 +661,9 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
             <path
               d="M850,0 Q860,100 880,180 Q900,250 920,380 Q940,480 920,600 Q900,750 850,900"
               fill="none"
-              stroke="#e0f2fe"
+              stroke="#C5DCF0"
               strokeWidth="1.5"
-              opacity="0.08"
+              opacity="0.18"
               strokeDasharray="3 6"
             >
               <animate attributeName="stroke-dashoffset" from="0" to="18" dur="3s" repeatCount="indefinite" />
@@ -671,36 +671,36 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
 
             {/* ── Marina docks (detailed piers) ── */}
             {/* Main pier */}
-            <rect x="870" y="230" width="35" height="3" fill="#64748B" opacity="0.2" rx="0.5" />
+            <rect x="870" y="230" width="35" height="3" fill="#64748B" opacity="0.40" rx="0.5" />
             {/* Finger piers */}
-            <rect x="875" y="233" width="2" height="12" fill="#64748B" opacity="0.15" rx="0.3" />
-            <rect x="885" y="233" width="2" height="12" fill="#64748B" opacity="0.15" rx="0.3" />
-            <rect x="895" y="233" width="2" height="12" fill="#64748B" opacity="0.15" rx="0.3" />
+            <rect x="875" y="233" width="2" height="12" fill="#64748B" opacity="0.30" rx="0.3" />
+            <rect x="885" y="233" width="2" height="12" fill="#64748B" opacity="0.30" rx="0.3" />
+            <rect x="895" y="233" width="2" height="12" fill="#64748B" opacity="0.30" rx="0.3" />
             {/* Second pier */}
-            <rect x="865" y="270" width="30" height="3" fill="#64748B" opacity="0.18" rx="0.5" />
-            <rect x="870" y="273" width="2" height="10" fill="#64748B" opacity="0.12" rx="0.3" />
-            <rect x="880" y="273" width="2" height="10" fill="#64748B" opacity="0.12" rx="0.3" />
-            <rect x="890" y="273" width="2" height="10" fill="#64748B" opacity="0.12" rx="0.3" />
+            <rect x="865" y="270" width="30" height="3" fill="#64748B" opacity="0.35" rx="0.5" />
+            <rect x="870" y="273" width="2" height="10" fill="#64748B" opacity="0.25" rx="0.3" />
+            <rect x="880" y="273" width="2" height="10" fill="#64748B" opacity="0.25" rx="0.3" />
+            <rect x="890" y="273" width="2" height="10" fill="#64748B" opacity="0.25" rx="0.3" />
             {/* Third pier */}
-            <rect x="860" y="300" width="25" height="2.5" fill="#64748B" opacity="0.15" rx="0.3" />
+            <rect x="860" y="300" width="25" height="2.5" fill="#64748B" opacity="0.30" rx="0.3" />
 
             {/* ── Harbor docks (heavy industrial piers) ── */}
             {/* Main cargo pier */}
-            <rect x="905" y="390" width="40" height="5" fill="#475569" opacity="0.2" rx="0.5" />
+            <rect x="905" y="390" width="40" height="5" fill="#475569" opacity="0.40" rx="0.5" />
             {/* Crane track on pier */}
-            <line x1="910" y1="392" x2="940" y2="392" stroke="#94A3B8" strokeWidth="0.8" opacity="0.12" />
+            <line x1="910" y1="392" x2="940" y2="392" stroke="#94A3B8" strokeWidth="0.8" opacity="0.25" />
             {/* Secondary pier */}
-            <rect x="910" y="430" width="35" height="4" fill="#475569" opacity="0.18" rx="0.5" />
+            <rect x="910" y="430" width="35" height="4" fill="#475569" opacity="0.35" rx="0.5" />
             {/* Breakwater */}
             <path
               d="M895,460 Q920,465 945,458"
-              fill="none" stroke="#475569" strokeWidth="3" opacity="0.12" strokeLinecap="round"
+              fill="none" stroke="#475569" strokeWidth="3" opacity="0.25" strokeLinecap="round"
             />
 
             {/* Canal water detail */}
             <path
               d="M855,488 Q815,518 775,538 Q715,568 655,583 Q595,598 535,608"
-              fill="none" stroke="#22D3EE" strokeWidth="0.5" opacity="0.05"
+              fill="none" stroke="#4A90C4" strokeWidth="0.5" opacity="0.12"
               strokeDasharray="4 6"
             >
               <animate attributeName="stroke-dashoffset" from="0" to="20" dur="7s" repeatCount="indefinite" />
@@ -717,7 +717,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
                     <path
                       d={road.path}
                       fill="none"
-                      stroke="hsl(210 10% 25%)"
+                      stroke="hsl(210 10% 65%)"
                       strokeWidth={style.width + 2}
                       opacity={style.opacity}
                       strokeLinecap="round"
@@ -727,7 +727,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
                   <path
                     d={road.path}
                     fill="none"
-                    stroke={road.type === 'highway' ? 'hsl(210 15% 40%)' : 'hsl(210 20% 55%)'}
+                    stroke={road.type === 'highway' ? 'hsl(210 10% 50%)' : 'hsl(210 10% 55%)'}
                     strokeWidth={style.width}
                     opacity={style.opacity}
                     strokeDasharray={style.dash}
@@ -791,8 +791,8 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
                     points={pts}
                     fill="none"
                     stroke={
-                      isSelected ? 'hsl(192 91% 52%)'
-                      : isHovered ? 'hsl(192 70% 45%)'
+                      isSelected ? 'hsl(192 55% 38%)'
+                      : isHovered ? 'hsl(192 45% 45%)'
                       : d.stroke
                     }
                     strokeWidth={isSelected ? 3 : isHovered ? 2 : 0.5}
@@ -850,15 +850,15 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
                   dominantBaseline="central"
                   className="select-none"
                   style={{
-                    fill: isActive ? '#fff' : 'hsl(210 20% 80%)',
+                    fill: isActive ? 'hsl(220 15% 15%)' : 'hsl(220 12% 35%)',
                     fontSize: isActive ? '13px' : '11px',
                     fontWeight: isActive ? 700 : 500,
                     fontFamily: 'monospace',
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase' as const,
                     textShadow: isActive
-                      ? `0 0 10px ${d.gradient[0]}80, 0 1px 4px rgba(0,0,0,0.9)`
-                      : '0 1px 3px rgba(0,0,0,0.8)',
+                      ? '0 1px 3px rgba(255,255,255,0.5)'
+                      : '0 1px 2px rgba(255,255,255,0.4)',
                     transition: 'fill 300ms ease, font-size 300ms ease',
                   }}
                 >
@@ -877,12 +877,12 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
                 dominantBaseline="central"
                 className="select-none"
                 style={{
-                  fill: 'hsl(210 15% 45%)',
+                  fill: 'hsl(210 10% 40%)',
                   fontSize: '7px',
                   fontFamily: 'monospace',
                   fontWeight: 600,
                   letterSpacing: '0.12em',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                  textShadow: '0 1px 2px rgba(255,255,255,0.5)',
                   transform: `rotate(${rl.angle}deg)`,
                   transformOrigin: `${rl.position[0]}px ${rl.position[1]}px`,
                 }}
@@ -900,10 +900,10 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
                 textAnchor="middle"
                 dominantBaseline="central"
                 style={{
-                  fill: 'hsl(210 20% 70%)',
+                  fill: 'hsl(210 12% 35%)',
                   fontSize: '8px',
                   fontFamily: 'monospace',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+                  textShadow: '0 1px 2px rgba(255,255,255,0.5)',
                 }}
               >
                 {poi.name}
@@ -913,25 +913,25 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
 
           {/* ═══ LAYER 8: Effects ═══ */}
           <g id="layer-effects" style={{ pointerEvents: 'none' }}>
-            {/* Atmospheric fog */}
-            <circle cx="500" cy="400" r="120" fill="#fff" opacity="0.012" filter="url(#v3-fog)" />
-            <circle cx="250" cy="350" r="80" fill="#fff" opacity="0.008" filter="url(#v3-fog)" />
-            <circle cx="800" cy="300" r="60" fill="#22D3EE" opacity="0.01" filter="url(#v3-fog)" />
+            {/* Atmospheric haze */}
+            <circle cx="500" cy="400" r="120" fill="hsl(40 15% 88%)" opacity="0.015" filter="url(#v3-fog)" />
+            <circle cx="250" cy="350" r="80" fill="hsl(40 15% 88%)" opacity="0.01" filter="url(#v3-fog)" />
+            <circle cx="800" cy="300" r="60" fill="hsl(200 30% 80%)" opacity="0.015" filter="url(#v3-fog)" />
 
             {/* Vignette */}
             <rect
               x="0" y="0" width={VIEW_W} height={VIEW_H}
-              fill="url(#v3-bg-radial)" opacity="0.25"
-              style={{ mixBlendMode: 'multiply' }}
+              fill="url(#v3-bg-radial)" opacity="0.15"
+              style={{ mixBlendMode: 'screen' }}
             />
 
             {/* Outer frame */}
             <rect
               x="0" y="0" width={VIEW_W} height={VIEW_H}
               fill="none"
-              stroke="hsl(192 91% 52%)"
+              stroke="hsl(220 12% 75%)"
               strokeWidth="1"
-              opacity="0.15"
+              opacity="0.25"
               rx="4"
             />
           </g>

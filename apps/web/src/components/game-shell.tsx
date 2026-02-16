@@ -213,7 +213,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
                 'flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-1 text-xs transition-colors',
                 pathname === item.href ? 'text-primary' : 'text-muted-foreground',
               )}
-              style={pathname === item.href ? { textShadow: '0 0 8px hsl(192 91% 52% / 0.5)' } : undefined}
+              style={pathname === item.href ? { textShadow: '0 1px 2px hsl(192 55% 38% / 0.2)' } : undefined}
             >
               <item.icon className="h-4 w-4" />
               <span className="text-[10px]">{item.label}</span>
@@ -229,7 +229,7 @@ export function GameShell({ children }: { children: React.ReactNode }) {
             )}
             style={
               NAV_ITEMS.slice(5).some((item) => pathname === item.href)
-                ? { textShadow: '0 0 8px hsl(192 91% 52% / 0.5)' }
+                ? { textShadow: '0 1px 2px hsl(192 55% 38% / 0.2)' }
                 : undefined
             }
           >

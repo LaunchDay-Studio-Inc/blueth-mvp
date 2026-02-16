@@ -3,50 +3,50 @@
 @tailwind utilities;
 
 @layer base {
-  /* ── Dark-first theme: neon-blue / teal accents ── */
+  /* ── Warm light theme: comfortable teal accents ── */
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 20% 90%;
-    --card: 222 44% 8%;
-    --card-foreground: 210 20% 90%;
-    --popover: 222 44% 8%;
-    --popover-foreground: 210 20% 90%;
-    --primary: 192 91% 52%;
-    --primary-foreground: 222 47% 6%;
-    --secondary: 220 30% 14%;
-    --secondary-foreground: 210 20% 82%;
-    --muted: 220 25% 12%;
-    --muted-foreground: 215 16% 52%;
-    --accent: 192 72% 18%;
-    --accent-foreground: 192 91% 72%;
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 20% 16%;
-    --input: 220 20% 16%;
-    --ring: 192 91% 52%;
+    --background: 40 20% 96%;
+    --foreground: 220 15% 15%;
+    --card: 40 15% 98%;
+    --card-foreground: 220 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+    --primary: 192 55% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 90%;
+    --secondary-foreground: 220 14% 35%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 215 12% 45%;
+    --accent: 192 30% 92%;
+    --accent-foreground: 192 55% 30%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 87%;
+    --input: 220 13% 87%;
+    --ring: 192 55% 38%;
     --radius: 0.5rem;
 
     /* ── Custom tokens ── */
-    --neon: 192 91% 52%;
-    --neon-glow: 0 0 12px hsl(192 91% 52% / 0.5);
-    --neon-glow-strong: 0 0 20px hsl(192 91% 52% / 0.6), 0 0 40px hsl(192 91% 52% / 0.2);
-    --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    --neon: 192 55% 38%;
+    --neon-glow: 0 1px 3px hsl(192 55% 38% / 0.12);
+    --neon-glow-strong: 0 2px 8px hsl(192 55% 38% / 0.15), 0 1px 3px hsl(192 55% 38% / 0.08);
+    --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.015'/%3E%3C/svg%3E");
 
     /* ── Glass UI foundation tokens ── */
-    --glass-bg:           222 44% 10%;
-    --glass-bg-elevated:  222 40% 12%;
-    --glass-bg-inset:     222 50% 6%;
-    --glass-border:       210 20% 90%;
+    --glass-bg:           0 0% 100%;
+    --glass-bg-elevated:  0 0% 100%;
+    --glass-bg-inset:     220 14% 96%;
+    --glass-border:       220 15% 30%;
 
-    --glow-warm:          38 90% 55%;
-    --glow-cool:          192 91% 52%;
-    --glow-neutral:       220 20% 60%;
+    --glow-warm:          38 80% 50%;
+    --glow-cool:          192 55% 38%;
+    --glow-neutral:       220 12% 50%;
 
-    --vignette:           222 47% 3%;
+    --vignette:           40 10% 88%;
 
-    --text-primary:       210 20% 92%;
-    --text-secondary:     215 16% 65%;
-    --text-tertiary:      215 12% 45%;
+    --text-primary:       220 15% 15%;
+    --text-secondary:     215 12% 40%;
+    --text-tertiary:      215 10% 55%;
   }
 }
 
@@ -54,7 +54,7 @@
   html {
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
-    color-scheme: dark;
+    color-scheme: light;
   }
   * {
     @apply border-border;
@@ -72,11 +72,11 @@
 @layer utilities {
   .neon-text {
     color: hsl(var(--neon));
-    text-shadow: var(--neon-glow);
+    text-shadow: none;
   }
   .neon-border {
-    border-color: hsl(var(--neon) / 0.4);
-    box-shadow: var(--neon-glow);
+    border-color: hsl(var(--neon) / 0.45);
+    box-shadow: 0 1px 3px hsl(var(--neon) / 0.1);
   }
   .neon-glow-strong {
     box-shadow: var(--neon-glow-strong);
@@ -84,34 +84,34 @@
   .game-gradient {
     background: linear-gradient(
       180deg,
-      hsl(222 47% 4%) 0%,
-      hsl(222 47% 8%) 40%,
-      hsl(220 40% 10%) 100%
+      hsl(40 20% 96%) 0%,
+      hsl(40 15% 94%) 40%,
+      hsl(35 15% 92%) 100%
     );
   }
   .skyline-gradient {
     background: linear-gradient(
       180deg,
-      hsl(222 60% 3%) 0%,
-      hsl(222 50% 6%) 30%,
-      hsl(192 40% 8%) 60%,
-      hsl(192 50% 12%) 100%
+      hsl(40 20% 96%) 0%,
+      hsl(38 18% 94%) 30%,
+      hsl(200 15% 93%) 60%,
+      hsl(200 20% 91%) 100%
     );
   }
 
   /* ── Glass surface utilities ── */
   .glass-surface {
-    background: hsl(var(--glass-bg) / 0.6);
+    background: hsl(var(--glass-bg) / 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid hsl(var(--glass-border) / 0.08);
   }
   .glass-elevated {
-    background: hsl(var(--glass-bg-elevated) / 0.7);
+    background: hsl(var(--glass-bg-elevated) / 0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid hsl(var(--glass-border) / 0.12);
-    box-shadow: 0 4px 24px hsl(var(--vignette) / 0.4);
+    border: 1px solid hsl(var(--glass-border) / 0.1);
+    box-shadow: 0 4px 12px hsl(220 15% 15% / 0.06);
   }
   .glass-inset {
     background: hsl(var(--glass-bg-inset) / 0.5);
@@ -120,17 +120,15 @@
     border: 1px solid hsl(var(--glass-border) / 0.05);
   }
   .glass-glow-cool {
-    box-shadow: 0 0 16px hsl(var(--glow-cool) / 0.15),
-                0 0 4px hsl(var(--glow-cool) / 0.1);
+    box-shadow: 0 1px 4px hsl(var(--glow-cool) / 0.08);
   }
   .glass-glow-warm {
-    box-shadow: 0 0 16px hsl(var(--glow-warm) / 0.15),
-                0 0 4px hsl(var(--glow-warm) / 0.1);
+    box-shadow: 0 1px 4px hsl(var(--glow-warm) / 0.08);
   }
   .vignette-bg {
     background:
-      radial-gradient(ellipse at center, transparent 50%, hsl(var(--vignette) / 0.6) 100%),
-      linear-gradient(180deg, hsl(222 47% 4%) 0%, hsl(222 47% 8%) 40%, hsl(220 40% 10%) 100%);
+      radial-gradient(ellipse at center, transparent 60%, hsl(var(--vignette) / 0.2) 100%),
+      linear-gradient(180deg, hsl(40 20% 96%) 0%, hsl(40 15% 94%) 40%, hsl(35 15% 92%) 100%);
   }
 }
 
@@ -204,18 +202,18 @@ html[data-reduce-motion="true"] [class*="animate-out"] {
 
 /* ── Accessibility: high contrast ── */
 html[data-high-contrast="true"] {
-  --muted-foreground: 215 16% 72%;
-  --text-secondary: 215 16% 80%;
-  --text-tertiary: 215 12% 65%;
+  --muted-foreground: 215 12% 28%;
+  --text-secondary: 215 12% 22%;
+  --text-tertiary: 215 10% 35%;
 }
 html[data-high-contrast="true"] .glass-surface {
-  border-color: hsl(var(--glass-border) / 0.20);
+  border-color: hsl(var(--glass-border) / 0.18);
 }
 html[data-high-contrast="true"] .glass-elevated {
-  border-color: hsl(var(--glass-border) / 0.25);
+  border-color: hsl(var(--glass-border) / 0.22);
 }
 html[data-high-contrast="true"] .glass-inset {
-  border-color: hsl(var(--glass-border) / 0.15);
+  border-color: hsl(var(--glass-border) / 0.12);
 }
 
 /* ── Accessibility: enhanced keyboard focus ── */
