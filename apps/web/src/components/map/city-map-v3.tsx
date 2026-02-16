@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { DistrictMeta } from '@/lib/districts';
 import type { DistrictGeo, MapViewState } from '@/lib/map/types';
 import { DISTRICTS_GEO, polygonToPoints } from '@/lib/map/districts';
-import { ROADS } from '@/lib/map/roads';
+import { ROADS, ROAD_LABELS } from '@/lib/map/roads';
 import { POIS } from '@/lib/map/pois';
 import { DISTRICT_ICONS } from '@/components/city-map';
 
@@ -448,7 +448,7 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
         onClick={handleSvgClick}
       >
         <defs>
-          {/* Filters */}
+          {/* ── Filters ── */}
           <filter id="v3-district-glow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="8" result="blur" />
             <feMerge>
@@ -466,8 +466,27 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
           <filter id="v3-fog" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="30" />
           </filter>
+          <filter id="v3-coast-shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feGaussianBlur stdDeviation="6" result="shadow" />
+            <feFlood floodColor="#000" floodOpacity="0.25" result="color" />
+            <feComposite in="color" in2="shadow" operator="in" result="darkShadow" />
+            <feMerge>
+              <feMergeNode in="darkShadow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
 
-          {/* Per-district gradients + clips */}
+          {/* ── Noise pattern (SVG fractal noise for terrain texture) ── */}
+          <filter id="v3-terrain-noise" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="42" stitchTiles="stitch" result="noise" />
+            <feColorMatrix type="saturate" values="0" in="noise" result="mono" />
+            <feComponentTransfer in="mono" result="faint">
+              <feFuncA type="linear" slope="0.04" />
+            </feComponentTransfer>
+            <feBlend in="SourceGraphic" in2="faint" mode="overlay" />
+          </filter>
+
+          {/* ── Per-district gradients + clips ── */}
           {DISTRICTS_GEO.map((d) => (
             <linearGradient key={`grad-${d.code}`} id={`v3-grad-${d.code}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={d.gradient[0]} stopOpacity="0.7" />
@@ -480,24 +499,61 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
             </clipPath>
           ))}
 
-          {/* Shared gradients */}
+          {/* ── Background gradient ── */}
           <radialGradient id="v3-bg-radial" cx="50%" cy="45%" r="55%">
             <stop offset="0%" stopColor="hsl(222 47% 10%)" />
             <stop offset="60%" stopColor="hsl(222 47% 7%)" />
             <stop offset="100%" stopColor="hsl(222 47% 4%)" />
           </radialGradient>
-          <linearGradient id="v3-water-grad" x1="0" y1="0" x2="1" y2="0.5">
-            <stop offset="0%" stopColor="#0E7490" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#164E63" stopOpacity="0.15" />
+
+          {/* ── Ocean: deep to shallow gradient ── */}
+          <linearGradient id="v3-sea-deep" x1="0.7" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#083344" stopOpacity="0.6" />
+            <stop offset="40%" stopColor="#0C4A6E" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#0E7490" stopOpacity="0.2" />
           </linearGradient>
+
+          {/* ── Beach/sand edge gradient ── */}
+          <linearGradient id="v3-beach" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#D4A574" stopOpacity="0" />
+            <stop offset="40%" stopColor="#D4A574" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="#B8956A" stopOpacity="0.12" />
+          </linearGradient>
+
+          {/* ── Park gradient ── */}
+          <radialGradient id="v3-park-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#15803D" stopOpacity="0.12" />
+            <stop offset="70%" stopColor="#166534" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="#166534" stopOpacity="0" />
+          </radialGradient>
+
+          {/* ── Glass overlay ── */}
           <linearGradient id="v3-glass" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#fff" stopOpacity="0.1" />
             <stop offset="50%" stopColor="#fff" stopOpacity="0.02" />
             <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
           </linearGradient>
+
+          {/* ── Grid pattern ── */}
           <pattern id="v3-grid" width="30" height="30" patternUnits="userSpaceOnUse">
             <path d="M 30 0 L 0 0 0 30" fill="none" stroke="hsl(192 50% 30%)" strokeWidth="0.3" opacity="0.06" />
           </pattern>
+
+          {/* ── Hatching pattern for industrial zone ── */}
+          <pattern id="v3-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#78716C" strokeWidth="0.5" opacity="0.06" />
+          </pattern>
+
+          {/* ── Wave pattern for water ── */}
+          <pattern id="v3-wave-pat" width="60" height="12" patternUnits="userSpaceOnUse">
+            <path d="M0,6 Q15,2 30,6 Q45,10 60,6" fill="none" stroke="#22D3EE" strokeWidth="0.4" opacity="0.08" />
+          </pattern>
+
+          {/* ── Canal/river gradient ── */}
+          <linearGradient id="v3-canal" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0E7490" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#164E63" stopOpacity="0.08" />
+          </linearGradient>
         </defs>
 
         {/* ── Pan/Zoom root ── */}
@@ -505,50 +561,150 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
 
           {/* ═══ LAYER 1: Terrain ═══ */}
           <g id="layer-terrain" style={{ pointerEvents: 'none' }}>
+            {/* Base land with noise texture */}
             <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-bg-radial)" />
+            <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-bg-radial)" filter="url(#v3-terrain-noise)" />
             <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-grid)" />
 
-            {/* Water body (east coast) */}
+            {/* ── Ocean (east coast, deep) ── */}
             <path
               d="M850,0 L1200,0 L1200,900 L850,900 Q900,750 920,600 Q940,480 920,380 Q900,250 880,180 Q860,100 850,0 Z"
-              fill="url(#v3-water-grad)"
+              fill="url(#v3-sea-deep)"
+            />
+            {/* Ocean wave texture overlay */}
+            <path
+              d="M850,0 L1200,0 L1200,900 L850,900 Q900,750 920,600 Q940,480 920,380 Q900,250 880,180 Q860,100 850,0 Z"
+              fill="url(#v3-wave-pat)"
+              opacity="0.6"
             />
 
-            {/* Green patches */}
-            <ellipse cx="295" cy="370" rx="80" ry="60" fill="#15803D" opacity="0.05" />
-            <ellipse cx="385" cy="220" rx="70" ry="50" fill="#047857" opacity="0.04" />
-            <ellipse cx="355" cy="635" rx="65" ry="50" fill="#047857" opacity="0.04" />
-            <ellipse cx="180" cy="440" rx="50" ry="100" fill="#4D7C0F" opacity="0.03" />
+            {/* ── Beach/sand strip along coastline ── */}
+            <path
+              d="M830,0 Q840,80 860,160 Q880,250 900,340 Q920,440 910,540 Q900,650 890,750 Q880,830 870,900 L850,900 Q860,830 870,750 Q880,650 890,540 Q900,440 890,340 Q870,250 860,160 Q850,80 840,0 Z"
+              fill="url(#v3-beach)"
+            />
 
-            {/* Industrial haze */}
-            <ellipse cx="790" cy="550" rx="70" ry="55" fill="#78716C" opacity="0.05" />
+            {/* ── Coastline edge shadow ── */}
+            <path
+              d="M850,0 Q860,100 880,180 Q900,250 920,380 Q940,480 920,600 Q900,750 850,900"
+              fill="none"
+              stroke="#000"
+              strokeWidth="3"
+              opacity="0.15"
+              filter="url(#v3-coast-shadow)"
+            />
+
+            {/* ── Canal from Harbor area southwest ── */}
+            <path
+              d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
+              fill="none"
+              stroke="#0E7490"
+              strokeWidth="6"
+              opacity="0.1"
+              strokeLinecap="round"
+            />
+            <path
+              d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
+              fill="none"
+              stroke="#22D3EE"
+              strokeWidth="1"
+              opacity="0.06"
+              strokeLinecap="round"
+              strokeDasharray="4 8"
+            />
+
+            {/* ── Park areas (shaped, not just ellipses) ── */}
+            {/* University campus green */}
+            <ellipse cx="295" cy="370" rx="75" ry="55" fill="url(#v3-park-grad)" />
+            <ellipse cx="280" cy="350" rx="30" ry="20" fill="#15803D" opacity="0.06" />
+            {/* North Suburbs parks */}
+            <ellipse cx="385" cy="220" rx="65" ry="45" fill="url(#v3-park-grad)" />
+            <ellipse cx="350" cy="200" rx="25" ry="18" fill="#15803D" opacity="0.05" />
+            <ellipse cx="420" cy="240" rx="20" ry="15" fill="#15803D" opacity="0.04" />
+            {/* South Suburbs parks */}
+            <ellipse cx="355" cy="635" rx="60" ry="45" fill="url(#v3-park-grad)" />
+            <ellipse cx="330" cy="650" rx="22" ry="16" fill="#047857" opacity="0.05" />
+            {/* Outskirts fields */}
+            <ellipse cx="180" cy="440" rx="45" ry="90" fill="#4D7C0F" opacity="0.04" />
+            <ellipse cx="165" cy="350" rx="25" ry="30" fill="#4D7C0F" opacity="0.03" />
+            <ellipse cx="170" cy="550" rx="20" ry="35" fill="#4D7C0F" opacity="0.03" />
+
+            {/* ── Industrial haze + hatching ── */}
+            <ellipse cx="790" cy="550" rx="80" ry="60" fill="#78716C" opacity="0.04" />
+            <ellipse cx="790" cy="550" rx="80" ry="60" fill="url(#v3-hatch)" />
+            {/* Industrial smog gradient */}
+            <ellipse cx="810" cy="530" rx="50" ry="35" fill="#57534E" opacity="0.03" />
           </g>
 
           {/* ═══ LAYER 2: Water detail ═══ */}
           <g id="layer-water" style={{ pointerEvents: 'none' }}>
-            {/* Wave lines along coastline */}
-            <path d="M860,120 Q900,115 940,125" fill="none" stroke="#22D3EE" strokeWidth="0.6" opacity="0.12">
-              <animate attributeName="stroke-dashoffset" from="0" to="20" dur="4s" repeatCount="indefinite" />
+            {/* Animated wave lines along coastline (multiple depths) */}
+            {[
+              { y: 120, w: 0.6, o: 0.12, dur: 4 },
+              { y: 200, w: 0.5, o: 0.10, dur: 5.2 },
+              { y: 300, w: 0.5, o: 0.10, dur: 6 },
+              { y: 400, w: 0.5, o: 0.09, dur: 4.8 },
+              { y: 500, w: 0.4, o: 0.08, dur: 5.5 },
+              { y: 620, w: 0.4, o: 0.07, dur: 4.3 },
+              { y: 740, w: 0.4, o: 0.06, dur: 5.8 },
+            ].map(({ y, w, o, dur }) => (
+              <path key={`wave-${y}`}
+                d={`M${850 + Math.sin(y * 0.01) * 20},${y} Q${910 + Math.cos(y * 0.02) * 10},${y - 5} ${960 + Math.sin(y * 0.015) * 15},${y}`}
+                fill="none" stroke="#22D3EE" strokeWidth={w} opacity={o}
+                strokeDasharray="8 6"
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="28" dur={`${dur}s`} repeatCount="indefinite" />
+              </path>
+            ))}
+
+            {/* Shoreline foam line */}
+            <path
+              d="M850,0 Q860,100 880,180 Q900,250 920,380 Q940,480 920,600 Q900,750 850,900"
+              fill="none"
+              stroke="#e0f2fe"
+              strokeWidth="1.5"
+              opacity="0.08"
+              strokeDasharray="3 6"
+            >
+              <animate attributeName="stroke-dashoffset" from="0" to="18" dur="3s" repeatCount="indefinite" />
             </path>
-            <path d="M870,240 Q910,235 950,245" fill="none" stroke="#22D3EE" strokeWidth="0.5" opacity="0.1" strokeDasharray="8 6">
-              <animate attributeName="stroke-dashoffset" from="0" to="28" dur="5s" repeatCount="indefinite" />
+
+            {/* ── Marina docks (detailed piers) ── */}
+            {/* Main pier */}
+            <rect x="870" y="230" width="35" height="3" fill="#64748B" opacity="0.2" rx="0.5" />
+            {/* Finger piers */}
+            <rect x="875" y="233" width="2" height="12" fill="#64748B" opacity="0.15" rx="0.3" />
+            <rect x="885" y="233" width="2" height="12" fill="#64748B" opacity="0.15" rx="0.3" />
+            <rect x="895" y="233" width="2" height="12" fill="#64748B" opacity="0.15" rx="0.3" />
+            {/* Second pier */}
+            <rect x="865" y="270" width="30" height="3" fill="#64748B" opacity="0.18" rx="0.5" />
+            <rect x="870" y="273" width="2" height="10" fill="#64748B" opacity="0.12" rx="0.3" />
+            <rect x="880" y="273" width="2" height="10" fill="#64748B" opacity="0.12" rx="0.3" />
+            <rect x="890" y="273" width="2" height="10" fill="#64748B" opacity="0.12" rx="0.3" />
+            {/* Third pier */}
+            <rect x="860" y="300" width="25" height="2.5" fill="#64748B" opacity="0.15" rx="0.3" />
+
+            {/* ── Harbor docks (heavy industrial piers) ── */}
+            {/* Main cargo pier */}
+            <rect x="905" y="390" width="40" height="5" fill="#475569" opacity="0.2" rx="0.5" />
+            {/* Crane track on pier */}
+            <line x1="910" y1="392" x2="940" y2="392" stroke="#94A3B8" strokeWidth="0.8" opacity="0.12" />
+            {/* Secondary pier */}
+            <rect x="910" y="430" width="35" height="4" fill="#475569" opacity="0.18" rx="0.5" />
+            {/* Breakwater */}
+            <path
+              d="M895,460 Q920,465 945,458"
+              fill="none" stroke="#475569" strokeWidth="3" opacity="0.12" strokeLinecap="round"
+            />
+
+            {/* Canal water detail */}
+            <path
+              d="M855,488 Q815,518 775,538 Q715,568 655,583 Q595,598 535,608"
+              fill="none" stroke="#22D3EE" strokeWidth="0.5" opacity="0.05"
+              strokeDasharray="4 6"
+            >
+              <animate attributeName="stroke-dashoffset" from="0" to="20" dur="7s" repeatCount="indefinite" />
             </path>
-            <path d="M880,360 Q920,355 960,365" fill="none" stroke="#22D3EE" strokeWidth="0.5" opacity="0.1" strokeDasharray="6 8">
-              <animate attributeName="stroke-dashoffset" from="0" to="28" dur="6s" repeatCount="indefinite" />
-            </path>
-            <path d="M870,500 Q910,495 950,505" fill="none" stroke="#22D3EE" strokeWidth="0.4" opacity="0.08" strokeDasharray="8 6">
-              <animate attributeName="stroke-dashoffset" from="0" to="28" dur="4.5s" repeatCount="indefinite" />
-            </path>
-            <path d="M860,650 Q900,645 940,655" fill="none" stroke="#22D3EE" strokeWidth="0.4" opacity="0.08" strokeDasharray="6 8">
-              <animate attributeName="stroke-dashoffset" from="0" to="28" dur="5.5s" repeatCount="indefinite" />
-            </path>
-            {/* Dock lines for Marina */}
-            <line x1="860" y1="240" x2="890" y2="240" stroke="#94A3B8" strokeWidth="1.5" opacity="0.15" />
-            <line x1="865" y1="260" x2="895" y2="260" stroke="#94A3B8" strokeWidth="1.5" opacity="0.12" />
-            <line x1="860" y1="280" x2="890" y2="280" stroke="#94A3B8" strokeWidth="1.5" opacity="0.1" />
-            {/* Dock lines for Harbor */}
-            <line x1="900" y1="400" x2="930" y2="400" stroke="#94A3B8" strokeWidth="2" opacity="0.12" />
-            <line x1="900" y1="430" x2="935" y2="430" stroke="#94A3B8" strokeWidth="2" opacity="0.1" />
           </g>
 
           {/* ═══ LAYER 3: Roads ═══ */}
@@ -710,6 +866,30 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
                 </text>
               );
             })}
+
+            {/* Road labels (visible at moderate zoom) */}
+            {viewState.scale >= 1.4 && ROAD_LABELS.map((rl) => (
+              <text
+                key={`road-label-${rl.roadId}`}
+                x={rl.position[0]}
+                y={rl.position[1]}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="select-none"
+                style={{
+                  fill: 'hsl(210 15% 45%)',
+                  fontSize: '7px',
+                  fontFamily: 'monospace',
+                  fontWeight: 600,
+                  letterSpacing: '0.12em',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                  transform: `rotate(${rl.angle}deg)`,
+                  transformOrigin: `${rl.position[0]}px ${rl.position[1]}px`,
+                }}
+              >
+                {rl.label}
+              </text>
+            ))}
 
             {/* POI labels (visible at zoom >= threshold) */}
             {viewState.scale >= POI_VISIBLE_ZOOM && POIS.map((poi) => (
