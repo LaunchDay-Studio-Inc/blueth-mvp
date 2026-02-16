@@ -1138,14 +1138,14 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                   dominantBaseline="central"
                   className="pointer-events-none select-none"
                   style={{
-                    fill: isActive ? '#fff' : 'hsl(210 20% 80%)',
+                    fill: isActive ? '#fff' : '#3E2723',
                     fontSize: isActive ? '9px' : '8px',
-                    fontWeight: isActive ? 700 : 500,
+                    fontWeight: isActive ? 700 : 600,
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase' as const,
                     textShadow: isActive
-                      ? `0 0 10px ${d.gradient[0]}80, 0 1px 4px rgba(0,0,0,0.9)`
-                      : '0 1px 3px rgba(0,0,0,0.8)',
+                      ? `0 0 10px ${d.gradient[0]}80, 0 1px 4px rgba(0,0,0,0.7)`
+                      : '0 1px 2px rgba(255,255,255,0.5)',
                     transition: 'fill 300ms ease, font-size 300ms ease',
                   }}
                 >

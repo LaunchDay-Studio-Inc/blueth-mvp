@@ -24,11 +24,11 @@ const TERRAIN_FILL: Record<
   DistrictGroundProps["terrain"],
   { color: string; opacity: number }
 > = {
-  urban: { color: "#E0E0E0", opacity: 0.5 },
-  water: { color: "#B3E5FC", opacity: 0.4 },
-  green: { color: "#C8E6C9", opacity: 0.5 },
-  industrial: { color: "#CFD8DC", opacity: 0.45 },
-  rural: { color: "#DCEDC8", opacity: 0.5 },
+  urban: { color: "#E0E0E0", opacity: 0.75 },
+  water: { color: "#B3E5FC", opacity: 0.65 },
+  green: { color: "#C8E6C9", opacity: 0.75 },
+  industrial: { color: "#CFD8DC", opacity: 0.7 },
+  rural: { color: "#DCEDC8", opacity: 0.75 },
 };
 
 function TerrainTexture({
@@ -117,7 +117,7 @@ export function DistrictGround({
 }: DistrictGroundProps) {
   const { x: cx, y: cy } = getCenter(points);
   const fill = TERRAIN_FILL[terrain];
-  const activeOpacity = isActive ? 0.7 : fill.opacity;
+  const activeOpacity = isActive ? 0.95 : fill.opacity;
   const borderOpacity = isActive ? 1.0 : 0.5;
   const filterId = `glow-${code}`;
 
