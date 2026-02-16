@@ -526,6 +526,12 @@ const TERRAIN_PATTERN: Record<string, string> = {
   rural: 'url(#v3-tex-rural)',
 };
 
+/** Per-district pattern overrides (code → fill) */
+const DISTRICT_PATTERN_OVERRIDE: Record<string, string> = {
+  OLD_TOWN: 'url(#v3-cobblestone)',
+  TECH_PARK: 'url(#v3-tech-grid)',
+};
+
 // ── Seeded pseudo-random for deterministic scatter ──
 
 function seededRandom(seed: number) {
@@ -599,10 +605,15 @@ const MOUNTAINS: { x: number; w: number; h: number; opacity: number; snow: boole
 
 // ── Scattered tree positions (between districts) ──
 
-function generateForestTrees(seed: number): { x: number; y: number; r: number; shade: string }[] {
+type ForestItem = {
+  x: number; y: number; r: number; shade: string;
+  kind: 'deciduous' | 'conifer' | 'bush';
+};
+
+function generateForestTrees(seed: number): ForestItem[] {
   const rng = seededRandom(seed);
-  const trees: { x: number; y: number; r: number; shade: string }[] = [];
-  // Regions where trees grow (gaps between districts)
+  const trees: ForestItem[] = [];
+  // Regions where trees grow (gaps between districts) — 16 total
   const regions: [number, number, number, number][] = [
     [240, 260, 360, 340],    // Between University and Old Town
     [260, 140, 360, 200],    // North of Suburbs N
@@ -612,15 +623,27 @@ function generateForestTrees(seed: number): { x: number; y: number; r: number; s
     [320, 540, 400, 610],    // Between Market Sq and Suburbs S
     [600, 250, 640, 310],    // Between Tech Park and CBD
     [120, 620, 200, 680],    // SW corner
+    // ── Additional gap regions ──
+    [140, 200, 200, 260],    // NW corner
+    [400, 100, 470, 160],    // N of Old Town
+    [660, 200, 720, 270],    // NE between Tech Park and Marina
+    [500, 380, 560, 440],    // Central gap south of CBD
+    [340, 430, 400, 490],    // Between Market Sq and University
+    [700, 560, 760, 620],    // Eastern industrial fringe
+    [220, 680, 280, 740],    // S of Outskirts
+    [460, 570, 540, 630],    // SE gap below CBD
   ];
   for (const [x1, y1, x2, y2] of regions) {
-    const count = 4 + Math.floor(rng() * 5);
+    const count = 6 + Math.floor(rng() * 7); // 6-12 per region
     for (let i = 0; i < count; i++) {
       const x = x1 + rng() * (x2 - x1);
       const y = y1 + rng() * (y2 - y1);
       const r = 4 + rng() * 6;
       const shade = rng() > 0.5 ? COLORS.grass : COLORS.grassLight;
-      trees.push({ x, y, r, shade });
+      // 60% deciduous, 30% conifer, 10% bush
+      const roll = rng();
+      const kind: ForestItem['kind'] = roll < 0.6 ? 'deciduous' : roll < 0.9 ? 'conifer' : 'bush';
+      trees.push({ x, y, r, shade, kind });
     }
   }
   return trees;
@@ -1800,15 +1823,40 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
           {/* ═══ LAYER 4: District Terrain Textures ═══ */}
           <g id="layer-district-textures" style={{ pointerEvents: 'none' }}>
             {DISTRICTS_GEO.map((d) => {
-              const patternFill = TERRAIN_PATTERN[d.terrain];
+              const patternFill = DISTRICT_PATTERN_OVERRIDE[d.code] ?? TERRAIN_PATTERN[d.terrain];
               if (!patternFill) return null;
+              const pts = polygonToPoints(d.polygon);
+              // Compute polygon centroid for radial highlight
+              const cx = d.center[0];
+              const cy = d.center[1];
               return (
-                <polygon
-                  key={`tex-${d.code}`}
-                  points={polygonToPoints(d.polygon)}
-                  fill={patternFill}
-                  opacity="1"
-                />
+                <g key={`tex-${d.code}`}>
+                  {/* Terrain texture fill */}
+                  <polygon points={pts} fill={patternFill} opacity="1" />
+                  {/* Radial center highlight — soft white glow from center */}
+                  <defs>
+                    <radialGradient id={`v3-center-hl-${d.code}`} cx="50%" cy="50%" r="55%">
+                      <stop offset="0%" stopColor="white" stopOpacity="0.03" />
+                      <stop offset="100%" stopColor="white" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
+                  <polygon points={pts} fill={`url(#v3-center-hl-${d.code})`} />
+                  {/* Inner border line — inset 3px, district accent color */}
+                  <polygon
+                    points={d.polygon.map(([px, py]) => {
+                      // Inset toward centroid by 3px
+                      const dx = cx - px;
+                      const dy = cy - py;
+                      const dist = Math.sqrt(dx * dx + dy * dy);
+                      const t = dist > 0 ? 3 / dist : 0;
+                      return `${px + dx * t},${py + dy * t}`;
+                    }).join(' ')}
+                    fill="none"
+                    stroke={d.gradient[1]}
+                    strokeWidth="0.8"
+                    opacity="0.05"
+                  />
+                </g>
               );
             })}
           </g>
@@ -1816,55 +1864,129 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
           {/* ═══ LAYER 5: Environmental Scatter ═══ */}
           <g id="layer-env-scatter" style={{ pointerEvents: 'none' }}>
             {DISTRICTS_GEO.map((d, idx) => {
+              {/* ── GREEN terrain ── */}
               if (d.terrain === 'green') {
-                const trees = scatterInPolygon(d.polygon, 12, idx * 1000 + 42);
+                const trees = scatterInPolygon(d.polygon, 20, idx * 1000 + 42);
                 const rng = seededRandom(idx * 1000 + 99);
+                const bushPts = scatterInPolygon(d.polygon, 7, idx * 1000 + 143);
+                const flowerPts = scatterInPolygon(d.polygon, 5, idx * 1000 + 201);
                 return (
                   <g key={`env-${d.code}`}>
                     {trees.map(([tx, ty], i) => {
-                      const r = 4 + rng() * 5;
+                      // 3 size classes: small (3-5), medium (5-8), large (8-12)
+                      const sizeRoll = rng();
+                      const r = sizeRoll < 0.35 ? 3 + rng() * 2
+                               : sizeRoll < 0.7 ? 5 + rng() * 3
+                               : 8 + rng() * 4;
+                      const isLarge = r >= 8;
                       return (
                         <g key={i}>
+                          {/* Shadow for large trees */}
+                          {isLarge && (
+                            <ellipse cx={tx + 2} cy={ty + r * 0.4} rx={r * 0.7} ry={r * 0.25} fill="#222" opacity="0.05" />
+                          )}
                           <rect x={tx - 0.5} y={ty} width={1} height={r * 0.6} fill={COLORS.earth} opacity="0.15" rx="0.2" />
                           <circle cx={tx} cy={ty - r * 0.1} r={r} fill={COLORS.grass} opacity={0.10 + rng() * 0.08} />
                           <circle cx={tx - r * 0.3} cy={ty - r * 0.3} r={r * 0.6} fill={COLORS.grassLight} opacity={0.08 + rng() * 0.05} />
                         </g>
                       );
                     })}
+                    {/* Bush scatter */}
+                    {bushPts.map(([bx, by], i) => (
+                      <use key={`bush-${i}`} href="#v3-bush" x={bx - 4} y={by - 2} width={8 + (i % 3)} height={5 + (i % 2)} opacity={0.12 + (i % 3) * 0.02} />
+                    ))}
+                    {/* Flower clusters */}
+                    {flowerPts.map(([fx, fy], i) => {
+                      const fRng = seededRandom(idx * 1000 + 300 + i);
+                      const colors = [COLORS.neonPink, COLORS.glowWarm, 'white', '#E8B4E8'];
+                      return (
+                        <g key={`flower-${i}`}>
+                          {[0, 1, 2, 3].map((fi) => (
+                            <circle key={fi}
+                              cx={fx + (fRng() - 0.5) * 5}
+                              cy={fy + (fRng() - 0.5) * 4}
+                              r={0.6 + fRng() * 0.4}
+                              fill={colors[fi % colors.length]}
+                              opacity={0.12 + fRng() * 0.06}
+                            />
+                          ))}
+                        </g>
+                      );
+                    })}
                   </g>
                 );
               }
+
+              {/* ── URBAN terrain ── */}
               if (d.terrain === 'urban') {
-                const bldgs = scatterInPolygon(d.polygon, 8, idx * 1000 + 77);
+                const bldgs = scatterInPolygon(d.polygon, 14, idx * 1000 + 77);
                 const rng = seededRandom(idx * 1000 + 55);
+                const carPts = scatterInPolygon(d.polygon, 4, idx * 1000 + 160);
                 return (
                   <g key={`env-${d.code}`}>
                     {bldgs.map(([bx, by], i) => {
-                      const w = 3 + rng() * 5;
-                      const h = 2 + rng() * 4;
+                      // Variation: some tall/narrow, some wide/short
+                      const typeRoll = rng();
+                      const w = typeRoll < 0.4 ? 2 + rng() * 2 : 4 + rng() * 5;
+                      const h = typeRoll < 0.4 ? 4 + rng() * 5 : 2 + rng() * 3;
+                      const op = 0.07 + rng() * 0.04;
                       return (
-                        <rect
-                          key={i} x={bx - w / 2} y={by - h / 2}
-                          width={w} height={h}
-                          fill={d.gradient[1]} opacity={0.07 + rng() * 0.04}
-                          rx="0.3"
+                        <g key={i}>
+                          {/* Shadow rect — offset 1px right, 1px down */}
+                          <rect
+                            x={bx - w / 2 + 1} y={by - h / 2 + 1}
+                            width={w} height={h}
+                            fill="#1a1a1a" opacity={op * 0.4}
+                            rx="0.2"
+                          />
+                          <rect
+                            x={bx - w / 2} y={by - h / 2}
+                            width={w} height={h}
+                            fill={d.gradient[1]} opacity={op}
+                            rx="0.3"
+                          />
+                        </g>
+                      );
+                    })}
+                    {/* Parked cars near roads */}
+                    {carPts.map(([cx, cy], i) => {
+                      const carColors = ['#374151', '#1F2937', '#4B5563', '#6B21A8'];
+                      return (
+                        <rect key={`car-${i}`}
+                          x={cx} y={cy}
+                          width={4} height={2}
+                          fill={carColors[i % carColors.length]}
+                          opacity="0.08"
+                          rx="0.5"
                         />
                       );
                     })}
                   </g>
                 );
               }
+
+              {/* ── RURAL terrain ── */}
               if (d.terrain === 'rural') {
                 const posts = scatterInPolygon(d.polygon, 6, idx * 1000 + 33);
                 const rng = seededRandom(idx * 1000 + 44);
                 return (
                   <g key={`env-${d.code}`}>
-                    {posts.map(([px, py], i) => (
-                      <g key={i}>
-                        <line x1={px} y1={py} x2={px} y2={py - 3 - rng() * 2} stroke={COLORS.earth} strokeWidth="0.6" opacity="0.14" strokeLinecap="round" />
-                        <circle cx={px} cy={py - 4 - rng() * 2} r="1.2" fill={COLORS.grass} opacity={0.10 + rng() * 0.05} />
-                      </g>
-                    ))}
+                    {/* Fence posts with connecting rails */}
+                    {posts.map(([px, py], i) => {
+                      const postH = 3 + rng() * 2;
+                      const nextPost = posts[i + 1];
+                      return (
+                        <g key={i}>
+                          <line x1={px} y1={py} x2={px} y2={py - postH} stroke={COLORS.earth} strokeWidth="0.6" opacity="0.14" strokeLinecap="round" />
+                          <circle cx={px} cy={py - postH} r="1.2" fill={COLORS.grass} opacity={0.10 + rng() * 0.05} />
+                          {/* Fence rail connecting to next post */}
+                          {nextPost && (
+                            <line x1={px} y1={py - postH * 0.6} x2={nextPost[0]} y2={nextPost[1] - postH * 0.6} stroke={COLORS.earth} strokeWidth="0.3" opacity="0.08" />
+                          )}
+                        </g>
+                      );
+                    })}
+                    {/* Crop field rows */}
                     <g clipPath={`url(#v3-clip-${d.code})`}>
                       {Array.from({ length: 5 }, (_, i) => {
                         const y = d.center[1] - 60 + i * 30;
@@ -1873,15 +1995,44 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                             stroke={COLORS.earth} strokeWidth="0.5" opacity="0.08" strokeDasharray="4 3" />
                         );
                       })}
+                      {/* Additional crop field rectangles with alternating rows */}
+                      {Array.from({ length: 4 }, (_, i) => {
+                        const fy = d.center[1] - 40 + i * 25;
+                        const fw = 30 + (i % 2) * 20;
+                        return (
+                          <g key={`field-${i}`}>
+                            <rect x={d.center[0] - fw / 2} y={fy} width={fw} height={18} fill={COLORS.grassLight} opacity="0.04" rx="1" />
+                            {[0, 1, 2, 3, 4].map((ri) => (
+                              <line key={`frow-${ri}`} x1={d.center[0] - fw / 2 + 2} y1={fy + 2 + ri * 3.5} x2={d.center[0] + fw / 2 - 2} y2={fy + 2 + ri * 3.5}
+                                stroke={COLORS.earth} strokeWidth="0.3" opacity="0.06" />
+                            ))}
+                          </g>
+                        );
+                      })}
+                    </g>
+                    {/* Hay bales */}
+                    {[0, 1, 2].map((i) => {
+                      const hx = d.center[0] - 25 + i * 25 + (rng() - 0.5) * 10;
+                      const hy = d.center[1] + 20 + (rng() - 0.5) * 20;
+                      return <ellipse key={`hay-${i}`} cx={hx} cy={hy} rx={3.5} ry={2.5} fill={COLORS.sandDark} opacity="0.10" />;
+                    })}
+                    {/* Tiny farmhouse */}
+                    <g>
+                      <rect x={d.center[0] + 30} y={d.center[1] - 35} width={6} height={6} fill={COLORS.earth} opacity="0.10" rx="0.3" />
+                      <polygon points={`${d.center[0] + 30},${d.center[1] - 35} ${d.center[0] + 33},${d.center[1] - 39} ${d.center[0] + 36},${d.center[1] - 35}`} fill={COLORS.roofTerracotta} opacity="0.12" />
                     </g>
                   </g>
                 );
               }
+
+              {/* ── INDUSTRIAL terrain ── */}
               if (d.terrain === 'industrial') {
-                const pipes = scatterInPolygon(d.polygon, 4, idx * 1000 + 88);
+                const pipes = scatterInPolygon(d.polygon, 8, idx * 1000 + 88);
                 const rng = seededRandom(idx * 1000 + 66);
+                const tankPts = scatterInPolygon(d.polygon, 3, idx * 1000 + 170);
                 return (
                   <g key={`env-${d.code}`}>
+                    {/* Pipes */}
                     {pipes.map(([px, py], i) => {
                       const len = 8 + rng() * 12;
                       const angle = rng() * 180;
@@ -1897,15 +2048,107 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                         </g>
                       );
                     })}
+                    {/* Storage tanks */}
+                    {tankPts.map(([tx, ty], i) => {
+                      const tr = 4 + (i % 3) * 1;
+                      return (
+                        <g key={`tank-${i}`}>
+                          <circle cx={tx} cy={ty} r={tr} fill="#9CA3AF" opacity="0.08" />
+                          <circle cx={tx} cy={ty} r={tr} fill="none" stroke="#6B7280" strokeWidth="0.4" opacity="0.06" />
+                        </g>
+                      );
+                    })}
+                    {/* Chain-link fence along edges */}
+                    <polygon
+                      points={polygonToPoints(d.polygon)}
+                      fill="none" stroke="#6B7280" strokeWidth="0.4" opacity="0.06"
+                      strokeDasharray="1.5 2"
+                    />
+                    {/* Smokestacks with animated smoke puffs */}
+                    {[0, 1, 2].map((si) => {
+                      const sx = d.center[0] - 20 + si * 20 + (rng() - 0.5) * 8;
+                      const sy = d.center[1] - 10;
+                      return (
+                        <g key={`stack-${si}`}>
+                          {/* Smokestack body */}
+                          <rect x={sx - 1} y={sy - 14} width={2} height={14} fill="#57534E" opacity="0.10" rx="0.3" />
+                          <rect x={sx - 1.5} y={sy - 15} width={3} height={2} fill="#4B5563" opacity="0.08" rx="0.3" />
+                          {/* Smoke puff — rises and fades */}
+                          <ellipse cx={sx} cy={sy - 18} rx={2.5} ry={1.5} fill="#9CA3AF" opacity="0.06">
+                            <animate attributeName="cy" values={`${sy - 18};${sy - 30};${sy - 18}`} dur={`${6 + si * 2}s`} repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="0.06;0.01;0.06" dur={`${6 + si * 2}s`} repeatCount="indefinite" />
+                            <animate attributeName="rx" values="2.5;5;2.5" dur={`${6 + si * 2}s`} repeatCount="indefinite" />
+                          </ellipse>
+                        </g>
+                      );
+                    })}
                   </g>
                 );
               }
-              return null;
+
+              {/* ── WATER terrain ── */}
+              if (d.terrain === 'water') {
+                const rng = seededRandom(idx * 1000 + 120);
+                const lilyPts = scatterInPolygon(d.polygon, 4, idx * 1000 + 210);
+                return (
+                  <g key={`env-${d.code}`}>
+                    {/* Animated ripple circles */}
+                    {[0, 1, 2].map((ri) => {
+                      const rx = d.center[0] + (rng() - 0.5) * 40;
+                      const ry = d.center[1] + (rng() - 0.5) * 30;
+                      const dur = 4 + rng() * 3;
+                      return (
+                        <circle key={`ripple-${ri}`} cx={rx} cy={ry} r="2" fill="none" stroke={COLORS.waterShallow} strokeWidth="0.4" opacity="0.12">
+                          <animate attributeName="r" values="2;12;2" dur={`${dur}s`} repeatCount="indefinite" />
+                          <animate attributeName="opacity" values="0.12;0.01;0.12" dur={`${dur}s`} repeatCount="indefinite" />
+                        </circle>
+                      );
+                    })}
+                    {/* Lily pads */}
+                    {lilyPts.map(([lx, ly], i) => (
+                      <ellipse key={`lily-${i}`} cx={lx} cy={ly} rx={2 + (i % 2)} ry={1.5 + (i % 2) * 0.5} fill={COLORS.grass} opacity="0.10" />
+                    ))}
+                    {/* Reflected light streaks */}
+                    {[0, 1, 2].map((li) => {
+                      const lx = d.center[0] - 15 + li * 15;
+                      const ly = d.center[1] - 8 + li * 6;
+                      return <rect key={`reflight-${li}`} x={lx} y={ly} width={1} height={8 + li * 2} fill="white" opacity="0.04" rx="0.3" />;
+                    })}
+                  </g>
+                );
+              }
+
+              {/* ── Default fallback: any other terrain ── */}
+              {
+                const fallbackPts = scatterInPolygon(d.polygon, 5, idx * 1000 + 500);
+                return (
+                  <g key={`env-${d.code}`}>
+                    {fallbackPts.map(([bx, by], i) => (
+                      <use key={`fb-bush-${i}`} href="#v3-bush" x={bx - 4} y={by - 2} width={8} height={5} opacity={0.10 + (i % 3) * 0.02} />
+                    ))}
+                  </g>
+                );
+              }
             })}
           </g>
 
           {/* ═══ LAYER 6: Roads ═══ */}
           <g id="layer-roads" style={{ pointerEvents: 'none' }}>
+            {/* Ground shadow pass — "pressed into ground" */}
+            {ROADS.map((road) => {
+              const style = ROAD_STYLES[road.type] ?? ROAD_STYLES.tertiary;
+              return (
+                <path
+                  key={`shadow-${road.id}`} d={road.path} fill="none"
+                  stroke="#000" strokeWidth={style.casingWidth + 3}
+                  opacity={0.08}
+                  strokeLinecap="round" strokeLinejoin="round"
+                  strokeDasharray={style.dash}
+                  filter="url(#v3-ambient-occlusion)"
+                  transform="translate(0,2)"
+                />
+              );
+            })}
             {/* Casing */}
             {ROADS.map((road) => {
               const style = ROAD_STYLES[road.type] ?? ROAD_STYLES.tertiary;
@@ -1943,24 +2186,122 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
                 />
               );
             })}
-            {/* Junctions */}
-            {ROAD_JUNCTIONS.map(([jx, jy], i) => (
-              <g key={`junction-${i}`}>
-                <circle cx={jx} cy={jy} r="4" fill="#B8A08A" opacity="0.45" />
-                <circle cx={jx} cy={jy} r="4" fill="none" stroke="#8B7355" strokeWidth="0.8" opacity="0.35" />
-              </g>
-            ))}
+            {/* Highway lane markings — offset dashed stripes */}
+            {ROADS.map((road) => {
+              if (road.type !== 'highway') return null;
+              const style = ROAD_STYLES.highway;
+              return (
+                <g key={`lanes-${road.id}`}>
+                  <path d={road.path} fill="none"
+                    stroke="white" strokeWidth="0.5"
+                    opacity="0.20" strokeDasharray="6 8"
+                    strokeLinecap="round"
+                    transform="translate(-1.5,0)"
+                  />
+                  <path d={road.path} fill="none"
+                    stroke="white" strokeWidth="0.5"
+                    opacity="0.20" strokeDasharray="6 8"
+                    strokeLinecap="round"
+                    transform="translate(1.5,0)"
+                  />
+                </g>
+              );
+            })}
+            {/* Junction intersections + crosswalks + signs + streetlamps */}
+            {ROAD_JUNCTIONS.map(([jx, jy], i) => {
+              const isActive = selectedCode != null || hoveredCode != null;
+              const jRng = seededRandom(i * 7919 + 31);
+              const hasSign = i < 6;
+              const hasLamp = i % 2 === 0;
+              const signColors = ['#22C55E', '#3B82F6', '#EAB308', '#22C55E', '#3B82F6', '#EAB308'];
+              return (
+                <g key={`junction-${i}`}>
+                  {/* Intersection base — larger circle behind */}
+                  <circle cx={jx} cy={jy} r="6" fill="#B8A08A" opacity="0.30" />
+                  {/* Main junction circles */}
+                  <circle cx={jx} cy={jy} r="4" fill="#B8A08A" opacity="0.45" />
+                  <circle cx={jx} cy={jy} r="4" fill="none" stroke="#8B7355" strokeWidth="0.8" opacity="0.35" />
+                  {/* Crosswalk dashes (2-4 tiny white lines) */}
+                  {[0, 1, 2, 3].slice(0, 2 + (i % 3)).map((ci) => {
+                    const offset = (ci - 1.5) * 2.5;
+                    // Alternate horizontal/vertical based on junction index
+                    return i % 2 === 0
+                      ? <line key={`xwalk-${ci}`} x1={jx + offset} y1={jy - 5} x2={jx + offset} y2={jy - 7} stroke="white" strokeWidth="1" opacity="0.18" />
+                      : <line key={`xwalk-${ci}`} x1={jx - 5} y1={jy + offset} x2={jx - 7} y2={jy + offset} stroke="white" strokeWidth="1" opacity="0.18" />;
+                  })}
+                  {/* Road sign */}
+                  {hasSign && (
+                    <g>
+                      <line x1={jx + 7} y1={jy - 2} x2={jx + 7} y2={jy - 6} stroke="#6B7280" strokeWidth="0.5" opacity="0.20" />
+                      <rect x={jx + 5.5} y={jy - 10} width={3} height={4} fill={signColors[i]} opacity="0.25" rx="0.3" />
+                    </g>
+                  )}
+                  {/* Streetlamp */}
+                  {hasLamp && (
+                    <g>
+                      <line x1={jx - 6} y1={jy + 2} x2={jx - 6} y2={jy - 6} stroke="#78716C" strokeWidth="0.8" opacity="0.15" />
+                      <circle cx={jx - 6} cy={jy - 7} r="1.5" fill={COLORS.gold} opacity={isActive ? 0.25 : 0.12} />
+                    </g>
+                  )}
+                </g>
+              );
+            })}
           </g>
 
           {/* ═══ LAYER 7: Forest Trees (between districts) ═══ */}
           <g id="layer-forests" style={{ pointerEvents: 'none' }}>
-            {FOREST_TREES.map((tree, i) => (
-              <g key={`ftree-${i}`}>
-                <rect x={tree.x - 0.4} y={tree.y} width={0.8} height={tree.r * 0.5} fill={COLORS.earth} opacity="0.12" rx="0.2" />
-                <circle cx={tree.x} cy={tree.y - tree.r * 0.1} r={tree.r} fill={tree.shade} opacity="0.14" />
-                <circle cx={tree.x - tree.r * 0.25} cy={tree.y - tree.r * 0.3} r={tree.r * 0.5} fill={COLORS.grassLight} opacity="0.08" />
-              </g>
+            {/* Ground cover undergrowth — below tree layer */}
+            {(() => {
+              const ugRng = seededRandom(77777);
+              return Array.from({ length: 18 }, (_, i) => {
+                // Pick a random forest region center from FOREST_TREES positions
+                const refTree = FOREST_TREES[i % FOREST_TREES.length];
+                const ux = refTree.x + (ugRng() - 0.5) * 20;
+                const uy = refTree.y + (ugRng() - 0.5) * 15;
+                const ur = 1 + ugRng() * 1;
+                return <circle key={`ug-${i}`} cx={ux} cy={uy} r={ur} fill={ugRng() > 0.5 ? COLORS.earth : COLORS.grassLight} opacity="0.06" />;
+              });
+            })()}
+
+            {/* Clearings — lighter circles within dense tree areas */}
+            {[
+              { x: 300, y: 300, r: 15 },
+              { x: 460, y: 290, r: 12 },
+              { x: 650, y: 460, r: 14 },
+              { x: 360, y: 570, r: 11 },
+            ].map((cl, i) => (
+              <circle key={`clearing-${i}`} cx={cl.x} cy={cl.y} r={cl.r} fill={COLORS.sandLight} opacity="0.03" />
             ))}
+
+            {/* Trees — deciduous, conifer, and bush */}
+            {FOREST_TREES.map((tree, i) => {
+              if (tree.kind === 'conifer') {
+                const scale = 0.7 + (tree.r / 10) * 0.6;
+                const sw = 10 * scale;
+                const sh = 15 * scale;
+                return (
+                  <g key={`ftree-${i}`}>
+                    <ellipse cx={tree.x + 1} cy={tree.y + 1} rx={sw * 0.3} ry={sh * 0.1} fill="#222" opacity="0.04" />
+                    <use href="#v3-pine-tree" x={tree.x - sw / 2} y={tree.y - sh * 0.8} width={sw} height={sh} opacity={0.14 + (i % 3) * 0.02} />
+                  </g>
+                );
+              }
+              if (tree.kind === 'bush') {
+                return (
+                  <use key={`ftree-${i}`} href="#v3-bush" x={tree.x - 4} y={tree.y - 2} width={8 + tree.r * 0.3} height={5 + tree.r * 0.2} opacity="0.12" />
+                );
+              }
+              // Deciduous — trunk + 2 circles + shadow
+              return (
+                <g key={`ftree-${i}`}>
+                  {/* Base shadow */}
+                  <ellipse cx={tree.x + 1} cy={tree.y + tree.r * 0.3} rx={tree.r * 0.5} ry={tree.r * 0.15} fill="#222" opacity="0.04" />
+                  <rect x={tree.x - 0.4} y={tree.y} width={0.8} height={tree.r * 0.5} fill={COLORS.earth} opacity="0.12" rx="0.2" />
+                  <circle cx={tree.x} cy={tree.y - tree.r * 0.1} r={tree.r} fill={tree.shade} opacity="0.14" />
+                  <circle cx={tree.x - tree.r * 0.25} cy={tree.y - tree.r * 0.3} r={tree.r * 0.5} fill={COLORS.grassLight} opacity="0.08" />
+                </g>
+              );
+            })}
           </g>
 
           {/* ═══ LAYER 8: Districts ═══ */}
