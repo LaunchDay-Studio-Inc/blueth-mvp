@@ -157,7 +157,6 @@ function districtColors(gradient: [string, string]) {
 // ── Isometric 3D building helpers ──────────────────
 
 const WIN_COLOR = 'rgba(180,220,255,0.35)';
-const WARM_WIN = 'rgba(255,210,140,0.25)';
 
 function isoBox(
   bx: number, gy: number, w: number, h: number,
