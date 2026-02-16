@@ -2,6 +2,9 @@
 
 import { useState, useCallback } from 'react';
 import { DISTRICTS, type DistrictMeta } from '@/lib/districts';
+import { TerrainBackground } from './map/terrain-bg';
+import { RoadNetwork } from './map/road-network';
+import { DistrictGround } from './map/district-ground';
 
 interface CityMapProps {
   onDistrictSelect?: (district: DistrictMeta) => void;
@@ -929,27 +932,6 @@ function renderDistrictScene(
   }
 }
 
-// ── Road segments (pairs of district codes for natural adjacencies) ──
-
-const ROADS: [string, string][] = [
-  ['SUBURBS_N', 'OLD_TOWN'],
-  ['SUBURBS_N', 'OUTSKIRTS'],
-  ['OLD_TOWN', 'CBD'],
-  ['CBD', 'MARINA'],
-  ['CBD', 'TECH_PARK'],
-  ['CBD', 'MARKET_SQ'],
-  ['MARINA', 'HARBOR'],
-  ['HARBOR', 'INDUSTRIAL'],
-  ['TECH_PARK', 'ENTERTAINMENT'],
-  ['TECH_PARK', 'INDUSTRIAL'],
-  ['MARKET_SQ', 'ENTERTAINMENT'],
-  ['MARKET_SQ', 'UNIVERSITY'],
-  ['UNIVERSITY', 'OUTSKIRTS'],
-  ['UNIVERSITY', 'SUBURBS_S'],
-  ['OUTSKIRTS', 'SUBURBS_S'],
-  ['OLD_TOWN', 'MARKET_SQ'],
-];
-
 export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
   const [flashCode, setFlashCode] = useState<string | null>(null);
@@ -974,7 +956,7 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
       }}
     >
       <svg
-        viewBox="-100 -60 900 700"
+        viewBox="0 0 800 600"
         className="w-full h-full"
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -994,9 +976,6 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          <filter id="fog" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="20" />
-          </filter>
           <filter id="building-shadow" x="-10%" y="-10%" width="130%" height="140%">
             <feDropShadow dx="2" dy="3" stdDeviation="2" floodColor="#33691E" floodOpacity="0.3" />
           </filter>
@@ -1008,42 +987,6 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
               <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.85" />
             </linearGradient>
           ))}
-
-          {/* ── Background gradient ── */}
-          <radialGradient id="bg-radial" cx="50%" cy="50%" r="65%">
-            <stop offset="0%" stopColor="#8BC34A" />
-            <stop offset="60%" stopColor="#7CB342" />
-            <stop offset="100%" stopColor="#558B2F" />
-          </radialGradient>
-
-          {/* ── Water gradient (shore → deep) ── */}
-          <linearGradient id="water-grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#29B6F6" stopOpacity="0.3" />
-            <stop offset="40%" stopColor="#0288D1" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#01579B" stopOpacity="0.85" />
-          </linearGradient>
-
-          {/* ── Sand strip gradient ── */}
-          <linearGradient id="sand-grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#FFE0B2" stopOpacity="0" />
-            <stop offset="50%" stopColor="#FFE0B2" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="#FFCC80" stopOpacity="0.75" />
-          </linearGradient>
-
-          {/* ── Sunlight radial ── */}
-          <radialGradient id="sunlight" cx="15%" cy="10%" r="60%">
-            <stop offset="0%" stopColor="#FFF9C4" stopOpacity="0.10" />
-            <stop offset="60%" stopColor="#FFF9C4" stopOpacity="0.03" />
-            <stop offset="100%" stopColor="#FFF9C4" stopOpacity="0" />
-          </radialGradient>
-
-          {/* ── Tree symbol ── */}
-          <symbol id="tree-oak" viewBox="0 0 20 28">
-            <rect x="9" y="18" width="2" height="10" fill="#5D4037" rx="0.5" />
-            <circle cx="10" cy="12" r="8" fill="#4CAF50" opacity="0.8" />
-            <circle cx="7" cy="9" r="5" fill="#66BB6A" opacity="0.6" />
-            <circle cx="13" cy="10" r="4" fill="#43A047" opacity="0.5" />
-          </symbol>
 
           {/* ── Interaction animations ── */}
           <style>{`
@@ -1065,128 +1008,10 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
         </defs>
 
         {/* ═══ Terrain background ═══ */}
-        <rect x="-100" y="-60" width="900" height="700" fill="url(#bg-radial)" />
-
-        {/* ── Mountains (north edge) ── */}
-        <polygon points="-60,-40 20,-50 100,30" fill="#78909C" opacity="0.5" />
-        <polygon points="30,-50 120,-60 180,10" fill="#90A4AE" opacity="0.6" />
-        <polygon points="170,-60 270,-55 340,20" fill="#78909C" opacity="0.55" />
-        <polygon points="280,-50 380,-60 460,30" fill="#90A4AE" opacity="0.5" />
-        <polygon points="420,-55 510,-60 580,15" fill="#78909C" opacity="0.6" />
-        <polygon points="530,-55 620,-50 690,25" fill="#90A4AE" opacity="0.55" />
-        <polygon points="650,-50 730,-60 790,10" fill="#78909C" opacity="0.45" />
-        <polygon points="100,-45 180,-55 230,15" fill="#607D8B" opacity="0.35" />
-        {/* Snow caps */}
-        <polygon points="90,-48 120,-60 150,-48" fill="#ECEFF1" opacity="0.7" />
-        <polygon points="240,-43 270,-55 300,-43" fill="#ECEFF1" opacity="0.65" />
-        <polygon points="460,-43 510,-60 555,-43" fill="#ECEFF1" opacity="0.7" />
-        <polygon points="610,-38 620,-50 640,-38" fill="#ECEFF1" opacity="0.5" />
-
-        {/* ── East coastline ── */}
-        <path
-          d="M580,-60 Q620,0 640,80 Q660,180 670,280 Q680,380 660,480 Q640,560 620,640 L800,640 L800,-60 Z"
-          fill="url(#water-grad)"
-        />
-        {/* Wave lines */}
-        <path d="M610,50 Q650,45 690,50" fill="none" stroke="#29B6F6" strokeWidth="0.5" opacity="0.2" />
-        <path d="M620,150 Q660,145 700,150" fill="none" stroke="#29B6F6" strokeWidth="0.4" opacity="0.15" />
-        <path d="M630,250 Q670,245 710,250" fill="none" stroke="#29B6F6" strokeWidth="0.4" opacity="0.15" />
-        <path d="M625,350 Q665,345 705,350" fill="none" stroke="#29B6F6" strokeWidth="0.3" opacity="0.12" />
-        <path d="M615,450 Q655,445 695,450" fill="none" stroke="#29B6F6" strokeWidth="0.3" opacity="0.12" />
-
-        {/* ── Sand strip ── */}
-        <path
-          d="M565,-60 Q605,0 625,80 Q645,180 655,280 Q665,380 645,480 Q625,560 605,640 L620,640 Q640,560 660,480 Q680,380 670,280 Q660,180 640,80 Q620,0 580,-60 Z"
-          fill="url(#sand-grad)"
-        />
-
-        {/* ── River (top-center through CBD to coast) ── */}
-        <path
-          d="M300,-20 Q310,40 330,100 Q350,160 380,210 Q420,260 480,290 Q540,310 600,320 Q640,330 660,340"
-          fill="none" stroke="#4FC3F7" strokeWidth="8" opacity="0.5"
-          strokeLinecap="round" strokeLinejoin="round"
-        />
-        {/* River highlight */}
-        <path
-          d="M300,-20 Q310,40 330,100 Q350,160 380,210 Q420,260 480,290 Q540,310 600,320 Q640,330 660,340"
-          fill="none" stroke="#81D4FA" strokeWidth="2" opacity="0.25"
-          strokeLinecap="round" strokeDasharray="6 4"
-        />
-
-        {/* ── Scattered trees ── */}
-        <use href="#tree-oak" x="-80" y="50" width="18" height="25" opacity="0.8" />
-        <use href="#tree-oak" x="-60" y="120" width="16" height="22" opacity="0.7" />
-        <use href="#tree-oak" x="-40" y="200" width="20" height="28" opacity="0.85" />
-        <use href="#tree-oak" x="-70" y="300" width="17" height="24" opacity="0.75" />
-        <use href="#tree-oak" x="-50" y="400" width="19" height="26" opacity="0.8" />
-        <use href="#tree-oak" x="-30" y="480" width="15" height="21" opacity="0.7" />
-        <use href="#tree-oak" x="40" y="30" width="16" height="22" opacity="0.65" />
-        <use href="#tree-oak" x="90" y="90" width="18" height="25" opacity="0.75" />
-        <use href="#tree-oak" x="120" y="150" width="14" height="20" opacity="0.6" />
-        <use href="#tree-oak" x="70" y="260" width="19" height="26" opacity="0.8" />
-        <use href="#tree-oak" x="100" y="330" width="16" height="22" opacity="0.7" />
-        <use href="#tree-oak" x="80" y="420" width="18" height="25" opacity="0.75" />
-        <use href="#tree-oak" x="60" y="500" width="20" height="28" opacity="0.85" />
-        <use href="#tree-oak" x="130" y="500" width="15" height="21" opacity="0.65" />
-        <use href="#tree-oak" x="200" y="80" width="17" height="24" opacity="0.7" />
-        <use href="#tree-oak" x="250" y="90" width="16" height="22" opacity="0.6" />
-        <use href="#tree-oak" x="310" y="50" width="18" height="25" opacity="0.75" />
-        <use href="#tree-oak" x="200" y="430" width="19" height="26" opacity="0.8" />
-        <use href="#tree-oak" x="250" y="460" width="16" height="22" opacity="0.7" />
-        <use href="#tree-oak" x="300" y="500" width="20" height="28" opacity="0.9" />
-        <use href="#tree-oak" x="350" y="460" width="15" height="21" opacity="0.65" />
-        <use href="#tree-oak" x="400" y="440" width="17" height="24" opacity="0.7" />
-        <use href="#tree-oak" x="430" y="500" width="18" height="25" opacity="0.75" />
-        <use href="#tree-oak" x="470" y="80" width="16" height="22" opacity="0.6" />
-        <use href="#tree-oak" x="520" y="100" width="19" height="26" opacity="0.7" />
-        <use href="#tree-oak" x="500" y="420" width="17" height="24" opacity="0.7" />
-        <use href="#tree-oak" x="540" y="430" width="16" height="22" opacity="0.65" />
-        <use href="#tree-oak" x="150" y="570" width="18" height="25" opacity="0.8" />
-        <use href="#tree-oak" x="220" y="560" width="20" height="28" opacity="0.85" />
-        <use href="#tree-oak" x="350" y="550" width="16" height="22" opacity="0.7" />
-        <use href="#tree-oak" x="450" y="540" width="19" height="26" opacity="0.8" />
-        <use href="#tree-oak" x="500" y="550" width="15" height="21" opacity="0.65" />
-        <use href="#tree-oak" x="-20" y="550" width="18" height="25" opacity="0.8" />
-        <use href="#tree-oak" x="30" y="580" width="17" height="24" opacity="0.75" />
-        <use href="#tree-oak" x="560" y="200" width="14" height="20" opacity="0.6" />
-
-        {/* ── Tonal variation patches ── */}
-        <ellipse cx="180" cy="130" rx="60" ry="40" fill="#2E7D32" opacity="0.12" />
-        <ellipse cx="160" cy="380" rx="55" ry="40" fill="#1B5E20" opacity="0.10" />
-        <ellipse cx="160" cy="290" rx="35" ry="25" fill="#33691E" opacity="0.08" />
-
-        {/* ── Industrial haze ── */}
-        <ellipse cx="560" cy="320" rx="50" ry="40" fill="#78716C" opacity="0.08" />
-
-        {/* ── Atmospheric fog spots ── */}
-        <circle cx="330" cy="250" r="80" fill="#FFF9C4" opacity="0.02" filter="url(#fog)" />
-        <circle cx="150" cy="200" r="60" fill="#FFF9C4" opacity="0.015" filter="url(#fog)" />
-        <circle cx="500" cy="180" r="50" fill="#E1F5FE" opacity="0.015" filter="url(#fog)" />
-
-        {/* ── Sunlight overlay ── */}
-        <rect x="-100" y="-60" width="900" height="700" fill="url(#sunlight)" />
+        <TerrainBackground />
 
         {/* ═══ Road network ═══ */}
-        <g opacity="0.12">
-          {ROADS.map(([a, b], i) => {
-            const ca = centers[a];
-            const cb = centers[b];
-            if (!ca || !cb) return null;
-            const mx = (ca.x + cb.x) / 2 + (i % 2 === 0 ? 5 : -5);
-            const my = (ca.y + cb.y) / 2 + (i % 3 === 0 ? 5 : -3);
-            return (
-              <path
-                key={`road-${a}-${b}`}
-                d={`M${ca.x},${ca.y} Q${mx},${my} ${cb.x},${cb.y}`}
-                fill="none"
-                stroke="hsl(210 20% 70%)"
-                strokeWidth="1"
-                strokeDasharray="4 3"
-                strokeLinecap="round"
-              />
-            );
-          })}
-        </g>
+        <RoadNetwork centers={centers} />
 
         {/* ═══ Districts ═══ */}
         {DISTRICTS.map((d, idx) => {
@@ -1218,26 +1043,16 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                 ...(isFlashing ? { animation: 'district-pop 350ms ease-out' } : {}),
               }}
             >
-              {/* Glow behind active district */}
-              {isActive && (
-                <polygon
-                  points={d.points}
-                  fill={d.gradient[0]}
-                  opacity="0.35"
-                  filter="url(#district-glow)"
-                  className="pointer-events-none"
-                />
-              )}
-
-              {/* Faint gradient tint behind buildings */}
-              <polygon
+              {/* District ground terrain */}
+              <DistrictGround
                 points={d.points}
-                fill={`url(#grad-${d.code})`}
-                opacity={0.15}
-                className="pointer-events-none"
+                terrain={d.terrain}
+                gradient={d.gradient}
+                code={d.code}
+                isActive={isActive}
               />
 
-              {/* 3D isometric building scene — no clip, with shadow */}
+              {/* 3D isometric building scene */}
               {center && (
                 <g
                   className="pointer-events-none"
@@ -1339,25 +1154,6 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
             </g>
           );
         })}
-
-        {/* ═══ Vignette overlay (pointer-events-none to not block clicks) ═══ */}
-        <rect
-          x="-100" y="-60" width="900" height="700"
-          fill="url(#bg-radial)" opacity="0.15"
-          style={{ mixBlendMode: 'multiply' }}
-          className="pointer-events-none"
-        />
-
-        {/* ═══ Outer frame (pointer-events-none to not block clicks) ═══ */}
-        <rect
-          x="-100" y="-60" width="900" height="700"
-          fill="none"
-          stroke="#7CB342"
-          strokeWidth="0.8"
-          opacity="0.2"
-          rx="2"
-          className="pointer-events-none"
-        />
       </svg>
     </div>
   );
