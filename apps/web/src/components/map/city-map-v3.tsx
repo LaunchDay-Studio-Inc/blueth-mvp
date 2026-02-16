@@ -185,25 +185,77 @@ function isoBox(
 ) {
   const dp = w * 0.3;
   const dh = dp * 0.5;
-  const nw = Math.max(0, Math.floor((h - 6) / 7));
   const wc = windowColor ?? WIN_COLOR;
+
+  // Window grid dimensions
+  const cols = Math.max(1, Math.floor(w / 5));
+  const rows = Math.max(1, Math.floor(h / 10));
+  const winSize = 2.5;
+  const colGap = (w - 3) / cols;
+  const rowGap = (h - 6) / rows;
+
+  // Floor line count
+  const floorLines = Math.max(0, Math.floor(h / 8));
+
   return (
     <g key={k}>
+      {/* Ground shadow */}
+      <polygon
+        points={`${bx},${gy} ${bx+w},${gy} ${bx+w+dp+2},${gy+3} ${bx+dp+2},${gy+3}`}
+        fill="rgba(0,0,0,0.08)"
+      />
+      {/* Front face */}
       <rect x={bx} y={gy - h} width={w} height={h} fill={front} />
+      {/* Side face */}
       <polygon
         points={`${bx+w},${gy-h} ${bx+w+dp},${gy-h-dh} ${bx+w+dp},${gy-dh} ${bx+w},${gy}`}
         fill={side}
       />
+      {/* Top face */}
       <polygon
         points={`${bx},${gy-h} ${bx+dp},${gy-h-dh} ${bx+w+dp},${gy-h-dh} ${bx+w},${gy-h}`}
         fill={top}
       />
-      {Array.from({ length: nw }, (_, i) => (
-        <rect
-          key={i} x={bx + 1.5} y={gy - h + 4 + i * 7}
-          width={w - 3} height={2.5} fill={wc} rx="0.3"
+      {/* Edge highlight — left edge light-catch */}
+      <line x1={bx} y1={gy - h} x2={bx} y2={gy} stroke="white" strokeWidth={0.3} opacity={0.12} />
+      {/* Floor lines */}
+      {Array.from({ length: floorLines }, (_, i) => (
+        <line
+          key={`fl${i}`}
+          x1={bx} y1={gy - h + i * 8 + 4}
+          x2={bx + w} y2={gy - h + i * 8 + 4}
+          stroke={side} strokeWidth={0.3} opacity={0.2}
         />
       ))}
+      {/* Window grid */}
+      {Array.from({ length: rows }, (_, r) =>
+        Array.from({ length: cols }, (_, c) => {
+          const lit = (c + r) % 3 === 0;
+          return (
+            <rect
+              key={`w${r}_${c}`}
+              x={bx + 1.5 + c * colGap}
+              y={gy - h + 4 + r * rowGap}
+              width={winSize} height={winSize}
+              fill={lit ? wc : side}
+              opacity={lit ? 0.8 : 0.3}
+              rx={0.3}
+            />
+          );
+        }),
+      )}
+      {/* Roof AC units */}
+      <rect x={bx + w * 0.25} y={gy - h - dh * 0.3} width={2} height={2} fill={side} opacity={0.6} />
+      <rect x={bx + w * 0.75} y={gy - h - dh * 0.25} width={2} height={2} fill={side} opacity={0.6} />
+      {/* Antenna */}
+      <line
+        x1={bx + w / 2} y1={gy - h - dh * 0.5}
+        x2={bx + w / 2} y2={gy - h - dh * 0.5 - 6}
+        stroke={side} strokeWidth={0.5} opacity={0.5}
+      />
+      {/* Entrance */}
+      <rect x={bx + w / 2 - w / 8} y={gy - 6} width={w / 4} height={6} fill={side} opacity={0.6} rx={0.3} />
+      <rect x={bx + w / 2 - w / 16} y={gy - 5} width={w / 8} height={4} fill={wc} opacity={0.4} rx={0.2} />
     </g>
   );
 }
@@ -216,29 +268,124 @@ function pointedBox(
   const dp = w * 0.3;
   const dh = dp * 0.5;
   const rh = roofH ?? w * 0.5;
-  const nw = Math.max(0, Math.floor((h - 4) / 8));
+
+  // Window grid
+  const cols = Math.max(1, Math.floor(w / 5));
+  const rows = Math.max(1, Math.floor(h / 10));
+  const winSize = 2.5;
+  const colGap = (w - 3) / cols;
+  const rowGap = (h - 6) / rows;
+  const floorLines = Math.max(0, Math.floor(h / 8));
+
+  // Roof texture lines (2-3 parallel to base)
+  const roofLines = Math.min(3, Math.max(2, Math.floor(rh / 6)));
+
+  // Pick 1-2 windows for flower boxes
+  const flowerCols = [Math.floor(cols * 0.3), Math.floor(cols * 0.7)];
+
   return (
     <g key={k}>
+      {/* Ground shadow */}
+      <polygon
+        points={`${bx},${gy} ${bx+w},${gy} ${bx+w+dp+2},${gy+3} ${bx+dp+2},${gy+3}`}
+        fill="rgba(0,0,0,0.08)"
+      />
+      {/* Front face */}
       <rect x={bx} y={gy - h} width={w} height={h} fill={front} />
+      {/* Side face */}
       <polygon
         points={`${bx+w},${gy-h} ${bx+w+dp},${gy-h-dh} ${bx+w+dp},${gy-dh} ${bx+w},${gy}`}
         fill={side}
       />
+      {/* Roof front */}
       <polygon
         points={`${bx-0.5},${gy-h} ${bx+w/2},${gy-h-rh} ${bx+w+0.5},${gy-h}`}
         fill={roof}
       />
+      {/* Roof side */}
       <polygon
         points={`${bx+w+0.5},${gy-h} ${bx+w/2},${gy-h-rh} ${bx+w/2+dp},${gy-h-rh-dh} ${bx+w+0.5+dp},${gy-h-dh}`}
-        fill={side} opacity="0.7"
+        fill={side} opacity={0.7}
       />
-      {Array.from({ length: nw }, (_, i) => (
-        <rect
-          key={i} x={bx + 2} y={gy - h + 3 + i * 8}
-          width={w - 4} height={2} fill={WIN_COLOR} rx="0.2"
+      {/* Roof texture lines */}
+      {Array.from({ length: roofLines }, (_, i) => {
+        const t = (i + 1) / (roofLines + 1);
+        const ly = gy - h - rh * t;
+        const lxL = bx - 0.5 + (w / 2 + 0.5) * t;
+        const lxR = bx + w + 0.5 - (w / 2 + 0.5) * t;
+        return (
+          <line
+            key={`rl${i}`}
+            x1={lxL} y1={ly} x2={lxR} y2={ly}
+            stroke={side} strokeWidth={0.4} opacity={0.3}
+          />
+        );
+      })}
+      {/* Edge highlight */}
+      <line x1={bx} y1={gy - h} x2={bx} y2={gy} stroke="white" strokeWidth={0.3} opacity={0.12} />
+      {/* Floor lines */}
+      {Array.from({ length: floorLines }, (_, i) => (
+        <line
+          key={`fl${i}`}
+          x1={bx} y1={gy - h + i * 8 + 4}
+          x2={bx + w} y2={gy - h + i * 8 + 4}
+          stroke={side} strokeWidth={0.3} opacity={0.2}
         />
       ))}
-      <rect x={bx + w/2 - 1.5} y={gy - 4} width={3} height={4} fill="rgba(0,0,0,0.15)" rx="0.3" />
+      {/* Window grid */}
+      {Array.from({ length: rows }, (_, r) =>
+        Array.from({ length: cols }, (_, c) => {
+          const lit = (c + r) % 3 === 0;
+          return (
+            <rect
+              key={`w${r}_${c}`}
+              x={bx + 1.5 + c * colGap}
+              y={gy - h + 4 + r * rowGap}
+              width={winSize} height={winSize}
+              fill={lit ? WIN_COLOR : side}
+              opacity={lit ? 0.8 : 0.3}
+              rx={0.3}
+            />
+          );
+        }),
+      )}
+      {/* Flower boxes on selected windows */}
+      {flowerCols.map((fc) => {
+        const fBy = gy - h + 4 + Math.floor(rows * 0.5) * rowGap + winSize;
+        const fBx = bx + 1.5 + fc * colGap;
+        return (
+          <g key={`fb${fc}`}>
+            <rect x={fBx - 0.25} y={fBy} width={3} height={1} fill="#5a8f3c" opacity={0.4} rx={0.2} />
+            <circle cx={fBx + 0.5} cy={fBy - 0.3} r={0.5} fill="#e8608a" opacity={0.6} />
+            <circle cx={fBx + 1.5} cy={fBy - 0.4} r={0.5} fill="#f0c040" opacity={0.6} />
+            <circle cx={fBx + 2.5} cy={fBy - 0.3} r={0.5} fill="#e8608a" opacity={0.6} />
+          </g>
+        );
+      })}
+      {/* Entrance */}
+      <rect x={bx + w / 2 - 1.5} y={gy - 5} width={3} height={5} fill={side} opacity={0.6} rx={0.3} />
+      <rect x={bx + w / 2 - 0.8} y={gy - 4} width={1.6} height={3} fill={WIN_COLOR} opacity={0.4} rx={0.2} />
+      {/* Chimney (only if h > 16) */}
+      {h > 16 && (
+        <g>
+          <rect
+            x={bx + w * 0.2} y={gy - h - rh * 0.5 - 5}
+            width={2} height={5} fill={front} opacity={0.7}
+          />
+          <ellipse
+            cx={bx + w * 0.2 + 1} cy={gy - h - rh * 0.5 - 6}
+            rx={1.2} ry={0.8} fill="gray" opacity={0.06}
+          >
+            <animate attributeName="cy" values={`${gy - h - rh*0.5 - 6};${gy - h - rh*0.5 - 9};${gy - h - rh*0.5 - 6}`} dur="4s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse
+            cx={bx + w * 0.2 + 1.5} cy={gy - h - rh * 0.5 - 7}
+            rx={1} ry={0.6} fill="gray" opacity={0.06}
+          >
+            <animate attributeName="cy" values={`${gy - h - rh*0.5 - 7};${gy - h - rh*0.5 - 10};${gy - h - rh*0.5 - 7}`} dur="4s" repeatCount="indefinite" />
+          </ellipse>
+        </g>
+      )}
     </g>
   );
 }
@@ -249,23 +396,90 @@ function domeBox(
 ) {
   const dp = w * 0.3;
   const dh = dp * 0.5;
-  const nw = Math.max(0, Math.floor((h - 4) / 7));
+
+  // Window grid
+  const cols = Math.max(1, Math.floor(w / 5));
+  const rows = Math.max(1, Math.floor(h / 10));
+  const winSize = 2.5;
+  const colGap = (w - 3) / cols;
+  const rowGap = (h - 6) / rows;
+  const floorLines = Math.max(0, Math.floor(h / 8));
+
+  const domeRy = w * 0.35;
+
   return (
     <g key={k}>
+      {/* Ground shadow */}
+      <polygon
+        points={`${bx},${gy} ${bx+w},${gy} ${bx+w+dp+2},${gy+3} ${bx+dp+2},${gy+3}`}
+        fill="rgba(0,0,0,0.08)"
+      />
+      {/* Front face */}
       <rect x={bx} y={gy - h} width={w} height={h} fill={front} />
+      {/* Side face */}
       <polygon
         points={`${bx+w},${gy-h} ${bx+w+dp},${gy-h-dh} ${bx+w+dp},${gy-dh} ${bx+w},${gy}`}
         fill={side}
       />
-      <ellipse cx={bx + w/2} cy={gy - h} rx={w/2 + 1} ry={w * 0.35} fill={dome} />
-      {Array.from({ length: nw }, (_, i) => (
-        <rect
-          key={i} x={bx + 2} y={gy - h + 3.5 + i * 7}
-          width={w - 4} height={2} fill={WIN_COLOR} rx="0.2"
+      {/* Dome */}
+      <ellipse cx={bx + w / 2} cy={gy - h} rx={w / 2 + 1} ry={domeRy} fill={dome} />
+      {/* Dome ribs */}
+      {[0.25, 0.5, 0.75].map((frac) => {
+        const ribX = bx + w * frac;
+        const ribRx = (w / 2 + 1) * Math.abs(frac - 0.5) * 0.6;
+        return (
+          <ellipse
+            key={`rib${frac}`}
+            cx={ribX} cy={gy - h}
+            rx={Math.max(0.5, ribRx)} ry={domeRy * 0.95}
+            fill="none" stroke={side} strokeWidth={0.4} opacity={0.15}
+          />
+        );
+      })}
+      {/* Dome specular highlight */}
+      <ellipse
+        cx={bx + w * 0.38} cy={gy - h - domeRy * 0.35}
+        rx={w * 0.12} ry={domeRy * 0.25}
+        fill="white" opacity={0.25}
+      />
+      {/* Edge highlight */}
+      <line x1={bx} y1={gy - h} x2={bx} y2={gy} stroke="white" strokeWidth={0.3} opacity={0.12} />
+      {/* Floor lines */}
+      {Array.from({ length: floorLines }, (_, i) => (
+        <line
+          key={`fl${i}`}
+          x1={bx} y1={gy - h + i * 8 + 4}
+          x2={bx + w} y2={gy - h + i * 8 + 4}
+          stroke={side} strokeWidth={0.3} opacity={0.2}
         />
       ))}
-      <line x1={bx + 3} y1={gy} x2={bx + 3} y2={gy - h} stroke={front} strokeWidth="1.2" opacity="0.6" />
-      <line x1={bx + w - 3} y1={gy} x2={bx + w - 3} y2={gy - h} stroke={front} strokeWidth="1.2" opacity="0.6" />
+      {/* Window grid */}
+      {Array.from({ length: rows }, (_, r) =>
+        Array.from({ length: cols }, (_, c) => {
+          const lit = (c + r) % 3 === 0;
+          return (
+            <rect
+              key={`w${r}_${c}`}
+              x={bx + 1.5 + c * colGap}
+              y={gy - h + 4 + r * rowGap}
+              width={winSize} height={winSize}
+              fill={lit ? WIN_COLOR : side}
+              opacity={lit ? 0.8 : 0.3}
+              rx={0.3}
+            />
+          );
+        }),
+      )}
+      {/* Columns (if tall enough) */}
+      {h > 20 && (
+        <>
+          <rect x={bx + 2} y={gy - h * 0.6} width={0.8} height={h * 0.6} fill="white" opacity={0.15} rx={0.2} />
+          <rect x={bx + w - 2.8} y={gy - h * 0.6} width={0.8} height={h * 0.6} fill="white" opacity={0.15} rx={0.2} />
+        </>
+      )}
+      {/* Entrance */}
+      <rect x={bx + w / 2 - w / 8} y={gy - 6} width={w / 4} height={6} fill={side} opacity={0.6} rx={0.3} />
+      <rect x={bx + w / 2 - w / 16} y={gy - 5} width={w / 8} height={4} fill={WIN_COLOR} opacity={0.4} rx={0.2} />
     </g>
   );
 }
@@ -276,21 +490,78 @@ function flatBox(
 ) {
   const dp = w * 0.3;
   const dh = dp * 0.5;
+
+  // Window grid
+  const cols = Math.max(1, Math.floor(w / 5));
+  const rows = Math.max(1, Math.floor(h / 10));
+  const winSize = 2.5;
+  const colGap = (w - 3) / cols;
+  const rowGap = (h - 6) / rows;
+
+  // Awning stripes (3-4 alternating)
+  const awningStripes = Math.min(4, Math.max(3, Math.floor(w / 3)));
+  const stripeW = (w + 2) / awningStripes;
+
   return (
     <g key={k}>
+      {/* Ground shadow */}
+      <polygon
+        points={`${bx},${gy} ${bx+w},${gy} ${bx+w+dp+2},${gy+3} ${bx+dp+2},${gy+3}`}
+        fill="rgba(0,0,0,0.08)"
+      />
+      {/* Front face */}
       <rect x={bx} y={gy - h} width={w} height={h} fill={front} />
+      {/* Side face */}
       <polygon
         points={`${bx+w},${gy-h} ${bx+w+dp},${gy-h-dh} ${bx+w+dp},${gy-dh} ${bx+w},${gy}`}
         fill={side}
       />
+      {/* Top face */}
       <polygon
         points={`${bx},${gy-h} ${bx+dp},${gy-h-dh} ${bx+w+dp},${gy-h-dh} ${bx+w},${gy-h}`}
         fill={top}
       />
-      {/* Awning */}
-      <rect x={bx - 1} y={gy - h + 2} width={w + 2} height={1.5} fill={side} opacity="0.5" rx="0.3" />
-      {/* Door */}
-      <rect x={bx + w/2 - 2} y={gy - 5} width={4} height={5} fill="rgba(0,0,0,0.12)" rx="0.5" />
+      {/* Edge highlight */}
+      <line x1={bx} y1={gy - h} x2={bx} y2={gy} stroke="white" strokeWidth={0.3} opacity={0.12} />
+      {/* Awning stripes */}
+      {Array.from({ length: awningStripes }, (_, i) => (
+        <rect
+          key={`aw${i}`}
+          x={bx - 1 + i * stripeW} y={gy - h + 2}
+          width={stripeW} height={1.5}
+          fill={i % 2 === 0 ? front : '#d4845a'}
+          opacity={0.55} rx={0.15}
+        />
+      ))}
+      {/* Signage */}
+      <rect
+        x={bx + w * 0.2} y={gy - h + 4}
+        width={w * 0.6} height={2}
+        fill="#e8a040" opacity={0.5} rx={0.3}
+      />
+      {/* Window grid */}
+      {Array.from({ length: rows }, (_, r) =>
+        Array.from({ length: cols }, (_, c) => {
+          const lit = (c + r) % 3 === 0;
+          return (
+            <rect
+              key={`w${r}_${c}`}
+              x={bx + 1.5 + c * colGap}
+              y={gy - h + 8 + r * rowGap}
+              width={winSize} height={winSize}
+              fill={lit ? WIN_COLOR : side}
+              opacity={lit ? 0.8 : 0.3}
+              rx={0.3}
+            />
+          );
+        }),
+      )}
+      {/* Door / entrance */}
+      <rect x={bx + w / 2 - 2} y={gy - 5} width={4} height={5} fill={side} opacity={0.6} rx={0.3} />
+      <rect x={bx + w / 2 - 1.2} y={gy - 4} width={2.4} height={3.5} fill={WIN_COLOR} opacity={0.4} rx={0.2} />
+      {/* Steps */}
+      <rect x={bx + w / 2 - 2.5} y={gy} width={5} height={1} fill={side} opacity={0.35} />
+      <rect x={bx + w / 2 - 2} y={gy + 1} width={4} height={1} fill={side} opacity={0.3} />
     </g>
   );
 }
