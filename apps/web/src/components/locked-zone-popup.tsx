@@ -73,9 +73,18 @@ export function LockedZonePopup({ zone, onClose }: LockedZonePopupProps) {
               <span className="text-xs text-muted-foreground">Required Level</span>
               <span className="text-sm font-mono font-semibold">Lv. {zone.unlockLevel}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Unlock Cost</span>
-              <span className="text-sm font-mono font-semibold">${zone.unlockCost.toLocaleString()}</span>
+          </div>
+
+          {/* Player money vs cost */}
+          <div className="flex items-center justify-between mb-4 px-3 py-2 rounded-lg" style={{ background: 'rgba(0, 0, 0, 0.04)' }}>
+            <div className="text-center flex-1">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground mb-0.5">Your Cash</p>
+              <p className="text-sm font-mono font-semibold">$0</p>
+            </div>
+            <div className="w-px h-8 bg-black/10" />
+            <div className="text-center flex-1">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground mb-0.5">Unlock Cost</p>
+              <p className="text-sm font-mono font-semibold">${zone.unlockCost.toLocaleString()}</p>
             </div>
           </div>
 
@@ -98,14 +107,18 @@ export function LockedZonePopup({ zone, onClose }: LockedZonePopupProps) {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer with dismiss button */}
         <div
           className="px-6 py-3 border-t border-black/5"
           style={{ background: 'rgba(0, 0, 0, 0.02)' }}
         >
-          <p className="text-[10px] text-muted-foreground text-center font-mono">
-            Keep playing to unlock this zone
-          </p>
+          <button
+            onClick={onClose}
+            className="w-full py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-black/5"
+            style={{ color: zone.gradient[1] }}
+          >
+            Keep Grinding! 💪
+          </button>
         </div>
       </div>
     </div>

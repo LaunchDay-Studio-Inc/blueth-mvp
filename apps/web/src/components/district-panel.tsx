@@ -6,7 +6,7 @@ import { DISTRICT_STATS } from '@/lib/districts';
 import { DISTRICT_ICONS } from '@/components/city-map';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Briefcase, UtensilsCrossed, Home, Zap, X, ShieldAlert, Car, DollarSign } from 'lucide-react';
+import { MapPin, Briefcase, UtensilsCrossed, Home, ShoppingCart, Zap, X, ShieldAlert, Car, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 
 interface DistrictPanelProps {
@@ -33,6 +33,7 @@ const QUICK_ACTIONS: { label: string; href: string; icon: typeof Briefcase }[] =
   { label: 'Find Work', href: '/jobs', icon: Briefcase },
   { label: 'Grab Food', href: '/food', icon: UtensilsCrossed },
   { label: 'Housing', href: '/bills', icon: Home },
+  { label: 'Market', href: '/market', icon: ShoppingCart },
 ];
 
 const STAT_CONFIG = [
