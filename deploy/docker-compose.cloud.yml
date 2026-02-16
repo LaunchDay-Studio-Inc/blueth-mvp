@@ -19,7 +19,7 @@ services:
   # Connects to Cloud SQL using the VM's service account.
   # NEVER expose port 5432 to the host. Internal-only.
   cloudsql-proxy:
-    image: gcr.io/cloud-sql-connectors/cloud-sql-auth-proxy:2
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
     restart: unless-stopped
     command:
       - ${CLOUDSQL_INSTANCE_CONNECTION_NAME:?Set CLOUDSQL_INSTANCE_CONNECTION_NAME}
@@ -28,6 +28,7 @@ services:
       - --health-check
       - --http-address=0.0.0.0
       - --http-port=9090
+      - --private-ip
     # NO ports: section — proxy is only reachable inside the docker network
     networks:
       - blueth-net
@@ -146,6 +147,35 @@ services:
       - blueth-net
     deploy:
       replicas: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # -- Web (Next.js) --
+  web:
+    build:
+      context: ..
+      dockerfile: ./apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ''
+        API_INTERNAL_URL: http://api:3001
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    depends_on:
+      - api
+    networks:
+      - blueth-net
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:3000/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     logging:
       driver: json-file
       options:
