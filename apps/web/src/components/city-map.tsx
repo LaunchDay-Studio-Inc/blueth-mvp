@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { DISTRICTS, type DistrictMeta } from '@/lib/districts';
 
 interface CityMapProps {
@@ -952,6 +952,13 @@ const ROADS: [string, string][] = [
 
 export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
+  const [flashCode, setFlashCode] = useState<string | null>(null);
+
+  const handleDistrictClick = useCallback((d: DistrictMeta) => {
+    setFlashCode(d.code);
+    setTimeout(() => setFlashCode(null), 400);
+    onDistrictSelect?.(d);
+  }, [onDistrictSelect]);
 
   const centers = Object.fromEntries(
     DISTRICTS.map((d) => [d.code, getPolygonCenter(d.points)])
@@ -1037,6 +1044,24 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
             <circle cx="7" cy="9" r="5" fill="#66BB6A" opacity="0.6" />
             <circle cx="13" cy="10" r="4" fill="#43A047" opacity="0.5" />
           </symbol>
+
+          {/* ── Interaction animations ── */}
+          <style>{`
+            @keyframes district-pop {
+              0% { transform: scale(1); }
+              40% { transform: scale(1.04); }
+              100% { transform: scale(1.02); }
+            }
+            @keyframes flash-overlay {
+              0% { opacity: 0; }
+              25% { opacity: 0.2; }
+              100% { opacity: 0; }
+            }
+            @keyframes glow-pulse {
+              0%, 100% { filter: drop-shadow(0 0 6px #FFD54F80); }
+              50% { filter: drop-shadow(0 0 14px #FFD54FCC); }
+            }
+          `}</style>
         </defs>
 
         {/* ═══ Terrain background ═══ */}
@@ -1167,11 +1192,32 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
         {DISTRICTS.map((d, idx) => {
           const isSelected = selectedCode === d.code;
           const isHovered = hoveredCode === d.code;
+          const isFlashing = flashCode === d.code;
           const isActive = isSelected || isHovered;
           const center = centers[d.code];
+          const anyHovered = hoveredCode !== null;
+          const anySelected = selectedCode != null;
+
+          // Dimming: when one is hovered, dim others to 0.7; when one is selected, dim others to 0.35
+          const dimOpacity = isActive
+            ? 1
+            : anySelected
+              ? 0.35
+              : anyHovered
+                ? 0.7
+                : 1;
 
           return (
-            <g key={d.code}>
+            <g
+              key={d.code}
+              style={{
+                opacity: dimOpacity,
+                transition: 'transform 200ms ease, opacity 300ms ease',
+                transform: isHovered && !isSelected ? 'scale(1.02)' : 'scale(1)',
+                transformOrigin: center ? `${center.x}px ${center.y}px` : 'center',
+                ...(isFlashing ? { animation: 'district-pop 350ms ease-out' } : {}),
+              }}
+            >
               {/* Glow behind active district */}
               {isActive && (
                 <polygon
@@ -1193,9 +1239,27 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
 
               {/* 3D isometric building scene — no clip, with shadow */}
               {center && (
-                <g className="pointer-events-none" filter="url(#building-shadow)">
+                <g
+                  className="pointer-events-none"
+                  filter="url(#building-shadow)"
+                  style={{
+                    filter: isSelected
+                      ? 'url(#building-shadow) brightness(1.15)'
+                      : 'url(#building-shadow)',
+                  }}
+                >
                   {renderDistrictScene(d.code, center.x, center.y, d.gradient)}
                 </g>
+              )}
+
+              {/* Flash overlay on click */}
+              {isFlashing && (
+                <polygon
+                  points={d.points}
+                  fill="white"
+                  className="pointer-events-none"
+                  style={{ animation: 'flash-overlay 400ms ease-out forwards' }}
+                />
               )}
 
               {/* Border */}
@@ -1204,15 +1268,18 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                 fill="none"
                 stroke={
                   isSelected
-                    ? 'hsl(192 91% 52%)'
+                    ? '#FFD54F'
                     : isHovered
-                      ? 'hsl(192 70% 45%)'
+                      ? '#FFF176'
                       : d.stroke
                 }
-                strokeWidth={isSelected ? 2.5 : isHovered ? 1.8 : 0.4}
-                opacity={isSelected ? 1 : isHovered ? 0.6 : 0}
+                strokeWidth={isSelected ? 3 : isHovered ? 2 : 0.4}
+                opacity={isSelected ? 1 : isHovered ? 0.8 : 0}
                 className="pointer-events-none"
-                style={{ transition: 'stroke 300ms ease, stroke-width 300ms ease, opacity 300ms ease' }}
+                style={{
+                  transition: 'stroke 300ms ease, stroke-width 300ms ease, opacity 300ms ease',
+                  ...(isSelected ? { animation: 'glow-pulse 2s infinite' } : {}),
+                }}
               />
 
               {/* Clickable transparent overlay — catches all mouse/touch events */}
@@ -1222,7 +1289,7 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
                 className="cursor-pointer"
                 onMouseEnter={() => setHoveredCode(d.code)}
                 onMouseLeave={() => setHoveredCode(null)}
-                onClick={() => onDistrictSelect?.(d)}
+                onClick={() => handleDistrictClick(d)}
               />
 
               {/* District icon — positioned via SVG transform, animated via CSS on inner g */}
