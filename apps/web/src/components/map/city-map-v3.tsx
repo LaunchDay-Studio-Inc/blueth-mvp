@@ -591,6 +591,10 @@ const MOUNTAINS: { x: number; w: number; h: number; opacity: number; snow: boole
   { x: 730, w: 90, h: 65, opacity: 0.14, snow: false },
   { x: 140, w: 80, h: 55, opacity: 0.08, snow: false },
   { x: 820, w: 70, h: 50, opacity: 0.09, snow: false },
+  // Additional background mountains (use v3-mist via index > 4)
+  { x: 50,  w: 100, h: 60, opacity: 0.06, snow: false },
+  { x: 560, w: 85,  h: 50, opacity: 0.07, snow: true },
+  { x: 900, w: 95,  h: 55, opacity: 0.05, snow: false },
 ];
 
 // ── Scattered tree positions (between districts) ──
@@ -1303,12 +1307,22 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
 
           {/* ═══ LAYER 1: Sky & Terrain Base ═══ */}
           <g id="layer-sky-terrain" style={{ pointerEvents: 'none' }}>
-            {/* Sky gradient at top */}
+            {/* 5-stop sky gradient */}
             <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-sky)" />
-            {/* Base land with warm tones */}
-            <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-bg-radial)" />
+            {/* Sunset overlay wash */}
+            <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-sunset-overlay)" />
+            {/* Base land with golden-hour filter */}
+            <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-bg-radial)" filter="url(#v3-golden-hour)" />
             <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-bg-radial)" filter="url(#v3-terrain-noise)" />
             <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-grid)" />
+
+            {/* Dappled sunlight pools */}
+            <ellipse cx="350" cy="320" rx="120" ry="90" fill={COLORS.glowWarm} opacity="0.06" />
+            <ellipse cx="580" cy="500" rx="100" ry="75" fill={COLORS.glowWarm} opacity="0.05" />
+            <ellipse cx="200" cy="600" rx="80" ry="60" fill={COLORS.gold} opacity="0.04" />
+
+            {/* Atmospheric perspective depth */}
+            <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#v3-depth-gradient)" />
 
             {/* ── Ocean ── */}
             <path
@@ -1320,20 +1334,37 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               fill="url(#v3-wave-pat)"
               opacity="0.6"
             />
+            {/* Ocean shimmer — slow translating light streaks */}
+            <g opacity="0.03">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line key={`shimmer-${i}`}
+                  x1={920 + i * 50} y1={60 + i * 170}
+                  x2={960 + i * 50} y2={80 + i * 170}
+                  stroke="white" strokeWidth="0.8"
+                >
+                  <animateTransform attributeName="transform" type="translate" from="0,0" to="40,0" dur="20s" repeatCount="indefinite" />
+                </line>
+              ))}
+            </g>
 
             {/* ── Beach/sand strip ── */}
             <path
               d="M830,0 Q840,80 860,160 Q880,250 900,340 Q920,440 910,540 Q900,650 890,750 Q880,830 870,900 L850,900 Q860,830 870,750 Q880,650 890,540 Q900,440 890,340 Q870,250 860,160 Q850,80 840,0 Z"
               fill="url(#v3-beach)"
             />
-            {[
-              [845, 80], [855, 160], [870, 260], [885, 340], [895, 420],
-              [900, 500], [895, 580], [885, 660], [878, 740], [872, 820],
-              [848, 120], [862, 200], [878, 300], [890, 380], [898, 460],
-              [895, 540], [888, 620], [882, 700], [875, 780], [870, 860],
-            ].map(([sx, sy], i) => (
-              <circle key={`sand-${i}`} cx={sx} cy={sy} r={0.8 + (i % 3) * 0.3} fill={COLORS.sandDark} opacity={0.12 + (i % 4) * 0.02} />
-            ))}
+            {/* Shell/pebble scatter — 35 tiny circles */}
+            {(() => {
+              const rng = seededRandom(7771);
+              const coastX = (t: number) => 840 + Math.sin(t * 0.8) * 30 + t * 2;
+              return Array.from({ length: 35 }, (_, i) => {
+                const t = rng() * 900;
+                const cx = coastX(t / 90) + (rng() - 0.5) * 16;
+                const cy = t;
+                const r = 0.5 + rng() * 1;
+                const shade = rng() > 0.5 ? COLORS.sandDark : COLORS.earthLight;
+                return <circle key={`shell-${i}`} cx={cx} cy={cy} r={r} fill={shade} opacity={0.10 + rng() * 0.08} />;
+              });
+            })()}
 
             {/* ── Coastline edge ── */}
             <path
@@ -1341,24 +1372,65 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               fill="none" stroke="#000" strokeWidth="3" opacity="0.15"
               filter="url(#v3-coast-shadow)"
             />
+            {/* Inner foam line */}
+            <path
+              d="M846,0 Q856,98 876,178 Q896,248 916,377 Q936,477 916,597 Q896,747 846,897"
+              fill="none" stroke="white" strokeWidth="0.8" opacity="0.12"
+              strokeDasharray="3 4"
+            >
+              <animate attributeName="stroke-dashoffset" from="0" to="14" dur="4s" repeatCount="indefinite" />
+            </path>
+            {/* Coastal rocks */}
+            {[
+              [854, 90], [872, 195], [894, 290], [908, 370], [918, 450],
+              [916, 550], [904, 640], [892, 720], [882, 790], [870, 860],
+            ].map(([rx, ry], i) => (
+              <use key={`rock-${i}`} href="#v3-rock" x={rx - 5} y={ry - 3} width={10 + (i % 3) * 2} height={7 + (i % 2) * 2} opacity={0.3 + (i % 4) * 0.05} />
+            ))}
 
             {/* ── River flowing through city ── */}
+            {/* Wide base */}
             <path
               d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
-              fill="none" stroke={COLORS.water} strokeWidth="8" opacity="0.2"
+              fill="none" stroke={COLORS.water} strokeWidth="12" opacity="0.18"
               strokeLinecap="round"
             />
+            {/* Mid band */}
             <path
               d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
-              fill="none" stroke={COLORS.waterShallow} strokeWidth="2" opacity="0.12"
+              fill="none" stroke={COLORS.waterShallow} strokeWidth="8" opacity="0.12"
+              strokeLinecap="round"
+            />
+            {/* Animated highlight */}
+            <path
+              d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
+              fill="none" stroke={COLORS.waterShallow} strokeWidth="3" opacity="0.14"
               strokeLinecap="round" strokeDasharray="4 8"
             >
               <animate attributeName="stroke-dashoffset" from="0" to="24" dur="6s" repeatCount="indefinite" />
             </path>
+            {/* Counter-current texture */}
+            <path
+              d="M860,490 Q820,520 780,540 Q720,570 660,585 Q600,600 540,610 Q480,620 420,640"
+              fill="none" stroke={COLORS.water} strokeWidth="1" opacity="0.08"
+              strokeLinecap="round" strokeDasharray="2 6"
+            >
+              <animate attributeName="stroke-dashoffset" from="16" to="0" dur="8s" repeatCount="indefinite" />
+            </path>
+            {/* Riverbank bushes */}
+            <use href="#v3-bush" x="808" y="530" width="10" height="7" opacity="0.25" />
+            <use href="#v3-bush" x="720" y="560" width="9" height="6" opacity="0.22" />
+            <use href="#v3-bush" x="620" y="590" width="11" height="7" opacity="0.20" />
+            <use href="#v3-bush" x="520" y="605" width="8" height="6" opacity="0.18" />
+            <use href="#v3-bush" x="445" y="630" width="10" height="7" opacity="0.22" />
 
             {/* ── Lake near University ── */}
+            {/* Concentric depth rings */}
             <ellipse cx="250" cy="460" rx="40" ry="25" fill={COLORS.water} opacity="0.18" />
-            <ellipse cx="250" cy="460" rx="36" ry="21" fill={COLORS.waterShallow} opacity="0.08" />
+            <ellipse cx="250" cy="460" rx="33" ry="20" fill={COLORS.waterShallow} opacity="0.08" />
+            <ellipse cx="250" cy="460" rx="22" ry="13" fill={COLORS.water} opacity="0.06" />
+            <ellipse cx="250" cy="460" rx="12" ry="7" fill={COLORS.waterDeep} opacity="0.05" />
+            {/* Lake ripples */}
             <path
               d="M220,458 Q235,454 250,458 Q265,462 280,458"
               fill="none" stroke={COLORS.waterShallow} strokeWidth="0.5" opacity="0.15"
@@ -1366,56 +1438,192 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             >
               <animate attributeName="stroke-dashoffset" from="0" to="16" dur="5s" repeatCount="indefinite" />
             </path>
+            {/* Sailboats on lake */}
+            <use href="#v3-sailboat" x="240" y="448" width="10" height="12" opacity="0.3">
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="4,1" dur="12s" repeatCount="indefinite" />
+            </use>
+            <use href="#v3-sailboat" x="260" y="455" width="8" height="10" opacity="0.22">
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="-3,0.5" dur="15s" repeatCount="indefinite" />
+            </use>
+            {/* Reeds/cattails along east edge */}
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <g key={`reed-${i}`}>
+                <line x1={280 + i * 3} y1={448 + i * 2} x2={280 + i * 3} y2={441 + i * 2} stroke={COLORS.grass} strokeWidth="0.6" opacity="0.18" strokeLinecap="round" />
+                <ellipse cx={280 + i * 3} cy={440 + i * 2} rx="1" ry="1.8" fill={COLORS.earth} opacity="0.12" />
+              </g>
+            ))}
 
-            {/* ── Park areas ── */}
+            {/* ── Park areas (doubled + scatter) ── */}
+            {/* Park 1: University area */}
             <ellipse cx="295" cy="370" rx="75" ry="55" fill="url(#v3-park-grad)" />
             <ellipse cx="280" cy="350" rx="30" ry="20" fill={COLORS.grass} opacity="0.18" />
+            <ellipse cx="310" cy="395" rx="22" ry="16" fill={COLORS.grass} opacity="0.12" />
+            <use href="#v3-tree" x="265" y="340" width="12" height="14" opacity="0.18" />
+            <use href="#v3-tree" x="295" y="355" width="10" height="12" opacity="0.15" />
+            <use href="#v3-bush" x="275" y="368" width="8" height="5" opacity="0.14" />
+            <circle cx="288" cy="360" r="0.8" fill={COLORS.neonPink} opacity="0.15" />
+            <circle cx="300" cy="380" r="0.8" fill={COLORS.glowWarm} opacity="0.12" />
+            <circle cx="270" cy="375" r="0.7" fill="white" opacity="0.10" />
+            <circle cx="310" cy="365" r="0.8" fill={COLORS.neonPink} opacity="0.12" />
+            <circle cx="285" cy="385" r="0.6" fill={COLORS.glowWarm} opacity="0.10" />
+
+            {/* Park 2: North */}
             <ellipse cx="385" cy="220" rx="65" ry="45" fill="url(#v3-park-grad)" />
             <ellipse cx="350" cy="200" rx="25" ry="18" fill={COLORS.grass} opacity="0.15" />
             <ellipse cx="420" cy="240" rx="20" ry="15" fill={COLORS.grass} opacity="0.12" />
+            <ellipse cx="370" cy="235" rx="18" ry="12" fill={COLORS.grass} opacity="0.10" />
+            <use href="#v3-tree" x="345" y="195" width="12" height="14" opacity="0.16" />
+            <use href="#v3-bush" x="410" y="230" width="9" height="6" opacity="0.12" />
+            <use href="#v3-tree" x="380" y="225" width="10" height="12" opacity="0.14" />
+            <circle cx="360" cy="215" r="0.8" fill={COLORS.neonPink} opacity="0.14" />
+            <circle cx="400" cy="210" r="0.7" fill={COLORS.glowWarm} opacity="0.12" />
+            <circle cx="375" cy="240" r="0.8" fill="white" opacity="0.10" />
+            <circle cx="395" cy="230" r="0.6" fill={COLORS.neonPink} opacity="0.10" />
+            <circle cx="415" cy="245" r="0.7" fill={COLORS.glowWarm} opacity="0.12" />
+
+            {/* Park 3: South */}
             <ellipse cx="355" cy="635" rx="60" ry="45" fill="url(#v3-park-grad)" />
             <ellipse cx="330" cy="650" rx="22" ry="16" fill={COLORS.grass} opacity="0.14" />
+            <ellipse cx="375" cy="625" rx="18" ry="14" fill={COLORS.grass} opacity="0.10" />
+            <use href="#v3-tree" x="325" y="640" width="11" height="13" opacity="0.15" />
+            <use href="#v3-bush" x="365" y="620" width="8" height="5" opacity="0.12" />
+            <circle cx="340" cy="645" r="0.8" fill={COLORS.neonPink} opacity="0.12" />
+            <circle cx="360" cy="630" r="0.7" fill="white" opacity="0.10" />
+            <circle cx="350" cy="650" r="0.8" fill={COLORS.glowWarm} opacity="0.12" />
+            <circle cx="375" cy="640" r="0.6" fill={COLORS.neonPink} opacity="0.10" />
+            <circle cx="335" cy="625" r="0.7" fill={COLORS.glowWarm} opacity="0.12" />
+
+            {/* Park 4: West strip */}
             <ellipse cx="180" cy="440" rx="45" ry="90" fill={COLORS.grass} opacity="0.12" />
             <ellipse cx="165" cy="350" rx="25" ry="30" fill={COLORS.grass} opacity="0.10" />
             <ellipse cx="170" cy="550" rx="20" ry="35" fill={COLORS.grass} opacity="0.10" />
+            <ellipse cx="190" cy="400" rx="18" ry="25" fill={COLORS.grass} opacity="0.08" />
+            <ellipse cx="175" cy="490" rx="15" ry="22" fill={COLORS.grass} opacity="0.08" />
+            <use href="#v3-tree" x="170" y="380" width="10" height="12" opacity="0.14" />
+            <use href="#v3-tree" x="185" y="450" width="9" height="11" opacity="0.12" />
+            <use href="#v3-bush" x="160" y="520" width="8" height="5" opacity="0.12" />
+            <circle cx="175" cy="410" r="0.7" fill={COLORS.neonPink} opacity="0.10" />
+            <circle cx="185" cy="470" r="0.8" fill="white" opacity="0.10" />
+            <circle cx="165" cy="540" r="0.7" fill={COLORS.glowWarm} opacity="0.12" />
+            <circle cx="180" cy="380" r="0.6" fill={COLORS.neonPink} opacity="0.12" />
+            <circle cx="170" cy="500" r="0.8" fill={COLORS.glowWarm} opacity="0.10" />
 
-            {/* ── Industrial haze ── */}
-            <ellipse cx="790" cy="550" rx="80" ry="60" fill="#78716C" opacity="0.10" />
+            {/* Park 5: Extra NE patch */}
+            <ellipse cx="520" cy="180" rx="35" ry="25" fill="url(#v3-park-grad)" />
+            <ellipse cx="515" cy="175" rx="15" ry="10" fill={COLORS.grass} opacity="0.10" />
+            <use href="#v3-tree" x="510" y="170" width="9" height="11" opacity="0.12" />
+            <use href="#v3-bush" x="528" y="185" width="8" height="5" opacity="0.10" />
+            <circle cx="520" cy="180" r="0.7" fill={COLORS.neonPink} opacity="0.12" />
+            <circle cx="530" cy="175" r="0.6" fill="white" opacity="0.10" />
+
+            {/* Park 6: Extra SE patch */}
+            <ellipse cx="470" cy="700" rx="30" ry="22" fill="url(#v3-park-grad)" />
+            <ellipse cx="468" cy="698" rx="12" ry="9" fill={COLORS.grass} opacity="0.10" />
+            <use href="#v3-tree" x="462" y="690" width="10" height="12" opacity="0.13" />
+            <use href="#v3-bush" x="478" y="705" width="8" height="5" opacity="0.10" />
+            <circle cx="470" cy="700" r="0.8" fill={COLORS.glowWarm} opacity="0.12" />
+            <circle cx="480" cy="695" r="0.7" fill={COLORS.neonPink} opacity="0.10" />
+
+            {/* ── Industrial haze (atmospheric + smoke wisps) ── */}
+            <ellipse cx="790" cy="550" rx="80" ry="60" fill="#78716C" opacity="0.10" filter="url(#v3-fog-warm)" />
             <ellipse cx="790" cy="550" rx="80" ry="60" fill="url(#v3-hatch)" />
             <ellipse cx="810" cy="530" rx="50" ry="35" fill="#57534E" opacity="0.06" />
+            {/* Drifting smoke wisps */}
+            <path d="M770,530 Q780,518 790,522 Q800,526 810,518" fill="none" stroke="#9CA3AF" strokeWidth="1.2" opacity="0.06">
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="15,-8" dur="18s" repeatCount="indefinite" />
+            </path>
+            <path d="M800,545 Q812,535 820,540 Q830,545 840,535" fill="none" stroke="#9CA3AF" strokeWidth="1" opacity="0.04">
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="12,-6" dur="22s" repeatCount="indefinite" />
+            </path>
+            <path d="M780,560 Q790,550 800,555 Q810,560 818,550" fill="none" stroke="#78716C" strokeWidth="0.8" opacity="0.05">
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="10,-10" dur="25s" repeatCount="indefinite" />
+            </path>
           </g>
 
           {/* ═══ LAYER 2: Mountains ═══ */}
           <g id="layer-mountains" style={{ pointerEvents: 'none' }}>
-            {MOUNTAINS.map((m, i) => (
-              <g key={`mtn-${i}`} opacity={m.opacity} filter={i > 4 ? 'url(#v3-depth-fog)' : undefined}>
-                <use href="#v3-mountain" x={m.x} y={45 - m.h * 0.6} width={m.w} height={m.h} />
-                {m.snow && (
-                  <polygon
-                    points={`${m.x + m.w * 0.35},${45 - m.h * 0.6 + m.h * 0.35} ${m.x + m.w * 0.5},${45 - m.h * 0.6} ${m.x + m.w * 0.65},${45 - m.h * 0.6 + m.h * 0.35}`}
-                    fill={COLORS.mountainSnow}
-                    opacity="0.4"
-                  />
-                )}
+            {MOUNTAINS.map((m, i) => {
+              const mtnFilter = i > 4 ? 'url(#v3-mist)' : undefined;
+              const rng = seededRandom(i * 3141 + 59);
+              const pineCount = 3 + Math.floor(rng() * 3);
+              return (
+                <g key={`mtn-${i}`} opacity={m.opacity} filter={mtnFilter}>
+                  <use href="#v3-mountain" x={m.x} y={45 - m.h * 0.6} width={m.w} height={m.h} />
+                  {m.snow && (
+                    <polygon
+                      points={`${m.x + m.w * 0.35},${45 - m.h * 0.6 + m.h * 0.35} ${m.x + m.w * 0.5},${45 - m.h * 0.6} ${m.x + m.w * 0.65},${45 - m.h * 0.6 + m.h * 0.35}`}
+                      fill={COLORS.mountainSnow}
+                      opacity="0.4"
+                    />
+                  )}
+                  {/* Pine trees at mountain base */}
+                  {Array.from({ length: pineCount }, (_, pi) => {
+                    const px = m.x + m.w * 0.15 + rng() * m.w * 0.7;
+                    const py = 45 - m.h * 0.6 + m.h * 0.75 + rng() * m.h * 0.2;
+                    const pw = 6 + rng() * 5;
+                    return <use key={`pine-${i}-${pi}`} href="#v3-pine-tree" x={px} y={py} width={pw} height={pw * 1.5} opacity={0.15 + rng() * 0.1} />;
+                  })}
+                  {/* Snow-melt streams from snowy peaks */}
+                  {m.snow && (
+                    <>
+                      <path
+                        d={`M${m.x + m.w * 0.48},${45 - m.h * 0.6 + m.h * 0.25} Q${m.x + m.w * 0.42},${45 - m.h * 0.6 + m.h * 0.5} ${m.x + m.w * 0.38},${45 - m.h * 0.6 + m.h * 0.8}`}
+                        fill="none" stroke={COLORS.waterShallow} strokeWidth="0.5" opacity="0.08" strokeLinecap="round"
+                      />
+                      <path
+                        d={`M${m.x + m.w * 0.55},${45 - m.h * 0.6 + m.h * 0.3} Q${m.x + m.w * 0.58},${45 - m.h * 0.6 + m.h * 0.55} ${m.x + m.w * 0.62},${45 - m.h * 0.6 + m.h * 0.85}`}
+                        fill="none" stroke={COLORS.waterShallow} strokeWidth="0.4" opacity="0.06" strokeLinecap="round"
+                      />
+                    </>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Clouds — 6 with varied sizes, staggered durations, shadows */}
+            {[
+              { x: 80,  y: 18, w: 85, h: 32, o: 0.15, dx: 30,  dur: 60 },
+              { x: 300, y: 8,  w: 65, h: 26, o: 0.12, dx: -25, dur: 45 },
+              { x: 500, y: 12, w: 75, h: 30, o: 0.14, dx: 20,  dur: 55 },
+              { x: 680, y: 22, w: 55, h: 22, o: 0.10, dx: -18, dur: 70 },
+              { x: 150, y: 40, w: 50, h: 20, o: 0.08, dx: 22,  dur: 80 },
+              { x: 850, y: 15, w: 70, h: 28, o: 0.11, dx: -28, dur: 90 },
+            ].map((c, i) => (
+              <g key={`cloud-${i}`}>
+                {/* Cloud shadow on ground */}
+                <ellipse cx={c.x + c.w / 2} cy={c.y + c.h + 5} rx={c.w * 0.4} ry={c.h * 0.15} fill="#888" opacity="0.03">
+                  <animateTransform attributeName="transform" type="translate" from="0,0" to={`${c.dx},0`} dur={`${c.dur}s`} repeatCount="indefinite" />
+                </ellipse>
+                <use href="#v3-cloud" x={c.x} y={c.y} width={c.w} height={c.h} opacity={c.o}>
+                  <animateTransform attributeName="transform" type="translate" from="0,0" to={`${c.dx},0`} dur={`${c.dur}s`} repeatCount="indefinite" />
+                </use>
               </g>
             ))}
-            {/* Clouds */}
-            <use href="#v3-cloud" x="100" y="20" width="80" height="30" opacity="0.15">
-              <animateTransform attributeName="transform" type="translate" from="0,0" to="30,0" dur="60s" repeatCount="indefinite" />
-            </use>
-            <use href="#v3-cloud" x="500" y="10" width="60" height="25" opacity="0.12">
-              <animateTransform attributeName="transform" type="translate" from="0,0" to="-20,0" dur="45s" repeatCount="indefinite" />
-            </use>
-            <use href="#v3-cloud" x="800" y="30" width="70" height="28" opacity="0.10">
-              <animateTransform attributeName="transform" type="translate" from="0,0" to="25,0" dur="55s" repeatCount="indefinite" />
-            </use>
+
+            {/* Seagulls — slow drifting V-shapes */}
+            {[
+              { x: 200, y: 55, s: 10, dx: 15, dur: 35 },
+              { x: 420, y: 35, s: 8,  dx: -10, dur: 40 },
+              { x: 650, y: 48, s: 9,  dx: 12, dur: 50 },
+              { x: 900, y: 42, s: 7,  dx: -8,  dur: 38 },
+              { x: 320, y: 62, s: 6,  dx: 8,   dur: 55 },
+              { x: 750, y: 30, s: 8,  dx: -14, dur: 45 },
+            ].map((b, i) => (
+              <use key={`gull-${i}`} href="#v3-seagull" x={b.x} y={b.y} width={b.s} height={b.s * 0.5} opacity="0.20">
+                <animateTransform attributeName="transform" type="translate" from="0,0" to={`${b.dx},${Math.abs(b.dx) * 0.2}`} dur={`${b.dur}s`} repeatCount="indefinite" />
+              </use>
+            ))}
           </g>
 
           {/* ═══ LAYER 3: Water Detail ═══ */}
           <g id="layer-water" style={{ pointerEvents: 'none' }}>
-            {/* Ocean depth zones */}
+            {/* Ocean depth zones — 5 smooth transitions */}
             <path
-              d="M850,0 Q860,100 880,180 Q900,250 920,380 Q940,480 920,600 Q900,750 850,900 L920,900 Q950,750 960,600 Q980,480 960,380 Q940,250 920,180 Q900,100 890,0 Z"
+              d="M850,0 Q860,100 880,180 Q900,250 920,380 Q940,480 920,600 Q900,750 850,900 L890,900 Q920,750 930,600 Q950,480 930,380 Q910,250 900,180 Q880,100 870,0 Z"
+              fill={COLORS.waterShallow} opacity="0.06"
+            />
+            <path
+              d="M870,0 Q880,100 900,180 Q910,250 930,380 Q950,480 930,600 Q920,750 890,900 L920,900 Q950,750 960,600 Q980,480 960,380 Q940,250 920,180 Q900,100 890,0 Z"
               fill={COLORS.waterShallow} opacity="0.08"
             />
             <path
@@ -1423,27 +1631,63 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               fill={COLORS.water} opacity="0.06"
             />
             <path
-              d="M960,0 L1200,0 L1200,900 L1000,900 Q1020,750 1030,600 Q1040,480 1030,380 Q1010,250 990,180 Q970,100 960,0 Z"
+              d="M960,0 Q970,100 990,180 Q1010,250 1030,380 Q1040,480 1030,600 Q1020,750 1000,900 L1100,900 Q1100,750 1110,600 Q1115,480 1100,380 Q1080,250 1060,180 Q1040,100 1030,0 Z"
               fill={COLORS.waterDeep} opacity="0.05"
             />
+            <path
+              d="M1030,0 L1200,0 L1200,900 L1100,900 Q1100,750 1110,600 Q1115,480 1100,380 Q1080,250 1060,180 Q1040,100 1030,0 Z"
+              fill={COLORS.waterDeep} opacity="0.07"
+            />
 
-            {/* Animated waves */}
+            {/* Animated waves — 12 horizontal + 4 diagonal cross-waves */}
             {[
-              { y: 120, w: 0.6, o: 0.22, dur: 4 },
-              { y: 200, w: 0.5, o: 0.20, dur: 5.2 },
-              { y: 300, w: 0.5, o: 0.18, dur: 6 },
-              { y: 400, w: 0.5, o: 0.16, dur: 4.8 },
-              { y: 500, w: 0.4, o: 0.14, dur: 5.5 },
-              { y: 620, w: 0.4, o: 0.12, dur: 4.3 },
-              { y: 740, w: 0.4, o: 0.10, dur: 5.8 },
+              { y: 80,  w: 0.6, o: 0.22, dur: 4 },
+              { y: 150, w: 0.55, o: 0.20, dur: 4.8 },
+              { y: 220, w: 0.5, o: 0.18, dur: 5.5 },
+              { y: 300, w: 0.5, o: 0.17, dur: 6 },
+              { y: 370, w: 0.5, o: 0.16, dur: 4.6 },
+              { y: 440, w: 0.45, o: 0.15, dur: 5.2 },
+              { y: 520, w: 0.45, o: 0.14, dur: 5.8 },
+              { y: 590, w: 0.4, o: 0.13, dur: 4.3 },
+              { y: 660, w: 0.4, o: 0.12, dur: 5 },
+              { y: 730, w: 0.4, o: 0.11, dur: 5.5 },
+              { y: 800, w: 0.35, o: 0.10, dur: 4.8 },
+              { y: 860, w: 0.35, o: 0.09, dur: 5.3 },
             ].map(({ y, w, o, dur }) => (
               <path key={`wave-${y}`}
-                d={`M${850 + Math.sin(y * 0.01) * 20},${y} Q${910 + Math.cos(y * 0.02) * 10},${y - 5} ${960 + Math.sin(y * 0.015) * 15},${y}`}
+                d={`M${850 + Math.sin(y * 0.01) * 20},${y} Q${910 + Math.cos(y * 0.02) * 10},${y - 5} ${960 + Math.sin(y * 0.015) * 15},${y} Q${1020 + Math.cos(y * 0.012) * 12},${y + 4} ${1080 + Math.sin(y * 0.018) * 10},${y}`}
                 fill="none" stroke={COLORS.water} strokeWidth={w} opacity={o}
                 strokeDasharray="8 6"
               >
                 <animate attributeName="stroke-dashoffset" from="0" to="28" dur={`${dur}s`} repeatCount="indefinite" />
               </path>
+            ))}
+            {/* Diagonal cross-waves */}
+            {[
+              { x1: 870, y1: 100, x2: 1050, y2: 250, dur: 7 },
+              { x1: 880, y1: 300, x2: 1100, y2: 480, dur: 8.5 },
+              { x1: 860, y1: 500, x2: 1060, y2: 680, dur: 6.5 },
+              { x1: 870, y1: 680, x2: 1080, y2: 860, dur: 7.5 },
+            ].map((dw, i) => (
+              <line key={`xwave-${i}`}
+                x1={dw.x1} y1={dw.y1} x2={dw.x2} y2={dw.y2}
+                stroke={COLORS.waterShallow} strokeWidth="0.3" opacity="0.06"
+                strokeDasharray="6 8"
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="28" dur={`${dw.dur}s`} repeatCount="indefinite" />
+              </line>
+            ))}
+
+            {/* Ocean sailboats — slowly drifting */}
+            {[
+              { x: 940, y: 200, w: 14, h: 16, o: 0.28, dx: 8, dur: 30 },
+              { x: 1020, y: 400, w: 10, h: 12, o: 0.22, dx: -6, dur: 40 },
+              { x: 980, y: 620, w: 12, h: 14, o: 0.25, dx: 5,  dur: 35 },
+              { x: 1060, y: 150, w: 8,  h: 10, o: 0.18, dx: -4, dur: 45 },
+            ].map((sb, i) => (
+              <use key={`osail-${i}`} href="#v3-sailboat" x={sb.x} y={sb.y} width={sb.w} height={sb.h} opacity={sb.o}>
+                <animateTransform attributeName="transform" type="translate" from="0,0" to={`${sb.dx},${Math.abs(sb.dx) * 0.3}`} dur={`${sb.dur}s`} repeatCount="indefinite" />
+              </use>
             ))}
 
             {/* Shoreline foam */}
@@ -1455,15 +1699,50 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               <animate attributeName="stroke-dashoffset" from="0" to="18" dur="3s" repeatCount="indefinite" />
             </path>
 
-            {/* Marina piers */}
+            {/* Tidal zone — animated line following coast */}
+            <path
+              d="M852,0 Q862,102 882,182 Q902,252 922,382 Q942,482 922,602 Q902,752 852,902"
+              fill="none" stroke={COLORS.waterShallow} strokeWidth="1" opacity="0.10"
+              strokeDasharray="2 5"
+            >
+              <animate attributeName="stroke-dashoffset" from="0" to="14" dur="4s" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0;0,2;0,0" dur="8s" repeatCount="indefinite" />
+            </path>
+
+            {/* Marina piers — 4 piers with moored boats and rope lines */}
             <rect x="870" y="230" width="35" height="3" fill="#64748B" opacity="0.45" rx="0.5" />
             <rect x="875" y="233" width="2" height="12" fill="#64748B" opacity="0.35" rx="0.3" />
             <rect x="885" y="233" width="2" height="12" fill="#64748B" opacity="0.35" rx="0.3" />
             <rect x="895" y="233" width="2" height="12" fill="#64748B" opacity="0.35" rx="0.3" />
+            {/* Moored boats pier 1 */}
+            <rect x="878" y="238" width="4" height="2" fill={COLORS.earth} opacity="0.18" rx="0.3" />
+            <polygon points="882,238 884,237 882,236" fill="white" opacity="0.15" />
+            <rect x="888" y="240" width="4" height="2" fill={COLORS.earth} opacity="0.15" rx="0.3" />
+            <polygon points="892,240 894,239 892,238" fill="white" opacity="0.12" />
+            {/* Rope lines */}
+            <path d="M876,236 Q880,238 884,236" fill="none" stroke={COLORS.earth} strokeWidth="0.3" opacity="0.12" />
+            <path d="M886,237 Q890,239 894,237" fill="none" stroke={COLORS.earth} strokeWidth="0.3" opacity="0.10" />
+
             <rect x="865" y="270" width="30" height="3" fill="#64748B" opacity="0.40" rx="0.5" />
             <rect x="870" y="273" width="2" height="10" fill="#64748B" opacity="0.30" rx="0.3" />
             <rect x="880" y="273" width="2" height="10" fill="#64748B" opacity="0.30" rx="0.3" />
             <rect x="890" y="273" width="2" height="10" fill="#64748B" opacity="0.30" rx="0.3" />
+            {/* Moored boat pier 2 */}
+            <rect x="873" y="278" width="4" height="2" fill={COLORS.earth} opacity="0.15" rx="0.3" />
+            <polygon points="877,278 879,277 877,276" fill="white" opacity="0.12" />
+
+            {/* Pier 3 */}
+            <rect x="875" y="305" width="28" height="2.5" fill="#64748B" opacity="0.38" rx="0.5" />
+            <rect x="878" y="307.5" width="1.5" height="9" fill="#64748B" opacity="0.28" rx="0.3" />
+            <rect x="888" y="307.5" width="1.5" height="9" fill="#64748B" opacity="0.28" rx="0.3" />
+            <rect x="898" y="307.5" width="1.5" height="9" fill="#64748B" opacity="0.28" rx="0.3" />
+            <rect x="881" y="311" width="4" height="2" fill={COLORS.earth} opacity="0.14" rx="0.3" />
+            <polygon points="885,311 887,310 885,309" fill="white" opacity="0.10" />
+
+            {/* Pier 4 */}
+            <rect x="860" y="340" width="25" height="2.5" fill="#64748B" opacity="0.35" rx="0.5" />
+            <rect x="864" y="342.5" width="1.5" height="8" fill="#64748B" opacity="0.25" rx="0.3" />
+            <rect x="874" y="342.5" width="1.5" height="8" fill="#64748B" opacity="0.25" rx="0.3" />
 
             {/* Harbor docks */}
             <rect x="905" y="390" width="40" height="5" fill="#475569" opacity="0.45" rx="0.5" />
@@ -1471,18 +1750,50 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <rect x="910" y="430" width="35" height="4" fill="#475569" opacity="0.40" rx="0.5" />
             <path d="M895,460 Q920,465 945,458" fill="none" stroke="#475569" strokeWidth="3" opacity="0.25" strokeLinecap="round" />
 
-            {/* Foam dots */}
-            {[
-              [856, 100], [870, 170], [884, 240], [900, 320], [910, 400],
-              [915, 470], [910, 540], [898, 610], [888, 680], [878, 750],
-            ].map(([fx, fy], i) => (
-              <circle key={`foam-${i}`} cx={fx} cy={fy} r={1 + (i % 3) * 0.5} fill="#E0F0FF" opacity={0.18 + (i % 5) * 0.02} />
-            ))}
+            {/* Cargo ship silhouette */}
+            <rect x="920" y="398" width="22" height="6" fill="#374151" opacity="0.20" rx="0.5" />
+            <rect x="935" y="393" width="5" height="5" fill="#374151" opacity="0.18" rx="0.3" />
+            {/* Loading crane shadow */}
+            <line x1="932" y1="390" x2="932" y2="378" stroke="#475569" strokeWidth="1" opacity="0.12" />
+            <line x1="928" y1="378" x2="940" y2="378" stroke="#475569" strokeWidth="0.8" opacity="0.10" />
+            <line x1="938" y1="378" x2="938" y2="385" stroke="#475569" strokeWidth="0.4" opacity="0.08" />
+            {/* Oil slick — iridescent ellipse */}
+            <ellipse cx="930" cy="445" rx="8" ry="4" fill="url(#v3-glass)" opacity="0.15">
+              <animate attributeName="rx" values="8;9;8" dur="6s" repeatCount="indefinite" />
+            </ellipse>
 
-            {/* Shore contour lines */}
+            {/* Foam dots — 30+ with pulsing animation on some */}
+            {(() => {
+              const rng = seededRandom(4242);
+              return Array.from({ length: 32 }, (_, i) => {
+                const t = rng() * 900;
+                const fx = 852 + rng() * 60 + Math.sin(t * 0.01) * 10;
+                const fy = t;
+                const fr = 0.8 + rng() * 1.2;
+                const pulse = i % 4 === 0;
+                const pDur = 3 + rng() * 2;
+                return (
+                  <circle key={`foam-${i}`} cx={fx} cy={fy} r={fr} fill="#E0F0FF" opacity={0.12 + rng() * 0.12}>
+                    {pulse && (
+                      <animate attributeName="opacity" values="0.10;0.25;0.10" dur={`${pDur}s`} repeatCount="indefinite" />
+                    )}
+                  </circle>
+                );
+              });
+            })()}
+
+            {/* Shore contour lines — 3 at different offsets */}
             <path
               d="M845,0 Q855,95 875,175 Q895,245 915,375 Q935,475 915,595 Q895,745 845,895"
               fill="none" stroke="#8BB8D6" strokeWidth="0.5" opacity="0.12" strokeDasharray="6 4"
+            />
+            <path
+              d="M840,0 Q850,90 870,170 Q890,240 910,370 Q930,470 910,590 Q890,740 840,890"
+              fill="none" stroke="#7AAAC4" strokeWidth="0.4" opacity="0.08" strokeDasharray="4 6"
+            />
+            <path
+              d="M836,0 Q846,86 866,166 Q886,236 906,366 Q926,466 906,586 Q886,736 836,886"
+              fill="none" stroke="#6E9EB8" strokeWidth="0.3" opacity="0.06" strokeDasharray="3 5"
             />
           </g>
 
