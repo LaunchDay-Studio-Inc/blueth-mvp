@@ -5,6 +5,7 @@ import { DISTRICTS, type DistrictMeta } from '@/lib/districts';
 import { TerrainBackground } from './map/terrain-bg';
 import { RoadNetwork } from './map/road-network';
 import { DistrictGround } from './map/district-ground';
+import { MapDecorations } from './map/map-decorations';
 
 interface CityMapProps {
   onDistrictSelect?: (district: DistrictMeta) => void;
@@ -1154,6 +1155,9 @@ export function CityMap({ onDistrictSelect, selectedCode }: CityMapProps) {
             </g>
           );
         })}
+
+        {/* ═══ Map decorations (clouds, compass, title) ═══ */}
+        <MapDecorations />
       </svg>
     </div>
   );
