@@ -813,10 +813,29 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
         onClick={handleSvgClick}
       >
         <defs>
-          {/* ── Filters ── */}
+          {/* ══════════════════════════════════════
+              FILTERS
+              ══════════════════════════════════════ */}
+
+          {/* Compound building shadow: soft ambient + hard contact */}
           <filter id="v3-building-shadow" x="-10%" y="-10%" width="130%" height="140%">
-            <feDropShadow dx="2" dy="3" stdDeviation="2" floodColor="#3E2C1E" floodOpacity="0.18" />
+            {/* Soft ambient shadow */}
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="softBlur" />
+            <feOffset in="softBlur" dx="2" dy="4" result="softOff" />
+            <feFlood floodColor={COLORS.buildingShadow} floodOpacity="0.14" result="softColor" />
+            <feComposite in="softColor" in2="softOff" operator="in" result="softShadow" />
+            {/* Hard contact shadow */}
+            <feGaussianBlur in="SourceAlpha" stdDeviation="0.5" result="hardBlur" />
+            <feOffset in="hardBlur" dx="0.5" dy="1" result="hardOff" />
+            <feFlood floodColor={COLORS.buildingShadow} floodOpacity="0.22" result="hardColor" />
+            <feComposite in="hardColor" in2="hardOff" operator="in" result="hardShadow" />
+            <feMerge>
+              <feMergeNode in="softShadow" />
+              <feMergeNode in="hardShadow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
           </filter>
+
           <filter id="v3-select-glow" x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur stdDeviation="10" result="blur" />
             <feFlood floodColor={COLORS.gold} floodOpacity="0.5" result="color" />
@@ -826,6 +845,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
           <filter id="v3-hover-glow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="6" result="blur" />
             <feFlood floodColor={COLORS.gold} floodOpacity="0.3" result="color" />
@@ -835,6 +855,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
           <filter id="v3-icon-glow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="2" result="blur" />
             <feMerge>
@@ -842,26 +863,54 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
+          {/* Warm fog — broader, tinted */}
           <filter id="v3-fog" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="30" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="40" result="blurred" />
+            <feFlood floodColor={COLORS.fogWarm} floodOpacity="0.06" result="warmTint" />
+            <feBlend in="blurred" in2="warmTint" mode="screen" />
           </filter>
+          <filter id="v3-fog-warm" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="40" result="blurred" />
+            <feFlood floodColor={COLORS.fogWarm} floodOpacity="0.08" result="warmTint" />
+            <feBlend in="blurred" in2="warmTint" mode="screen" />
+          </filter>
+          <filter id="v3-fog-cool" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="25" result="blurred" />
+            <feFlood floodColor={COLORS.fogCool} floodOpacity="0.06" result="coolTint" />
+            <feBlend in="blurred" in2="coolTint" mode="screen" />
+          </filter>
+
+          {/* Coast shadow with inner glow via erode */}
           <filter id="v3-coast-shadow" x="-5%" y="-5%" width="110%" height="110%">
-            <feGaussianBlur stdDeviation="6" result="shadow" />
-            <feFlood floodColor="#8B7355" floodOpacity="0.12" result="color" />
+            <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="shadow" />
+            <feFlood floodColor={COLORS.earth} floodOpacity="0.12" result="color" />
             <feComposite in="color" in2="shadow" operator="in" result="darkShadow" />
+            {/* Inner glow */}
+            <feMorphology in="SourceAlpha" operator="erode" radius="2" result="eroded" />
+            <feGaussianBlur in="eroded" stdDeviation="3" result="innerBlur" />
+            <feFlood floodColor={COLORS.fogWarm} floodOpacity="0.08" result="innerColor" />
+            <feComposite in="innerColor" in2="innerBlur" operator="in" result="innerGlow" />
             <feMerge>
               <feMergeNode in="darkShadow" />
+              <feMergeNode in="innerGlow" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
+          {/* Terrain noise — larger grain, warm tint overlay */}
           <filter id="v3-terrain-noise" x="0%" y="0%" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="42" stitchTiles="stitch" result="noise" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="5" seed="42" stitchTiles="stitch" result="noise" />
             <feColorMatrix type="saturate" values="0" in="noise" result="mono" />
             <feComponentTransfer in="mono" result="faint">
               <feFuncA type="linear" slope="0.04" />
             </feComponentTransfer>
-            <feBlend in="SourceGraphic" in2="faint" mode="overlay" />
+            <feBlend in="SourceGraphic" in2="faint" mode="overlay" result="grained" />
+            {/* Subtle warm tint overlay */}
+            <feFlood floodColor={COLORS.fogWarm} floodOpacity="0.02" result="warmOverlay" />
+            <feBlend in="grained" in2="warmOverlay" mode="screen" />
           </filter>
+
           <filter id="v3-locked-desat" x="0%" y="0%" width="100%" height="100%">
             <feColorMatrix type="saturate" values="0.15" />
             <feComponentTransfer>
@@ -870,9 +919,11 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               <feFuncB type="linear" slope="0.7" intercept="0.1" />
             </feComponentTransfer>
           </filter>
+
           <filter id="v3-depth-fog" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="4" />
           </filter>
+
           <filter id="v3-paper-texture" x="0%" y="0%" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="3" seed="77" result="paper" />
             <feColorMatrix type="saturate" values="0" in="paper" result="mono" />
@@ -882,12 +933,69 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <feBlend in="SourceGraphic" in2="subtle" mode="multiply" />
           </filter>
 
-          {/* ── Per-district gradients + clips ── */}
+          {/* ── New Filters ── */}
+
+          {/* Ambient occlusion — darken where buildings meet ground */}
+          <filter id="v3-ambient-occlusion" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="aoBlur" />
+            <feColorMatrix in="aoBlur" type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.25 0" result="aoDark" />
+            <feMerge>
+              <feMergeNode in="aoDark" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Warm glow for lanterns & windows */}
+          <filter id="v3-glow-warm" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="warmBlur" />
+            <feFlood floodColor={COLORS.glowWarm} floodOpacity="0.35" result="warmFlood" />
+            <feComposite in="warmFlood" in2="warmBlur" operator="in" result="warmGlow" />
+            <feMerge>
+              <feMergeNode in="warmGlow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Cool glow for tech / neon */}
+          <filter id="v3-glow-cool" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="coolBlur" />
+            <feFlood floodColor={COLORS.glowCool} floodOpacity="0.35" result="coolFlood" />
+            <feComposite in="coolFlood" in2="coolBlur" operator="in" result="coolGlow" />
+            <feMerge>
+              <feMergeNode in="coolGlow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Atmospheric mist — very large blur, low opacity */}
+          <filter id="v3-mist" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="50" result="mistBlur" />
+            <feComponentTransfer in="mistBlur">
+              <feFuncA type="linear" slope="0.3" />
+            </feComponentTransfer>
+          </filter>
+
+          {/* Golden hour — shift warm, slight contrast boost */}
+          <filter id="v3-golden-hour" x="0%" y="0%" width="100%" height="100%">
+            <feColorMatrix type="matrix"
+              values="1.05 0.05 0    0 0.02
+                      0    1.02 0    0 0.01
+                      0    0    0.95 0 0
+                      0    0    0    1 0" />
+          </filter>
+
+          {/* ══════════════════════════════════════
+              PER-DISTRICT GRADIENTS + CLIPS
+              ══════════════════════════════════════ */}
+
+          {/* 3-stop radial: bright center → mid ring → darker edge */}
           {DISTRICTS_GEO.map((d) => (
-            <linearGradient key={`grad-${d.code}`} id={`v3-grad-${d.code}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={d.gradient[0]} stopOpacity="0.6" />
-              <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.75" />
-            </linearGradient>
+            <radialGradient key={`grad-${d.code}`} id={`v3-grad-${d.code}`} cx="50%" cy="50%" r="55%">
+              <stop offset="0%" stopColor={d.gradient[0]} stopOpacity="0.7" />
+              <stop offset="55%" stopColor={d.gradient[1]} stopOpacity="0.6" />
+              <stop offset="100%" stopColor={d.gradient[1]} stopOpacity="0.45" />
+            </radialGradient>
           ))}
           {DISTRICTS_GEO.map((d) => (
             <clipPath key={`clip-${d.code}`} id={`v3-clip-${d.code}`}>
@@ -903,31 +1011,43 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             </linearGradient>
           ))}
 
-          {/* ── Sky gradient ── */}
+          {/* ══════════════════════════════════════
+              GRADIENTS
+              ══════════════════════════════════════ */}
+
+          {/* 5-stop sky — horizon warm band + blue-pink at top */}
           <linearGradient id="v3-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={COLORS.sky} stopOpacity="0.4" />
-            <stop offset="40%" stopColor={COLORS.skyWarm} stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#F5F0E8" stopOpacity="0.05" />
+            <stop offset="0%" stopColor={COLORS.sky} stopOpacity="0.45" />
+            <stop offset="15%" stopColor="#C4A8D0" stopOpacity="0.12" />
+            <stop offset="40%" stopColor={COLORS.skyWarm} stopOpacity="0.18" />
+            <stop offset="60%" stopColor={COLORS.fogWarm} stopOpacity="0.10" />
+            <stop offset="100%" stopColor="#F5F0E8" stopOpacity="0.04" />
           </linearGradient>
 
-          {/* ── Background gradient ── */}
-          <radialGradient id="v3-bg-radial" cx="50%" cy="45%" r="55%">
-            <stop offset="0%" stopColor="hsl(40 25% 94%)" />
-            <stop offset="60%" stopColor="hsl(40 22% 91%)" />
-            <stop offset="100%" stopColor="hsl(35 18% 88%)" />
+          {/* 4-stop bg radial — warm center hotspot, cooler edges */}
+          <radialGradient id="v3-bg-radial" cx="50%" cy="42%" r="55%">
+            <stop offset="0%" stopColor="hsl(42 30% 95%)" />
+            <stop offset="30%" stopColor="hsl(40 25% 93%)" />
+            <stop offset="65%" stopColor="hsl(38 20% 90%)" />
+            <stop offset="100%" stopColor="hsl(215 12% 87%)" />
           </radialGradient>
 
-          {/* ── Ocean gradients ── */}
+          {/* 5-stop sea: shallow reef → mid water → deep → abyssal */}
           <linearGradient id="v3-sea-deep" x1="0.7" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={COLORS.water} stopOpacity="0.5" />
-            <stop offset="40%" stopColor={COLORS.waterShallow} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={COLORS.waterShallow} stopOpacity="0.2" />
+            <stop offset="0%" stopColor={COLORS.waterShallow} stopOpacity="0.2" />
+            <stop offset="20%" stopColor="#55B8A0" stopOpacity="0.28" />
+            <stop offset="45%" stopColor={COLORS.water} stopOpacity="0.4" />
+            <stop offset="75%" stopColor={COLORS.waterDeep} stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#0D3B5E" stopOpacity="0.35" />
           </linearGradient>
 
+          {/* Beach with foam-white edge */}
           <linearGradient id="v3-beach" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor={COLORS.sand} stopOpacity="0" />
-            <stop offset="40%" stopColor={COLORS.sand} stopOpacity="0.22" />
-            <stop offset="100%" stopColor={COLORS.sandDark} stopOpacity="0.35" />
+            <stop offset="30%" stopColor={COLORS.sand} stopOpacity="0.22" />
+            <stop offset="70%" stopColor={COLORS.sandDark} stopOpacity="0.35" />
+            <stop offset="92%" stopColor="#F5F0E8" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="white" stopOpacity="0.15" />
           </linearGradient>
 
           {/* ── Park gradient ── */}
@@ -944,32 +1064,58 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
           </linearGradient>
 
-          {/* ── Grid pattern ── */}
+          {/* ── New Gradients ── */}
+
+          {/* Sunset overlay — diagonal warm wash */}
+          <linearGradient id="v3-sunset-overlay" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#FF8C60" stopOpacity="0.03" />
+            <stop offset="40%" stopColor="#FFB088" stopOpacity="0.015" />
+            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+          </linearGradient>
+
+          {/* Depth gradient — atmospheric perspective */}
+          <linearGradient id="v3-depth-gradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={COLORS.fogWarm} stopOpacity="0" />
+            <stop offset="60%" stopColor={COLORS.fogWarm} stopOpacity="0.03" />
+            <stop offset="100%" stopColor={COLORS.fogWarm} stopOpacity="0.08" />
+          </linearGradient>
+
+          {/* ══════════════════════════════════════
+              PATTERNS
+              ══════════════════════════════════════ */}
+
           <pattern id="v3-grid" width="30" height="30" patternUnits="userSpaceOnUse">
             <path d="M 30 0 L 0 0 0 30" fill="none" stroke={COLORS.earthLight} strokeWidth="0.3" opacity="0.12" />
           </pattern>
 
-          {/* ── Hatching pattern ── */}
           <pattern id="v3-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <line x1="0" y1="0" x2="0" y2="8" stroke="#78716C" strokeWidth="0.5" opacity="0.12" />
           </pattern>
 
-          {/* ── Gold marching-ants stroke for selected district ── */}
           <pattern id="v3-march" width="12" height="1" patternUnits="userSpaceOnUse">
             <rect width="6" height="1" fill={COLORS.gold} />
             <rect x="6" width="6" height="1" fill="transparent" />
           </pattern>
 
-          {/* ── Terrain texture patterns ── */}
+          {/* ── Terrain texture patterns (upgraded) ── */}
+
+          {/* Urban — grid + tiny windows + AC units */}
           <pattern id="v3-tex-urban" width="16" height="16" patternUnits="userSpaceOnUse">
             <rect width="16" height="16" fill="none" />
             <path d="M0,8 L16,8 M8,0 L8,16" stroke="#9CA3AF" strokeWidth="0.3" opacity="0.12" />
             <circle cx="4" cy="4" r="0.6" fill="#78716C" opacity="0.10" />
             <circle cx="12" cy="12" r="0.6" fill="#78716C" opacity="0.10" />
-            <rect x="2" y="10" width="3" height="2" fill="#9CA3AF" opacity="0.06" rx="0.2" />
-            <rect x="10" y="2" width="4" height="2.5" fill="#9CA3AF" opacity="0.06" rx="0.2" />
+            {/* Tiny windows */}
+            <rect x="2" y="10" width="1.5" height="1.8" fill="#9CA3AF" opacity="0.08" rx="0.15" />
+            <rect x="4.5" y="10" width="1.5" height="1.8" fill="#9CA3AF" opacity="0.06" rx="0.15" />
+            <rect x="10" y="2" width="1.5" height="1.8" fill="#9CA3AF" opacity="0.07" rx="0.15" />
+            <rect x="12.5" y="2" width="1.5" height="1.8" fill="#9CA3AF" opacity="0.06" rx="0.15" />
+            {/* AC unit shapes */}
+            <rect x="10" y="6" width="2" height="1.2" fill="#78716C" opacity="0.06" rx="0.2" />
+            <rect x="3" y="14" width="2" height="1.2" fill="#78716C" opacity="0.05" rx="0.2" />
           </pattern>
 
+          {/* Green — grass + tiny flower dots */}
           <pattern id="v3-tex-green" width="20" height="20" patternUnits="userSpaceOnUse">
             <rect width="20" height="20" fill="none" />
             <circle cx="5" cy="5" r="1" fill={COLORS.grass} opacity="0.18" />
@@ -978,13 +1124,20 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <circle cx="2" cy="14" r="0.6" fill={COLORS.grassLight} opacity="0.14" />
             <path d="M7,8 L7,5 M8,9 L9,6 M6,9 L5,6.5" stroke={COLORS.grass} strokeWidth="0.4" opacity="0.14" strokeLinecap="round" />
             <path d="M16,16 L16,13 M17,17 L18,14" stroke={COLORS.grassLight} strokeWidth="0.4" opacity="0.12" strokeLinecap="round" />
+            {/* Tiny flower dots */}
+            <circle cx="3" cy="8" r="0.5" fill={COLORS.neonPink} opacity="0.08" />
+            <circle cx="17" cy="4" r="0.4" fill={COLORS.glowWarm} opacity="0.08" />
+            <circle cx="12" cy="16" r="0.45" fill={COLORS.marketAwning} opacity="0.06" />
           </pattern>
 
+          {/* Water — 3 wave lines with varying dash patterns */}
           <pattern id="v3-tex-water" width="24" height="24" patternUnits="userSpaceOnUse">
             <rect width="24" height="24" fill="none" />
-            <path d="M2,8 Q6,6 10,8 Q14,10 18,8" fill="none" stroke={COLORS.water} strokeWidth="0.4" opacity="0.14" />
-            <path d="M6,18 Q10,16 14,18 Q18,20 22,18" fill="none" stroke={COLORS.waterDeep} strokeWidth="0.3" opacity="0.12" />
+            <path d="M2,6 Q6,4 10,6 Q14,8 18,6" fill="none" stroke={COLORS.water} strokeWidth="0.4" opacity="0.14" />
+            <path d="M4,13 Q8,11 12,13 Q16,15 20,13" fill="none" stroke={COLORS.waterDeep} strokeWidth="0.3" opacity="0.12" strokeDasharray="4 2" />
+            <path d="M0,20 Q5,18 10,20 Q15,22 20,20 Q23,18 24,20" fill="none" stroke={COLORS.waterShallow} strokeWidth="0.35" opacity="0.10" strokeDasharray="2 3" />
             <circle cx="20" cy="5" r="0.5" fill={COLORS.waterShallow} opacity="0.12" />
+            <circle cx="6" cy="20" r="0.3" fill={COLORS.water} opacity="0.08" />
           </pattern>
 
           <pattern id="v3-tex-industrial" width="12" height="12" patternUnits="userSpaceOnUse">
@@ -995,14 +1148,50 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <rect x="8" y="1" width="2" height="1.5" fill="#57534E" opacity="0.08" rx="0.2" />
           </pattern>
 
+          {/* Rural — crop row lines + wheat stalks */}
           <pattern id="v3-tex-rural" width="18" height="18" patternUnits="userSpaceOnUse">
             <rect width="18" height="18" fill="none" />
-            <path d="M0,6 L18,6 M0,12 L18,12" stroke={COLORS.earth} strokeWidth="0.3" opacity="0.10" strokeDasharray="3 2" />
+            {/* Crop row lines */}
+            <path d="M0,4 L18,4 M0,9 L18,9 M0,14 L18,14" stroke={COLORS.earth} strokeWidth="0.25" opacity="0.10" strokeDasharray="3 2" />
             <circle cx="4" cy="3" r="0.7" fill={COLORS.grass} opacity="0.12" />
             <circle cx="12" cy="9" r="0.5" fill={COLORS.earth} opacity="0.08" />
             <circle cx="8" cy="15" r="0.6" fill={COLORS.grass} opacity="0.10" />
-            <path d="M14,3 L14,1" stroke={COLORS.earth} strokeWidth="0.5" opacity="0.08" strokeLinecap="round" />
-            <path d="M16,3 L16,1.5" stroke={COLORS.earth} strokeWidth="0.5" opacity="0.08" strokeLinecap="round" />
+            {/* Wheat stalk shapes */}
+            <path d="M14,3 L14,0.5" stroke={COLORS.earth} strokeWidth="0.5" opacity="0.08" strokeLinecap="round" />
+            <path d="M13.2,1.8 L14,0.5 L14.8,1.8" stroke={COLORS.sand} strokeWidth="0.3" opacity="0.06" strokeLinecap="round" fill="none" />
+            <path d="M16,3.5 L16,1" stroke={COLORS.earth} strokeWidth="0.5" opacity="0.08" strokeLinecap="round" />
+            <path d="M15.3,2.2 L16,1 L16.7,2.2" stroke={COLORS.sand} strokeWidth="0.3" opacity="0.06" strokeLinecap="round" fill="none" />
+            <path d="M6,14 L6,11.5" stroke={COLORS.earth} strokeWidth="0.4" opacity="0.07" strokeLinecap="round" />
+            <path d="M5.4,12.5 L6,11.5 L6.6,12.5" stroke={COLORS.sand} strokeWidth="0.25" opacity="0.05" strokeLinecap="round" fill="none" />
+          </pattern>
+
+          {/* ── New Patterns ── */}
+
+          {/* Cobblestone — brick-offset rounded rects for Old Town */}
+          <pattern id="v3-cobblestone" width="12" height="10" patternUnits="userSpaceOnUse">
+            <rect width="12" height="10" fill="none" />
+            {/* Row 1 */}
+            <rect x="0.5" y="0.5" width="5" height="4" rx="1" fill={COLORS.earthLight} opacity="0.08" stroke={COLORS.earth} strokeWidth="0.2" strokeOpacity="0.06" />
+            <rect x="6.5" y="0.5" width="5" height="4" rx="1" fill={COLORS.earth} opacity="0.06" stroke={COLORS.earth} strokeWidth="0.2" strokeOpacity="0.06" />
+            {/* Row 2 — offset */}
+            <rect x="-2" y="5.5" width="5" height="4" rx="1" fill={COLORS.earth} opacity="0.07" stroke={COLORS.earth} strokeWidth="0.2" strokeOpacity="0.06" />
+            <rect x="3.5" y="5.5" width="5" height="4" rx="1" fill={COLORS.earthLight} opacity="0.06" stroke={COLORS.earth} strokeWidth="0.2" strokeOpacity="0.06" />
+            <rect x="9" y="5.5" width="5" height="4" rx="1" fill={COLORS.earth} opacity="0.08" stroke={COLORS.earth} strokeWidth="0.2" strokeOpacity="0.06" />
+          </pattern>
+
+          {/* Tech grid — circuit-board lines for Tech Park */}
+          <pattern id="v3-tech-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <rect width="20" height="20" fill="none" />
+            {/* Vertical + horizontal traces */}
+            <path d="M5,0 L5,8 L12,8 L12,20" stroke={COLORS.neonBlue} strokeWidth="0.3" opacity="0.10" fill="none" />
+            <path d="M0,15 L8,15 L8,5 L20,5" stroke={COLORS.neonBlue} strokeWidth="0.25" opacity="0.08" fill="none" />
+            {/* Nodes */}
+            <circle cx="5" cy="8" r="0.8" fill={COLORS.neonBlue} opacity="0.10" />
+            <circle cx="12" cy="8" r="0.6" fill={COLORS.glowCool} opacity="0.08" />
+            <circle cx="8" cy="15" r="0.6" fill={COLORS.neonBlue} opacity="0.08" />
+            <circle cx="8" cy="5" r="0.5" fill={COLORS.glowCool} opacity="0.06" />
+            {/* Chip pad */}
+            <rect x="14" y="13" width="3" height="3" fill="none" stroke={COLORS.neonBlue} strokeWidth="0.25" opacity="0.08" rx="0.3" />
           </pattern>
 
           {/* ── Wave pattern ── */}
@@ -1017,24 +1206,95 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
             <stop offset="100%" stopColor={COLORS.water} stopOpacity="0.15" />
           </linearGradient>
 
-          {/* ── Tree symbol ── */}
+          {/* ══════════════════════════════════════
+              SYMBOLS
+              ══════════════════════════════════════ */}
+
+          {/* Tree — trunk detail, leaf highlight, shadow at base */}
           <symbol id="v3-tree" viewBox="0 0 20 24">
+            {/* Shadow at base */}
+            <ellipse cx="10" cy="23" rx="6" ry="1.5" fill={COLORS.buildingShadow} opacity="0.10" />
+            {/* Trunk with darker stripe */}
             <rect x="9" y="16" width="2" height="8" fill={COLORS.earth} opacity="0.5" rx="0.3" />
+            <rect x="9.6" y="16" width="0.8" height="8" fill={COLORS.buildingShadow} opacity="0.12" rx="0.2" />
+            {/* Main canopy */}
             <circle cx="10" cy="10" r="8" fill={COLORS.grass} opacity="0.6" />
+            {/* Leaf highlight — offset lighter circle */}
             <circle cx="7" cy="7" r="5" fill={COLORS.grassLight} opacity="0.4" />
+            <circle cx="6" cy="6" r="2.5" fill={COLORS.grassLight} opacity="0.18" />
           </symbol>
 
-          {/* ── Mountain symbol ── */}
+          {/* Mountain — second ridge, rocky texture, treeline */}
           <symbol id="v3-mountain" viewBox="0 0 100 70">
+            {/* Main peak */}
             <polygon points="0,70 50,0 100,70" fill={COLORS.mountain} opacity="0.8" />
+            {/* Second ridge at 40% height */}
+            <polygon points="10,70 38,28 66,70" fill={COLORS.mountain} opacity="0.55" />
+            {/* Snow cap */}
             <polygon points="35,25 50,0 65,25" fill={COLORS.mountainSnow} opacity="0.5" />
+            {/* Rocky texture lines on face */}
+            <path d="M30,50 L38,38 M55,45 L48,35 M70,55 L62,42" stroke={COLORS.earth} strokeWidth="0.8" opacity="0.12" fill="none" strokeLinecap="round" />
+            <path d="M22,60 L28,52 M75,58 L68,50" stroke={COLORS.earth} strokeWidth="0.6" opacity="0.08" fill="none" strokeLinecap="round" />
+            {/* Treeline at base */}
+            <circle cx="15" cy="66" r="4" fill={COLORS.grass} opacity="0.25" />
+            <circle cx="25" cy="65" r="3.5" fill={COLORS.grassLight} opacity="0.20" />
+            <circle cx="80" cy="66" r="4" fill={COLORS.grass} opacity="0.22" />
+            <circle cx="70" cy="67" r="3" fill={COLORS.grassLight} opacity="0.18" />
           </symbol>
 
-          {/* ── Cloud symbol ── */}
+          {/* Cloud — fluffier with gray underside */}
           <symbol id="v3-cloud" viewBox="0 0 60 30">
-            <ellipse cx="20" cy="20" rx="18" ry="10" fill="white" opacity="0.5" />
-            <ellipse cx="35" cy="15" rx="14" ry="12" fill="white" opacity="0.4" />
-            <ellipse cx="45" cy="20" rx="12" ry="8" fill="white" opacity="0.35" />
+            {/* Underside shadow */}
+            <ellipse cx="28" cy="23" rx="22" ry="6" fill="#B0B8C4" opacity="0.12" />
+            {/* Main body */}
+            <ellipse cx="20" cy="18" rx="18" ry="10" fill="white" opacity="0.5" />
+            <ellipse cx="35" cy="14" rx="14" ry="12" fill="white" opacity="0.4" />
+            <ellipse cx="45" cy="18" rx="12" ry="8" fill="white" opacity="0.35" />
+            {/* Extra puffs for fluffy shape */}
+            <ellipse cx="12" cy="16" rx="10" ry="7" fill="white" opacity="0.3" />
+            <ellipse cx="50" cy="16" rx="8" ry="6" fill="white" opacity="0.25" />
+          </symbol>
+
+          {/* ── New Symbols ── */}
+
+          {/* Pine tree — conifer for mountain regions */}
+          <symbol id="v3-pine-tree" viewBox="0 0 16 24">
+            <ellipse cx="8" cy="23" rx="4" ry="1" fill={COLORS.buildingShadow} opacity="0.08" />
+            <rect x="7" y="18" width="2" height="6" fill={COLORS.earth} opacity="0.45" rx="0.3" />
+            <polygon points="8,2 14,14 2,14" fill={COLORS.grass} opacity="0.55" />
+            <polygon points="8,6 12,16 4,16" fill={COLORS.grass} opacity="0.45" />
+            <polygon points="8,10 11,18 5,18" fill={COLORS.grassLight} opacity="0.35" />
+          </symbol>
+
+          {/* Bush — small rounded cluster */}
+          <symbol id="v3-bush" viewBox="0 0 12 8">
+            <ellipse cx="6" cy="7" rx="5" ry="1" fill={COLORS.buildingShadow} opacity="0.06" />
+            <ellipse cx="4" cy="5" rx="4" ry="3.5" fill={COLORS.grass} opacity="0.40" />
+            <ellipse cx="8" cy="5" rx="3.5" ry="3" fill={COLORS.grassLight} opacity="0.35" />
+            <ellipse cx="6" cy="4" rx="3" ry="2.5" fill={COLORS.grassLight} opacity="0.20" />
+          </symbol>
+
+          {/* Rock — irregular polygon with shading */}
+          <symbol id="v3-rock" viewBox="0 0 14 10">
+            <polygon points="2,10 0,5 3,1 9,0 13,3 14,8 10,10" fill={COLORS.earthLight} opacity="0.45" />
+            <polygon points="3,1 9,0 13,3 8,4 4,3" fill={COLORS.mountainSnow} opacity="0.15" />
+            <path d="M4,3 L8,4 L10,10" stroke={COLORS.earth} strokeWidth="0.4" opacity="0.10" fill="none" />
+          </symbol>
+
+          {/* Sailboat — simple boat silhouette for marina */}
+          <symbol id="v3-sailboat" viewBox="0 0 16 18">
+            {/* Hull */}
+            <path d="M2,14 Q8,18 14,14 L12,14 L4,14 Z" fill={COLORS.earth} opacity="0.35" />
+            {/* Mast */}
+            <rect x="7.5" y="3" width="0.8" height="12" fill={COLORS.earth} opacity="0.4" />
+            {/* Sail */}
+            <polygon points="8,3 14,10 8,12" fill="white" opacity="0.5" />
+            <polygon points="8,4 3,9 8,11" fill="white" opacity="0.35" />
+          </symbol>
+
+          {/* Seagull — tiny V-shape bird */}
+          <symbol id="v3-seagull" viewBox="0 0 12 6">
+            <path d="M0,4 Q3,0 6,3 Q9,0 12,4" fill="none" stroke="#555" strokeWidth="0.8" opacity="0.25" strokeLinecap="round" />
           </symbol>
         </defs>
 
