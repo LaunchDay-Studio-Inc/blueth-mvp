@@ -61,7 +61,7 @@ export default function RegisterPage() {
       <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8">
         {/* Title */}
         <div className="text-center mb-8 animate-slide-up">
-          <h1 className="text-5xl sm:text-6xl font-black tracking-tight neon-text animate-flicker">
+          <h1 className="text-5xl sm:text-6xl font-black tracking-tight neon-text">
             BLUETH CITY
           </h1>
           <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-xs mx-auto leading-relaxed">

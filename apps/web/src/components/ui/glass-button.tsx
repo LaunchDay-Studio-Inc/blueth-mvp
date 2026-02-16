@@ -12,7 +12,7 @@ const glassButtonVariants = cva(
         primary:
           'glass-elevated text-primary hover:border-primary/30 active:brightness-110',
         ghost:
-          'bg-transparent border border-transparent text-foreground/80 hover:bg-white/5 hover:text-foreground',
+          'bg-transparent border border-transparent text-foreground/80 hover:bg-black/5 hover:text-foreground',
         outline:
           'glass-surface text-foreground/80 hover:border-primary/30 hover:text-primary',
       },

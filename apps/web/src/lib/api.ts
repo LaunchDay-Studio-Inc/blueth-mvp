@@ -59,16 +59,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiError(0, 'NETWORK_ERROR', 'Network error — check your connection');
   }
 
-  if (res.status === 401) {
-    pushLog({ method, path, status: 401, error: 'Session expired', ts: Date.now() });
-    throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
-  }
-
   if (!res.ok) {
-    const data = await res.json().catch(() => ({ error: 'Unknown error', code: 'UNKNOWN' }));
-    const msg = data.error || res.statusText;
+    const data = await res.json().catch(() => ({ error: res.status === 401 ? 'Session expired' : 'Unknown error', code: 'UNKNOWN' }));
+    const msg = data.error || (res.status === 401 ? 'Session expired' : res.statusText);
+    const code = data.code || (res.status === 401 ? 'UNAUTHORIZED' : 'UNKNOWN');
     pushLog({ method, path, status: res.status, error: msg, ts: Date.now() });
-    throw new ApiError(res.status, data.code || 'UNKNOWN', msg);
+    throw new ApiError(res.status, code, msg);
   }
 
   pushLog({ method, path, status: res.status, error: null, ts: Date.now() });
