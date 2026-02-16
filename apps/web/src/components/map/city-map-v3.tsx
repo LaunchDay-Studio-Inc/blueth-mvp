@@ -2558,7 +2558,7 @@ export function CityMapV3({ onDistrictSelect, onLockedZoneSelect, selectedCode }
               { x: 650, y: 460, r: 14 },
               { x: 360, y: 570, r: 11 },
             ].map((cl, i) => (
-              <circle key={`clearing-${i}`} cx={cl.x} cy={cl.y} r={cl.r} fill={COLORS.sandLight} opacity="0.03" />
+              <circle key={`clearing-${i}`} cx={cl.x} cy={cl.y} r={cl.r} fill={COLORS.sand} opacity="0.03" />
             ))}
 
             {/* Trees — deciduous, conifer, and bush */}
