@@ -22,11 +22,45 @@ const POI_HIT_RADIUS = 22;
 
 // ── Road styles ──────────────────────────────────────
 
-const ROAD_STYLES: Record<string, { width: number; dash?: string; opacity: number }> = {
-  highway:   { width: 5, opacity: 0.35 },
-  primary:   { width: 2.5, opacity: 0.28 },
-  secondary: { width: 1.8, opacity: 0.22 },
-  tertiary:  { width: 1.2, dash: '6 4', opacity: 0.16 },
+const ROAD_STYLES: Record<string, {
+  casingWidth: number;
+  fillWidth: number;
+  casingColor: string;
+  fillColor: string;
+  opacity: number;
+  dash?: string;
+  centerLine?: { color: string; width: number; dash: string; opacity: number };
+}> = {
+  highway: {
+    casingWidth: 8,
+    fillWidth: 6,
+    casingColor: 'hsl(210 8% 45%)',
+    fillColor: 'hsl(210 6% 62%)',
+    opacity: 0.55,
+    centerLine: { color: 'hsl(45 80% 60%)', width: 0.8, dash: '10 6', opacity: 0.5 },
+  },
+  primary: {
+    casingWidth: 5,
+    fillWidth: 3.5,
+    casingColor: 'hsl(210 8% 50%)',
+    fillColor: 'hsl(210 6% 68%)',
+    opacity: 0.50,
+  },
+  secondary: {
+    casingWidth: 3.5,
+    fillWidth: 2.5,
+    casingColor: 'hsl(210 6% 58%)',
+    fillColor: 'hsl(210 5% 72%)',
+    opacity: 0.40,
+  },
+  tertiary: {
+    casingWidth: 2,
+    fillWidth: 1.5,
+    casingColor: 'hsl(210 5% 65%)',
+    fillColor: 'hsl(210 4% 78%)',
+    opacity: 0.30,
+    dash: '5 3',
+  },
 };
 
 // ── Isometric building helpers (from V2, preserved) ──
@@ -260,6 +294,83 @@ function renderDistrictScene(
       return null;
   }
 }
+
+// ── Terrain texture pattern mapping ──────────────────
+
+const TERRAIN_PATTERN: Record<string, string> = {
+  urban: 'url(#v3-tex-urban)',
+  green: 'url(#v3-tex-green)',
+  water: 'url(#v3-tex-water)',
+  industrial: 'url(#v3-tex-industrial)',
+  rural: 'url(#v3-tex-rural)',
+};
+
+// ── Seeded pseudo-random for deterministic scatter ──
+
+function seededRandom(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function pointInPolygon(x: number, y: number, poly: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function scatterInPolygon(
+  poly: [number, number][], count: number, seed: number
+): [number, number][] {
+  const rng = seededRandom(seed);
+  const points: [number, number][] = [];
+  // Bounding box
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [px, py] of poly) {
+    if (px < minX) minX = px;
+    if (py < minY) minY = py;
+    if (px > maxX) maxX = px;
+    if (py > maxY) maxY = py;
+  }
+  let attempts = 0;
+  while (points.length < count && attempts < count * 20) {
+    const x = minX + rng() * (maxX - minX);
+    const y = minY + rng() * (maxY - minY);
+    if (pointInPolygon(x, y, poly)) {
+      points.push([x, y]);
+    }
+    attempts++;
+  }
+  return points;
+}
+
+// ── Road intersection data ──
+// Key junction coordinates where multiple roads meet
+const ROAD_JUNCTIONS: [number, number][] = [
+  [570, 380], // CBD center - hub of main-avenue, university-blvd, tech-corridor, cbd-south
+  [570, 310], // CBD north - tech-corridor/main-avenue junction
+  [790, 265], // Marina - marina-drive meets waterfront-rd
+  [860, 415], // Harbor - waterfront-rd meets harbor-freight
+  [430, 500], // Market Sq - cbd-south/entertainment-strip junction
+  [550, 505], // Entertainment - entertainment-cbd meets main-avenue south
+  [385, 220], // Suburbs N - suburb-n-arterial starts
+  [355, 635], // Suburbs S - suburb-s-arterial starts
+  [295, 370], // University - university-blvd starts
+  [640, 340], // CBD east edge - tech-corridor/marina-drive
+  [180, 300], // Outskirts north link
+  [180, 580], // Outskirts south link
+  [740, 680], // Harbor freight south terminus
+  [500, 660], // Industrial-south south terminus
+  [450, 370], // Old Town - suburb-n-arterial meets
+];
 
 // ── Component Props ──────────────────────────────────
 
@@ -572,6 +683,57 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
             <line x1="0" y1="0" x2="0" y2="8" stroke="#78716C" strokeWidth="0.5" opacity="0.12" />
           </pattern>
 
+          {/* ── Terrain texture patterns ── */}
+
+          {/* Urban: concrete grid + dots */}
+          <pattern id="v3-tex-urban" width="16" height="16" patternUnits="userSpaceOnUse">
+            <rect width="16" height="16" fill="none" />
+            <path d="M0,8 L16,8 M8,0 L8,16" stroke="#9CA3AF" strokeWidth="0.3" opacity="0.12" />
+            <circle cx="4" cy="4" r="0.6" fill="#78716C" opacity="0.10" />
+            <circle cx="12" cy="12" r="0.6" fill="#78716C" opacity="0.10" />
+            <rect x="2" y="10" width="3" height="2" fill="#9CA3AF" opacity="0.06" rx="0.2" />
+            <rect x="10" y="2" width="4" height="2.5" fill="#9CA3AF" opacity="0.06" rx="0.2" />
+          </pattern>
+
+          {/* Green: grass blades + dots */}
+          <pattern id="v3-tex-green" width="20" height="20" patternUnits="userSpaceOnUse">
+            <rect width="20" height="20" fill="none" />
+            <circle cx="5" cy="5" r="1" fill="#4CAF50" opacity="0.15" />
+            <circle cx="15" cy="12" r="0.8" fill="#388E3C" opacity="0.12" />
+            <circle cx="10" cy="18" r="1.2" fill="#4CAF50" opacity="0.10" />
+            <circle cx="2" cy="14" r="0.6" fill="#66BB6A" opacity="0.12" />
+            <path d="M7,8 L7,5 M8,9 L9,6 M6,9 L5,6.5" stroke="#388E3C" strokeWidth="0.4" opacity="0.12" strokeLinecap="round" />
+            <path d="M16,16 L16,13 M17,17 L18,14" stroke="#4CAF50" strokeWidth="0.4" opacity="0.10" strokeLinecap="round" />
+          </pattern>
+
+          {/* Water: ripple arcs */}
+          <pattern id="v3-tex-water" width="24" height="24" patternUnits="userSpaceOnUse">
+            <rect width="24" height="24" fill="none" />
+            <path d="M2,8 Q6,6 10,8 Q14,10 18,8" fill="none" stroke="#3B82F6" strokeWidth="0.4" opacity="0.12" />
+            <path d="M6,18 Q10,16 14,18 Q18,20 22,18" fill="none" stroke="#2563EB" strokeWidth="0.3" opacity="0.10" />
+            <circle cx="20" cy="5" r="0.5" fill="#60A5FA" opacity="0.10" />
+          </pattern>
+
+          {/* Industrial: cross-hatch + rust */}
+          <pattern id="v3-tex-industrial" width="12" height="12" patternUnits="userSpaceOnUse">
+            <rect width="12" height="12" fill="none" />
+            <path d="M0,0 L12,12 M12,0 L0,12" stroke="#78716C" strokeWidth="0.4" opacity="0.10" />
+            <circle cx="6" cy="6" r="0.8" fill="#92400E" opacity="0.08" />
+            <circle cx="2" cy="10" r="0.5" fill="#78716C" opacity="0.06" />
+            <rect x="8" y="1" width="2" height="1.5" fill="#57534E" opacity="0.08" rx="0.2" />
+          </pattern>
+
+          {/* Rural: field rows + earthy dots */}
+          <pattern id="v3-tex-rural" width="18" height="18" patternUnits="userSpaceOnUse">
+            <rect width="18" height="18" fill="none" />
+            <path d="M0,6 L18,6 M0,12 L18,12" stroke="#8B7355" strokeWidth="0.3" opacity="0.10" strokeDasharray="3 2" />
+            <circle cx="4" cy="3" r="0.7" fill="#6B8E23" opacity="0.10" />
+            <circle cx="12" cy="9" r="0.5" fill="#8B7355" opacity="0.08" />
+            <circle cx="8" cy="15" r="0.6" fill="#6B8E23" opacity="0.08" />
+            <path d="M14,3 L14,1" stroke="#8B7355" strokeWidth="0.5" opacity="0.08" strokeLinecap="round" />
+            <path d="M16,3 L16,1.5" stroke="#8B7355" strokeWidth="0.5" opacity="0.08" strokeLinecap="round" />
+          </pattern>
+
           {/* ── Wave pattern for water ── */}
           <pattern id="v3-wave-pat" width="60" height="12" patternUnits="userSpaceOnUse">
             <path d="M0,6 Q15,2 30,6 Q45,10 60,6" fill="none" stroke="#4A90C4" strokeWidth="0.4" opacity="0.15" />
@@ -611,6 +773,15 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
               d="M830,0 Q840,80 860,160 Q880,250 900,340 Q920,440 910,540 Q900,650 890,750 Q880,830 870,900 L850,900 Q860,830 870,750 Q880,650 890,540 Q900,440 890,340 Q870,250 860,160 Q850,80 840,0 Z"
               fill="url(#v3-beach)"
             />
+            {/* Sand grain dots along beach */}
+            {[
+              [845, 80], [855, 160], [870, 260], [885, 340], [895, 420],
+              [900, 500], [895, 580], [885, 660], [878, 740], [872, 820],
+              [848, 120], [862, 200], [878, 300], [890, 380], [898, 460],
+              [895, 540], [888, 620], [882, 700], [875, 780], [870, 860],
+            ].map(([sx, sy], i) => (
+              <circle key={`sand-${i}`} cx={sx} cy={sy} r={0.8 + (i % 3) * 0.3} fill="#C8956A" opacity={0.10 + (i % 4) * 0.02} />
+            ))}
 
             {/* ── Coastline edge shadow ── */}
             <path
@@ -664,8 +835,143 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
             <ellipse cx="810" cy="530" rx="50" ry="35" fill="#57534E" opacity="0.06" />
           </g>
 
+          {/* ═══ LAYER 1b: District terrain textures ═══ */}
+          <g id="layer-district-textures" style={{ pointerEvents: 'none' }}>
+            {DISTRICTS_GEO.map((d) => {
+              const patternFill = TERRAIN_PATTERN[d.terrain];
+              if (!patternFill) return null;
+              const pts = polygonToPoints(d.polygon);
+              return (
+                <polygon
+                  key={`tex-${d.code}`}
+                  points={pts}
+                  fill={patternFill}
+                  opacity="1"
+                />
+              );
+            })}
+          </g>
+
+          {/* ═══ LAYER 1c: Environmental scatter ═══ */}
+          <g id="layer-env-scatter" style={{ pointerEvents: 'none' }}>
+            {DISTRICTS_GEO.map((d, idx) => {
+              if (d.terrain === 'green') {
+                // Trees: circles with trunk lines
+                const trees = scatterInPolygon(d.polygon, 10, idx * 1000 + 42);
+                const rng = seededRandom(idx * 1000 + 99);
+                return (
+                  <g key={`env-${d.code}`}>
+                    {trees.map(([tx, ty], i) => {
+                      const r = 4 + rng() * 4;
+                      return (
+                        <g key={i}>
+                          <rect x={tx - 0.5} y={ty} width={1} height={r * 0.6} fill="#5D4037" opacity="0.12" rx="0.2" />
+                          <circle cx={tx} cy={ty - r * 0.1} r={r} fill="#4CAF50" opacity={0.08 + rng() * 0.06} />
+                          <circle cx={tx - r * 0.3} cy={ty - r * 0.3} r={r * 0.6} fill="#388E3C" opacity={0.06 + rng() * 0.04} />
+                        </g>
+                      );
+                    })}
+                  </g>
+                );
+              }
+              if (d.terrain === 'urban') {
+                // Small building footprints
+                const bldgs = scatterInPolygon(d.polygon, 8, idx * 1000 + 77);
+                const rng = seededRandom(idx * 1000 + 55);
+                return (
+                  <g key={`env-${d.code}`}>
+                    {bldgs.map(([bx, by], i) => {
+                      const w = 3 + rng() * 5;
+                      const h = 2 + rng() * 4;
+                      return (
+                        <rect
+                          key={i}
+                          x={bx - w / 2}
+                          y={by - h / 2}
+                          width={w}
+                          height={h}
+                          fill={d.gradient[1]}
+                          opacity={0.06 + rng() * 0.04}
+                          rx="0.3"
+                        />
+                      );
+                    })}
+                  </g>
+                );
+              }
+              if (d.terrain === 'rural') {
+                // Field rows + fence posts
+                const posts = scatterInPolygon(d.polygon, 6, idx * 1000 + 33);
+                const rng = seededRandom(idx * 1000 + 44);
+                return (
+                  <g key={`env-${d.code}`}>
+                    {posts.map(([px, py], i) => (
+                      <g key={i}>
+                        <line x1={px} y1={py} x2={px} y2={py - 3 - rng() * 2} stroke="#8B7355" strokeWidth="0.6" opacity="0.12" strokeLinecap="round" />
+                        <circle cx={px} cy={py - 4 - rng() * 2} r="1.2" fill="#6B8E23" opacity={0.08 + rng() * 0.04} />
+                      </g>
+                    ))}
+                    {/* Field rows */}
+                    <g clipPath={`url(#v3-clip-${d.code})`}>
+                      {Array.from({ length: 5 }, (_, i) => {
+                        const y = d.center[1] - 60 + i * 30;
+                        return (
+                          <line key={`row-${i}`} x1={d.center[0] - 50} y1={y} x2={d.center[0] + 50} y2={y}
+                            stroke="#8B7355" strokeWidth="0.5" opacity="0.08" strokeDasharray="4 3" />
+                        );
+                      })}
+                    </g>
+                  </g>
+                );
+              }
+              if (d.terrain === 'industrial') {
+                // Pipes + smoke wisps
+                const pipes = scatterInPolygon(d.polygon, 4, idx * 1000 + 88);
+                const rng = seededRandom(idx * 1000 + 66);
+                return (
+                  <g key={`env-${d.code}`}>
+                    {pipes.map(([px, py], i) => {
+                      const len = 8 + rng() * 12;
+                      const angle = rng() * 180;
+                      return (
+                        <g key={i}>
+                          <line
+                            x1={px} y1={py}
+                            x2={px + Math.cos(angle * Math.PI / 180) * len}
+                            y2={py + Math.sin(angle * Math.PI / 180) * len}
+                            stroke="#57534E" strokeWidth="1.2" opacity="0.10" strokeLinecap="round"
+                          />
+                          <circle cx={px} cy={py - 3} r="2" fill="#78716C" opacity="0.04" />
+                        </g>
+                      );
+                    })}
+                  </g>
+                );
+              }
+              return null;
+            })}
+          </g>
+
           {/* ═══ LAYER 2: Water detail ═══ */}
           <g id="layer-water" style={{ pointerEvents: 'none' }}>
+
+            {/* ── Ocean depth zones ── */}
+            {/* Shallow zone (near coast) */}
+            <path
+              d="M850,0 Q860,100 880,180 Q900,250 920,380 Q940,480 920,600 Q900,750 850,900 L920,900 Q950,750 960,600 Q980,480 960,380 Q940,250 920,180 Q900,100 890,0 Z"
+              fill="#78B4E8" opacity="0.08"
+            />
+            {/* Mid zone */}
+            <path
+              d="M890,0 Q900,100 920,180 Q940,250 960,380 Q980,480 960,600 Q950,750 920,900 L1000,900 Q1020,750 1030,600 Q1040,480 1030,380 Q1010,250 990,180 Q970,100 960,0 Z"
+              fill="#5A9BD5" opacity="0.06"
+            />
+            {/* Deep zone */}
+            <path
+              d="M960,0 L1200,0 L1200,900 L1000,900 Q1020,750 1030,600 Q1040,480 1030,380 Q1010,250 990,180 Q970,100 960,0 Z"
+              fill="#3B7CB8" opacity="0.05"
+            />
+
             {/* Animated wave lines along coastline (multiple depths) */}
             {[
               { y: 120, w: 0.6, o: 0.20, dur: 4 },
@@ -733,49 +1039,101 @@ export function CityMapV3({ onDistrictSelect, selectedCode }: CityMapV3Props) {
             >
               <animate attributeName="stroke-dashoffset" from="0" to="20" dur="7s" repeatCount="indefinite" />
             </path>
+
+            {/* ── Foam dots along shoreline ── */}
+            {[
+              [856, 100], [870, 170], [884, 240], [900, 320], [910, 400],
+              [915, 470], [910, 540], [898, 610], [888, 680], [878, 750],
+              [868, 820], [860, 140], [876, 210], [892, 280], [905, 360],
+              [912, 440], [908, 520], [896, 590], [884, 660], [874, 730],
+            ].map(([fx, fy], i) => (
+              <circle key={`foam-${i}`} cx={fx} cy={fy} r={1 + (i % 3) * 0.5} fill="#E0F0FF" opacity={0.15 + (i % 5) * 0.02} />
+            ))}
+
+            {/* ── Rocky edges near harbor ── */}
+            {[
+              [905, 370], [912, 385], [920, 400], [925, 420], [918, 445],
+              [910, 460], [900, 475], [895, 490],
+            ].map(([rx, ry], i) => (
+              <polygon
+                key={`rock-${i}`}
+                points={`${rx},${ry} ${rx + 3},${ry - 1.5} ${rx + 5},${ry + 1} ${rx + 3},${ry + 2.5} ${rx + 1},${ry + 2}`}
+                fill="#64748B"
+                opacity={0.10 + (i % 3) * 0.03}
+              />
+            ))}
+
+            {/* ── Extra shoreline contour lines ── */}
+            <path
+              d="M845,0 Q855,95 875,175 Q895,245 915,375 Q935,475 915,595 Q895,745 845,895"
+              fill="none" stroke="#8BB8D6" strokeWidth="0.5" opacity="0.12" strokeDasharray="6 4"
+            />
+            <path
+              d="M840,0 Q850,90 870,170 Q890,240 910,370 Q930,470 910,590 Q890,740 840,890"
+              fill="none" stroke="#A6CCE0" strokeWidth="0.3" opacity="0.08" strokeDasharray="3 5"
+            />
           </g>
 
           {/* ═══ LAYER 3: Roads ═══ */}
           <g id="layer-roads" style={{ pointerEvents: 'none' }}>
+            {/* Pass 1: Road casings (all roads, bottom layer) */}
             {ROADS.map((road) => {
               const style = ROAD_STYLES[road.type] ?? ROAD_STYLES.tertiary;
               return (
-                <g key={road.id}>
-                  {road.type === 'highway' && (
-                    <path
-                      d={road.path}
-                      fill="none"
-                      stroke="hsl(210 10% 65%)"
-                      strokeWidth={style.width + 2}
-                      opacity={style.opacity}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  )}
-                  <path
-                    d={road.path}
-                    fill="none"
-                    stroke={road.type === 'highway' ? 'hsl(210 10% 50%)' : 'hsl(210 10% 55%)'}
-                    strokeWidth={style.width}
-                    opacity={style.opacity}
-                    strokeDasharray={style.dash}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  {road.type === 'highway' && (
-                    <path
-                      d={road.path}
-                      fill="none"
-                      stroke="hsl(45 80% 65%)"
-                      strokeWidth={0.8}
-                      opacity={style.opacity * 0.6}
-                      strokeDasharray="12 8"
-                      strokeLinecap="round"
-                    />
-                  )}
-                </g>
+                <path
+                  key={`casing-${road.id}`}
+                  d={road.path}
+                  fill="none"
+                  stroke={style.casingColor}
+                  strokeWidth={style.casingWidth}
+                  opacity={style.opacity * 0.7}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={style.dash}
+                />
               );
             })}
+            {/* Pass 2: Road fills (lighter inner stroke) */}
+            {ROADS.map((road) => {
+              const style = ROAD_STYLES[road.type] ?? ROAD_STYLES.tertiary;
+              return (
+                <path
+                  key={`fill-${road.id}`}
+                  d={road.path}
+                  fill="none"
+                  stroke={style.fillColor}
+                  strokeWidth={style.fillWidth}
+                  opacity={style.opacity}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={style.dash}
+                />
+              );
+            })}
+            {/* Pass 3: Center lines (highway only) */}
+            {ROADS.map((road) => {
+              const style = ROAD_STYLES[road.type] ?? ROAD_STYLES.tertiary;
+              if (!style.centerLine) return null;
+              return (
+                <path
+                  key={`center-${road.id}`}
+                  d={road.path}
+                  fill="none"
+                  stroke={style.centerLine.color}
+                  strokeWidth={style.centerLine.width}
+                  opacity={style.centerLine.opacity}
+                  strokeDasharray={style.centerLine.dash}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+            {/* Pass 4: Road intersections */}
+            {ROAD_JUNCTIONS.map(([jx, jy], i) => (
+              <g key={`junction-${i}`}>
+                <circle cx={jx} cy={jy} r="4" fill="hsl(210 6% 68%)" opacity="0.45" />
+                <circle cx={jx} cy={jy} r="4" fill="none" stroke="hsl(210 8% 50%)" strokeWidth="0.8" opacity="0.35" />
+              </g>
+            ))}
           </g>
 
           {/* ═══ LAYER 4: Districts ═══ */}
